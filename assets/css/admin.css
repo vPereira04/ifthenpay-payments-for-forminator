@@ -1,0 +1,1754 @@
+/* ---- Icon font ----
+   Powers the builder field-list icon (`IfthenpayField::$icon`, set to
+   "sui-icon forminator-icon-ifthenpay") — that class has no glyph of its own
+   otherwise, since it isn't one of Forminator's built-in field icons. */
+@font-face {
+	font-family: ifthenpay-icons;
+	src: url('../fonts/ifthenpay-icons.woff2') format('woff2'),
+		url('../fonts/ifthenpay-icons.woff') format('woff'),
+		url('../fonts/ifthenpay-icons.ttf') format('truetype');
+	font-weight: normal;
+	font-style: normal;
+	font-display: block;
+}
+
+.forminator-icon-ifthenpay::before {
+	font-family: ifthenpay-icons !important;
+	font-weight: 100 !important;
+	content: "\e002";
+}
+
+/* Forminator and SUI each ship their own `!important` icon-font catch-all
+   that also matches this class — one scoped to `.forminator-ui`, one to
+   SUI's own version-scoped wrap (e.g. `.sui-2-12-27`) — both at (0,2,1)
+   specificity. I repeat our class three times to beat either outright,
+   rather than chasing whichever wrapper happens to be around it (the SUI
+   version class changes every Forminator update anyway). */
+.forminator-icon-ifthenpay.forminator-icon-ifthenpay.forminator-icon-ifthenpay::before {
+	font-family: ifthenpay-icons !important;
+	font-weight: 100 !important;
+}
+
+/* Connect-to-Ifthenpay modal: hidden by default, shown as a fixed overlay
+   once SUI's own Dialog JS adds "sui-active" to this wrapper on open. Not
+   relying on Forminator's own `.sui-<version> .sui-modal` rule for this —
+   that's scoped to a body class Forminator adds dynamically, which doesn't
+   reliably apply here, and without it the modal renders as plain in-page
+   content instead of a hidden popup. */
+
+#iftp-fm-connect-modal-wrap {
+	display: none;
+}
+
+#iftp-fm-connect-modal-wrap.sui-active {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	overflow-y: auto;
+	padding: 30px 100px;
+	background: rgb(0 0 0 / 70%);
+}
+
+#iftp-fm-connect-modal-wrap .sui-modal-content {
+	width: 100%;
+	max-width: 560px;
+	margin: 0 20px;
+}
+
+/* 100px of side padding leaves the modal ~150px wide on a phone. */
+@media (max-width: 782px) {
+	#iftp-fm-connect-modal-wrap.sui-active,
+	#iftp-fm-field-modal-wrap.iftp-fm-active {
+		padding: 20px 0;
+	}
+}
+
+#iftp-fm-connect-message:empty {
+	display: none;
+}
+
+#iftp-fm-connect-message {
+	margin: 10px 0 0;
+	color: #a23b3b;
+}
+
+/* Methods table scrolls on its own instead of pushing the settings page
+   wider than the screen. aria-busy is set while a Gateway Key switch loads. */
+#iftp-fm-methods-table-wrapper {
+	overflow-x: auto;
+	transition: opacity .2s ease;
+}
+
+#iftp-fm-methods-table-wrapper[aria-busy="true"] {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+/* Methods table. Cell padding/layout is written out in full here rather than
+   left to sui-table's own rules — those are scoped to a Forminator body
+   class (`.sui-<version> .sui-wrap .sui-table`) that, like the modal above,
+   doesn't reliably apply, and without it every cell renders with no padding
+   at all — which is what was collapsing the checkbox/star columns into the
+   method icon and running the "Enabled"/"Default" header labels together. */
+
+.iftp-fm-methods-table {
+	width: 100%;
+	table-layout: auto;
+	border-collapse: collapse;
+}
+
+.iftp-fm-methods-table th,
+.iftp-fm-methods-table td {
+	padding: 10px 12px;
+	vertical-align: middle;
+}
+
+.iftp-fm-col-control{
+  padding-left: 15px !important;
+}
+
+.iftp-fm-methods-table .iftp-fm-col-control {
+	/* A concrete width, not `1%` — if Forminator's own `table-layout: fixed`
+	   rule for `.sui-table` does end up applying (see note above), `1%`
+	   collapses this column to near-zero instead of shrinking to fit, which
+	   is what ran the "Enabled"/"Default" header text together. */
+	width: 56px;
+	white-space: nowrap;
+	text-align: center;
+	vertical-align: middle;
+}
+
+.iftp-fm-methods-table .iftp-fm-col-divider {
+	border-right: 1px solid #e6e6e6;
+	padding-right: 16px;
+}
+
+.iftp-fm-col-method {
+	text-align: left;
+	padding-left: 18px;
+}
+
+.iftp-fm-logo-slot {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 64px;
+	margin-right: 12px;
+}
+
+.iftp-fm-logo-slot img {
+	max-width: 64px;
+	max-height: 28px;
+}
+
+.iftp-fm-method-label.iftp-fm-dimmed {
+	opacity: 0.5;
+}
+
+.iftp-fm-account-pill {
+	display: inline-block;
+	height: 24px;
+	line-height: 24px;
+	padding: 0 10px;
+	border-radius: 12px;
+	background: #f1f1f1;
+	font-size: 12px;
+}
+
+.iftp-fm-status-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-size: 12px;
+}
+
+/* Same colors as the Payment Entries badges below — Enabled matches "Paid",
+   Activated (provisioned but switched off) matches "Expired". */
+.iftp-fm-status-badge--enabled {
+	background: #d3f9f5;
+	color: #0a6e63;
+}
+
+.iftp-fm-status-badge--activated {
+	background: #eee;
+	color: #666;
+}
+
+.iftp-fm-status-badge--unavailable {
+	background: #fbeaea;
+	color: #a23b3b;
+}
+
+.iftp-fm-status-cell {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+/* Default Method star toggle. */
+
+.iftp-fm-star {
+	display: inline-block;
+	cursor: pointer;
+	font-size: 18px;
+	color: #ccc;
+}
+
+.iftp-fm-default-method:checked + .iftp-fm-star {
+	color: #f2a900;
+}
+
+.iftp-fm-star--hidden {
+	visibility: hidden;
+}
+
+.iftp-fm-default-method:disabled + .iftp-fm-star {
+	cursor: not-allowed;
+}
+
+/* The radio itself is visually hidden, so the star carries its focus ring. */
+.iftp-fm-default-method:focus-visible + .iftp-fm-star {
+	outline: 2px solid #17a8e3;
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+@keyframes iftp-fm-star-wink {
+	0% {
+		transform: scale(1) rotate(0deg);
+	}
+
+	50% {
+		transform: scale(1.35) rotate(-12deg);
+	}
+
+	100% {
+		transform: scale(1) rotate(0deg);
+	}
+}
+
+.iftp-fm-star--wink {
+	animation: iftp-fm-star-wink 0.4s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.iftp-fm-star--wink {
+		animation: none;
+	}
+}
+
+.iftp-fm-empty {
+	font-style: italic;
+	color: #666;
+}
+
+.iftp-fm-save-status {
+	margin-left: 10px;
+	color: #0a6e63;
+	opacity: 0;
+	transition: opacity 0.2s;
+}
+
+.iftp-fm-save-status--visible {
+	opacity: 1;
+}
+
+.iftp-fm-save-status--error {
+	color: #a23b3b;
+}
+
+/* Transactions list badges (admin.php?page=iftp-fm-transactions). */
+
+.iftp-fm-badge {
+	display: inline-block;
+	padding: 2px 10px;
+	border-radius: 10px;
+	font-size: 12px;
+}
+
+.iftp-fm-badge--pending {
+	background: #fff5d5;
+	color: #945800;
+}
+
+.iftp-fm-badge--paid {
+	background: #d3f9f5;
+	color: #0a6e63;
+}
+
+.iftp-fm-badge--failed,
+.iftp-fm-badge--cancelled {
+	background: #ffd6d6;
+	color: #b3001b;
+}
+
+.iftp-fm-badge--expired {
+	background: #eee;
+	color: #666;
+}
+
+/* Ifthenpay field settings popup (builder canvas). Fully self-contained —
+   the builder screen doesn't reliably render Forminator's own `.sui-*`
+   visuals for markup we inject ourselves, so every rule below is real
+   styling rather than a dependency on Forminator's shared-ui stylesheet
+   actually applying on this screen. Values are copied from that stylesheet
+   on purpose though (`build/css/shared-ui.min.css` in the Forminator plugin
+   itself — box/header/footer/input/button colors, spacing, shadows), so
+   this popup reads as one of Forminator's own rather than a reskin.
+   Toggled by our own field-settings.js, not Forminator's native SUI Dialog
+   JS. Every selector is scoped under the #id wrapper so it wins over
+   Forminator's own `.sui-<version> .sui-box`-style rules regardless of load
+   order. */
+
+#iftp-fm-field-modal-wrap {
+	display: none;
+}
+
+#iftp-fm-field-modal-wrap.iftp-fm-active {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	overflow-y: auto;
+	padding: 30px 100px;
+	background: rgb(51 51 51 / 95%);
+}
+
+#iftp-fm-field-modal-wrap .sui-modal-content {
+	width: 100%;
+	max-width: 560px;
+	margin: 0 20px;
+}
+
+#iftp-fm-field-modal-wrap .sui-box {
+	background: #fff;
+	border-radius: 4px;
+	box-shadow: 0 2px 0 #e6e6e6;
+	overflow: hidden;
+}
+
+#iftp-fm-field-modal-wrap .sui-box-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 15px 30px;
+	border-bottom: 1px solid #e6e6e6;
+}
+
+#iftp-fm-field-modal-wrap .sui-box-title {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 0;
+	font: 700 15px/30px 'Roboto', Arial, sans-serif;
+	color: #333;
+}
+
+#iftp-fm-field-modal-wrap .sui-box-title .forminator-icon-ifthenpay {
+	font-size: 16px;
+	color: #17a8e3;
+}
+
+/* Merge-tag pill (`{ifthenpay-1}`, set from the field's own canvas slug by
+   field-settings.js on open) + its tooltip — real Forminator classes
+   (`sui-tag`, `sui-tooltip*`), copied values from `shared-ui.min.css`, but
+   defined fresh here rather than relied on: that stylesheet's versions are
+   scoped under `.sui-2-12-27 .sui-wrap`, an ancestor this modal doesn't sit
+   inside (see the file-level docblock), so they never actually match. */
+#iftp-fm-field-modal-wrap .sui-tag {
+	display: inline-block;
+	min-height: 26px;
+	margin: 0 3px;
+	padding: 0 16px;
+	border: 2px solid transparent;
+	border-radius: 13px;
+	background-color: #f2f2f2;
+	color: #333;
+	font: 500 12px/22px 'Roboto', Arial, sans-serif;
+	letter-spacing: -0.25px;
+	text-align: center;
+	cursor: default;
+	vertical-align: middle;
+}
+
+#iftp-fm-field-modal-wrap .sui-tooltip {
+	position: relative;
+}
+
+#iftp-fm-field-modal-wrap .sui-tooltip::before,
+#iftp-fm-field-modal-wrap .sui-tooltip::after {
+	content: '';
+	opacity: 0;
+	pointer-events: none;
+	position: absolute;
+	z-index: 100001;
+	transition: opacity .2s ease;
+}
+
+#iftp-fm-field-modal-wrap .sui-tooltip::before {
+	left: 50%;
+	bottom: 100%;
+	border: 5px solid transparent;
+	border-top-color: #333;
+	transform: translateX(-50%);
+}
+
+#iftp-fm-field-modal-wrap .sui-tooltip::after {
+	content: attr(data-tooltip);
+	left: 50%;
+	bottom: 100%;
+	min-width: 40px;
+	margin-bottom: 10px;
+	padding: 8px 12px;
+	border-radius: 4px;
+	background-color: #333;
+	box-sizing: border-box;
+	transform: translateX(-50%);
+	color: #fff;
+	font: 500 12px/18px 'Roboto', Arial, sans-serif;
+	letter-spacing: -0.25px;
+	text-align: center;
+	white-space: nowrap;
+}
+
+#iftp-fm-field-modal-wrap .sui-tooltip.sui-tooltip-constrained::after {
+	min-width: var(--tooltip-width, 240px);
+	white-space: normal;
+}
+
+#iftp-fm-field-modal-wrap .sui-tooltip.sui-tooltip-bottom::before {
+	top: 100%;
+	bottom: auto;
+	border-top-color: transparent;
+	border-bottom-color: #333;
+}
+
+#iftp-fm-field-modal-wrap .sui-tooltip.sui-tooltip-bottom::after {
+	top: 100%;
+	bottom: auto;
+	margin-top: 10px;
+	margin-bottom: 0;
+}
+
+#iftp-fm-field-modal-wrap .sui-tooltip:hover::before,
+#iftp-fm-field-modal-wrap .sui-tooltip:hover::after,
+#iftp-fm-field-modal-wrap .sui-tooltip:focus::before,
+#iftp-fm-field-modal-wrap .sui-tooltip:focus::after {
+	opacity: 1;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-field-modal-close {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	border-radius: 3px;
+	background: transparent;
+	color: #666;
+	font-size: 20px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-field-modal-close:hover {
+	background: #f1f1f1;
+	color: #333;
+}
+
+#iftp-fm-field-modal-wrap button:focus-visible,
+#iftp-fm-field-modal-wrap .sui-side-tabs .sui-tab-item:focus-within {
+	outline: 2px solid #17a8e3;
+	outline-offset: 2px;
+}
+
+#iftp-fm-field-modal-wrap .sui-toggle input:focus-visible ~ .sui-toggle-slider {
+	box-shadow: 0 0 0 4px #b8e3f5;
+}
+
+#iftp-fm-field-modal-wrap .sui-box-body {
+	padding: 30px;
+}
+
+#iftp-fm-field-modal-wrap .sui-box-footer {
+	padding: 30px;
+	border-top: 1px solid #e6e6e6;
+}
+
+@media (max-width: 782px) {
+	#iftp-fm-field-modal-wrap .sui-box-body,
+	#iftp-fm-field-modal-wrap .sui-box-footer {
+		padding: 20px;
+	}
+}
+
+#iftp-fm-field-modal-wrap .sui-actions-right {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+}
+
+#iftp-fm-field-modal-wrap .sui-box-settings-row {
+	margin-bottom: 16px;
+}
+
+#iftp-fm-field-modal-wrap .sui-box-settings-row:last-child {
+	margin-bottom: 0;
+}
+
+#iftp-fm-field-modal-wrap .sui-box-settings-row.iftp-fm-hidden {
+	display: none;
+}
+
+#iftp-fm-field-modal-wrap .sui-settings-label {
+	display: block;
+	margin-bottom: 8px;
+	font-weight: 700;
+	color: #333;
+}
+
+#iftp-fm-field-modal-wrap .sui-box-settings-row label {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 400;
+	cursor: pointer;
+}
+
+#iftp-fm-field-modal-wrap .description {
+	margin: 6px 0 0;
+	color: #666;
+	font-size: 12px;
+}
+
+#iftp-fm-field-modal-wrap .sui-form-control {
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 9px 14px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	background-color: #fafafa;
+	color: #333;
+	font-size: 14px;
+	line-height: 1.4;
+	transition: border-color .3s ease, background-color .3s ease, box-shadow .3s ease;
+}
+
+#iftp-fm-field-modal-wrap .sui-form-control::placeholder {
+	color: #aaa;
+}
+
+#iftp-fm-field-modal-wrap .sui-form-control:hover {
+	border-color: #aaa;
+	background-color: #fff;
+}
+
+#iftp-fm-field-modal-wrap .sui-form-control:focus {
+	border-color: #17a8e3;
+	background-color: #fff;
+	outline: none;
+	box-shadow: 0 0 0 2px #e1f6ff;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-select:focus {
+	border-color: #17a8e3;
+	outline: none;
+}
+
+/* Deliberately NOT named `sui-select` — Forminator's own shared-ui.min.js
+   runs `$(".sui-select").each(...)` on every page load and auto-upgrades
+   any match into a select2 widget (dropdownParent resolved against a
+   `.sui-2-12-27` ancestor elsewhere in the builder DOM, not this modal).
+   Since this modal's markup is present (just hidden) from page load, reusing
+   that class name got these selects silently hijacked into broken,
+   double-rendered select2 widgets. Own class name opts us out entirely.
+
+   `appearance: none` + our own chevron, same approach Forminator's real SUI
+   selects use (see `select:not(.sui-select)` in the plugin's own
+   build/css/shared-ui.min.css) — without it the browser draws its own native
+   dropdown arrow, which isn't reserved any box space here and renders
+   inconsistently (overlapping/misaligned) across browsers instead of sitting
+   centered on the right like every other native field's dropdown. */
+#iftp-fm-field-modal-wrap .iftp-fm-select {
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	cursor: pointer;
+	padding: 8px 34px 8px 12px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	color: #333;
+	font-size: 14px;
+	line-height: 1.4;
+	background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23666' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+	background-size: 10px 7px;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-select::-ms-expand {
+	display: none;
+}
+
+/* "Amount type", "Show/Hide" and "All/Any" — a real 2-option radio group
+   (native `change` events, no JS required for the mutual-exclusivity part),
+   visually styled as Forminator's `sui-side-tabs` pill toggle instead of a
+   plain radio list or a `<select>` for those, matching the reference design.
+   `.active` here is plain presentational state kept in sync by
+   `syncToggleTabsActive()` in field-settings.js — not read/relied on by
+   Forminator's own `SUI.sideTabs` (a real jQuery auto-init on this same
+   structure elsewhere in the builder): that one's scoped to
+   `.sui-2-12-27 .sui-side-tabs label.sui-tab-item input`, so it likely also
+   fires on ours (same page-load timing as the `sui-select`/select2 issue
+   above), but its side effects stay confined to `.closest(".sui-side-tabs")`
+   — harmless here — and this modal never depends on it running. */
+#iftp-fm-field-modal-wrap .sui-side-tabs .sui-tabs-menu {
+	display: inline-flex;
+	margin: 0;
+	padding: 0;
+	border-radius: 4px;
+	overflow: hidden;
+	border: 1px solid #f8f8f8;
+	list-style: none;
+	vertical-align: middle;
+}
+
+#iftp-fm-field-modal-wrap .sui-side-tabs .sui-tab-item {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	margin: 0;
+	padding: 9px 20px;
+	background-color: #f8f8f8;
+	color: #666;
+	font: 500 13px/22px 'Roboto', Arial, sans-serif;
+	letter-spacing: -0.25px;
+	cursor: pointer;
+	transition: background-color .2s ease, color .2s ease;
+}
+
+#iftp-fm-field-modal-wrap .sui-side-tabs .sui-tab-item:hover {
+	background-color: #e6e6e6;
+}
+
+#iftp-fm-field-modal-wrap .sui-side-tabs .sui-tab-item.active {
+	background-color: #e1f6ff;
+	color: #17a8e3;
+}
+
+#iftp-fm-field-modal-wrap .sui-side-tabs .sui-tab-item input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+}
+
+/* "Hide the ifthenpay icon" / "Hide the payment methods icons" — two
+   independent booleans, so (unlike the pill group above) Forminator's own
+   `sui-toggle` switch is the right real-component match, not `sui-tabs-menu`.
+   Values from `shared-ui.min.css`, self-authored per this file's usual
+   reasoning (this modal sits outside the `.sui-2-12-27 .sui-wrap` ancestor
+   those rules are scoped under). */
+#iftp-fm-field-modal-wrap .iftp-fm-toggle-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+#iftp-fm-field-modal-wrap .sui-toggle {
+	display: inline-flex;
+	align-items: center;
+	position: relative;
+	padding-left: 44px;
+	min-height: 16px;
+	cursor: pointer;
+}
+
+#iftp-fm-field-modal-wrap .sui-toggle input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+}
+
+#iftp-fm-field-modal-wrap .sui-toggle-slider {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 34px;
+	height: 16px;
+	border-radius: 8px;
+	background-color: #aaa;
+	transition: background-color .3s ease;
+}
+
+#iftp-fm-field-modal-wrap .sui-toggle-slider::before {
+	content: '';
+	position: absolute;
+	top: 1px;
+	left: 1px;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background-color: #fff;
+	transition: transform .2s linear;
+}
+
+#iftp-fm-field-modal-wrap .sui-toggle input:checked ~ .sui-toggle-slider {
+	background-color: #17a8e3;
+}
+
+#iftp-fm-field-modal-wrap .sui-toggle input:checked ~ .sui-toggle-slider::before {
+	transform: translateX(18px);
+}
+
+#iftp-fm-field-modal-wrap .sui-toggle input:focus ~ .sui-toggle-slider {
+	box-shadow: 0 0 0 4px #e6e6e6;
+}
+
+#iftp-fm-field-modal-wrap .sui-toggle input:focus:checked ~ .sui-toggle-slider {
+	box-shadow: 0 0 0 4px #d1eaf4;
+}
+
+#iftp-fm-field-modal-wrap .sui-toggle-label {
+	margin-left: 12px;
+	font: 500 14px/1.4 'Roboto', Arial, sans-serif;
+	color: #333;
+}
+
+#iftp-fm-field-modal-wrap .sui-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 80px;
+	padding: 5px 14px;
+	border: 2px solid transparent;
+	border-radius: 4px;
+	font: 500 12px/16px 'Roboto', Arial, sans-serif;
+	letter-spacing: -0.25px;
+	text-transform: uppercase;
+	cursor: pointer;
+	background: #888;
+	color: #fff;
+	transition: all .3s ease;
+}
+
+#iftp-fm-field-modal-wrap .sui-button-blue {
+	background: #17a8e3;
+	color: #fff;
+}
+
+#iftp-fm-field-modal-wrap .sui-button-blue:hover {
+	background: #0f8fc4;
+}
+
+#iftp-fm-field-modal-wrap .sui-button-ghost {
+	background: transparent;
+	border-color: #ddd;
+	color: #888;
+}
+
+#iftp-fm-field-modal-wrap .sui-button-ghost:hover {
+	border-color: #888;
+	background: #888;
+	color: #fff;
+}
+
+#iftp-fm-field-modal-wrap .sui-button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+#iftp-fm-field-modal-wrap .sui-icon-loader {
+	display: none;
+}
+
+/* Deliberately NOT named `sui-icon-close`/`sui-icon-check` — Forminator adds
+   `sui-2-12-27` as an admin **body** class (`get_sui_body_class()` in
+   `admin/abstracts/class-admin-page.php`, wired through the `admin_body_class`
+   filter), and `shared-ui.min.css` ships a catch-all
+   `.sui-2-12-27 [class*=sui-icon-]:before,:after{font-family:"wpmudev-plugin-
+   icons" !important; ...}` — an attribute-*contains* selector, so it matches
+   any class with "sui-icon-" in it anywhere in the body, this modal included.
+   That font has no glyph for the plain Unicode check/cross characters we'd
+   put in `content`, so with the real classnames these rendered blank — same
+   root cause as the `sui-select`/select2 landmine noted further up, just for
+   the icon font instead of select2. Own classnames sidestep it entirely.
+   Drawn as CSS shapes rather than a Unicode glyph so they come out crisp and
+   bold ("bulky") at this size regardless of font rendering. */
+#iftp-fm-field-modal-wrap .iftp-fm-icon-close {
+	position: relative;
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	vertical-align: middle;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-icon-close::before,
+#iftp-fm-field-modal-wrap .iftp-fm-icon-close::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 0;
+	width: 100%;
+	height: 2px;
+	background: currentColor;
+	border-radius: 1px;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-icon-close::before {
+	transform: translateY(-50%) rotate(45deg);
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-icon-close::after {
+	transform: translateY(-50%) rotate(-45deg);
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-icon-check {
+	display: inline-block;
+	width: 8px;
+	height: 5px;
+	margin-bottom: 2px;
+	border-left: 2px solid currentColor;
+	border-bottom: 2px solid currentColor;
+	transform: rotate(-45deg);
+	vertical-align: middle;
+}
+
+#iftp-fm-field-modal-wrap .sui-loading-text {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+#iftp-fm-field-modal-wrap .sui-box-footer.sui-content-separated {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+#iftp-fm-field-modal-message:empty {
+	display: none;
+}
+
+#iftp-fm-field-modal-message {
+	color: #a23b3b;
+	margin-bottom: 16px;
+}
+
+/* Settings/Advanced/Visibility tabs, matching real Forminator field-settings
+   modals' `.sui-tabs-flushed .sui-tab-item` look (uppercase, neutral dark
+   active state — real SUI tabs use #333, not the blue accent, for the
+   active tab) rather than our own earlier approximation. */
+
+#iftp-fm-field-modal-wrap .iftp-fm-field-tabs {
+	display: flex;
+	padding: 0 30px;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-field-tab {
+	margin: 0 10px;
+	padding: 14px 0 12px;
+	border: none;
+	border-bottom: 2px solid transparent;
+	background: none;
+	color: #888;
+	font: 500 13px/22px 'Roboto', Arial, sans-serif;
+	letter-spacing: -0.25px;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-field-tab:first-child {
+	margin-left: 0;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-field-tab:hover {
+	color: #333;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-field-tab--active {
+	color: #333;
+	border-bottom-color: #333;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-field-tab-panel[hidden] {
+	display: none;
+}
+
+/* Conditional logic builder (Advanced tab). */
+
+#iftp-fm-field-modal-wrap .iftp-fm-conditional-summary {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 10px 0;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-condition-row {
+	display: grid;
+	grid-template-columns: 1fr 1fr 1fr auto;
+	gap: 8px;
+	align-items: center;
+	margin-bottom: 8px;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-condition-remove {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: 1px solid #c1c1c1;
+	border-radius: 3px;
+	background: #fff;
+	color: #666;
+	cursor: pointer;
+	font-size: 16px;
+	line-height: 1;
+}
+
+@media (max-width: 600px) {
+	#iftp-fm-field-modal-wrap .iftp-fm-condition-row {
+		grid-template-columns: 1fr auto;
+	}
+
+	#iftp-fm-field-modal-wrap .iftp-fm-condition-row > :not(.iftp-fm-condition-remove) {
+		grid-column: 1;
+	}
+
+	#iftp-fm-field-modal-wrap .iftp-fm-condition-remove {
+		grid-column: 2;
+		grid-row: 1;
+	}
+
+	#iftp-fm-field-modal-wrap .sui-side-tabs .sui-tabs-menu {
+		flex-wrap: wrap;
+	}
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-condition-remove:hover {
+	background: #fbeaea;
+	color: #a23b3b;
+	border-color: #a23b3b;
+}
+
+#iftp-fm-field-modal-wrap #iftp-fm-field-condition-add {
+	margin-top: 4px;
+}
+
+/* Payment Entries dashboard (admin.php?page=iftp-fm-transactions). Reuses
+   .iftp-fm-badge (defined above) for the Status column — everything below
+   is new to this screen. */
+
+/* Page title + "+ New Payment": its own row above the card, not one more
+   item competing for space in the card's tabs/filters row — that's what
+   used to force the button onto an orphaned second line on its own. */
+.iftp-fm-page-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	margin: 18px 0 4px;
+}
+
+.iftp-fm-page-header-text h1 {
+	margin: 0 0 4px;
+}
+
+.iftp-fm-page-header-text .description {
+	margin: 0;
+	color: #666;
+}
+
+.iftp-fm-page-header .iftp-fm-new-entry-trigger {
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+
+@media (max-width: 600px) {
+	.iftp-fm-page-header {
+		flex-direction: column;
+		align-items: stretch;
+	}
+}
+
+/* Brand-blue buttons instead of WP core's default admin blue, to match the
+   badges/tabs/pagination colors already used across this screen — scoped
+   to this page only. The confirm/new-payment modals and toast render as
+   children of .iftp-fm-entries too, so this also covers those. */
+.iftp-fm-entries .button {
+	border-radius: 6px;
+}
+
+/* A darker cut of the brand blue — white on #17a8e3 is only 2.7:1. */
+.iftp-fm-entries .button-primary {
+	background: #0b6f99;
+	border-color: #095b7e;
+	box-shadow: none;
+	text-shadow: none;
+}
+
+.iftp-fm-entries .button-primary:hover,
+.iftp-fm-entries .button-primary:focus {
+	background: #095b7e;
+	border-color: #074a66;
+	color: #fff;
+}
+
+.iftp-fm-entries .button-primary:focus-visible {
+	box-shadow: 0 0 0 1px #fff, 0 0 0 3px #0b6f99;
+}
+
+.iftp-fm-entries-card {
+	margin-top: 16px;
+	background: #fff;
+	border: 1px solid #e2e2e2;
+	border-radius: 8px;
+	box-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 1px 8px rgb(0 0 0 / 4%);
+	overflow: hidden;
+}
+
+.iftp-fm-entries-card-header {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 14px 16px;
+	background: #fafbfc;
+	border-bottom: 1px solid #e2e2e2;
+}
+
+/* Tabs and filters share one row, same as before the "+ New Payment"
+   button moved up to the page header — filters hug the right via
+   margin-left:auto below when there's room. Splitting them into two
+   always-separate rows left the tabs row nearly empty with a big dead gap
+   on the right, which looked broken rather than deliberate. flex-wrap
+   stays "nowrap" (the default) and the row scrolls sideways instead of
+   wrapping once it no longer fits, so on tablet/mobile this is one
+   swipeable line rather than tabs/filters each wrapping across several. */
+.iftp-fm-entries-toolbar-row {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	overflow-x: auto;
+	scrollbar-width: thin;
+	scrollbar-color: #d6dade transparent;
+}
+
+.iftp-fm-entries-toolbar-row::-webkit-scrollbar {
+	height: 5px;
+}
+
+.iftp-fm-entries-toolbar-row::-webkit-scrollbar-thumb {
+	background: #d6dade;
+	border-radius: 3px;
+}
+
+.iftp-fm-status-tabs {
+	display: flex;
+	flex-shrink: 0;
+	gap: 4px;
+	margin: 0;
+	padding: 2px 0;
+	list-style: none;
+}
+
+.iftp-fm-status-tabs li {
+	flex: 0 0 auto;
+}
+
+.iftp-fm-status-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 7px 12px;
+	border-radius: 20px;
+	text-decoration: none;
+	color: #50575e;
+	font-size: 13px;
+	white-space: nowrap;
+	transition: background-color .15s ease, color .15s ease;
+}
+
+.iftp-fm-status-tab:hover {
+	background: #f1f1f1;
+}
+
+.iftp-fm-status-tab.current {
+	background: #e5f6fd;
+	color: #0b6f99;
+	font-weight: 600;
+}
+
+.iftp-fm-status-tab .count {
+	color: #707070;
+}
+
+.iftp-fm-status-tab.current .count {
+	color: inherit;
+}
+
+.iftp-fm-entries-filters,
+.iftp-fm-bulk-actions {
+	display: flex;
+	flex-wrap: nowrap;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 8px;
+	padding: 2px 0;
+}
+
+.iftp-fm-entries-filters {
+	margin-left: auto;
+}
+
+/* Bulk actions' own select/Apply button share every rule below with the
+   filters form's select/date/search inputs — same row, so they need to
+   look like one design, not a plain unstyled native dropdown sitting next
+   to polished ones. */
+.iftp-fm-entries-filters select,
+.iftp-fm-entries-filters input[type="date"],
+.iftp-fm-entries-filters input[type="search"],
+.iftp-fm-bulk-actions select {
+	height: 34px;
+	box-sizing: border-box;
+	padding: 0 10px;
+	border: 1px solid #d5d9dd;
+	border-radius: 6px;
+	background-color: #fff;
+	color: #333;
+	font-size: 13px;
+}
+
+/* The native select arrow doesn't reserve its own box space — with the
+   uniform 10px right padding above, a long option like "10 per page" runs
+   straight under it. Same fix as #iftp-fm-field-modal-wrap .iftp-fm-select
+   elsewhere in this file: drop the native appearance and draw our own
+   chevron, with enough right padding to clear it. */
+.iftp-fm-entries-filters select,
+.iftp-fm-bulk-actions select {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	cursor: pointer;
+	padding-right: 30px;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23666' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 10px center;
+	background-size: 10px 7px;
+}
+
+.iftp-fm-entries-filters select::-ms-expand,
+.iftp-fm-bulk-actions select::-ms-expand {
+	display: none;
+}
+
+.iftp-fm-entries-filters select:hover,
+.iftp-fm-entries-filters input:hover,
+.iftp-fm-bulk-actions select:hover {
+	border-color: #b7bcc2;
+}
+
+.iftp-fm-entries-filters select:focus,
+.iftp-fm-entries-filters input:focus,
+.iftp-fm-bulk-actions select:focus {
+	border-color: #17a8e3;
+	outline: none;
+	box-shadow: 0 0 0 2px rgb(23 168 227 / 15%);
+}
+
+.iftp-fm-entries-filters .button,
+.iftp-fm-bulk-actions .button {
+	height: 34px;
+}
+
+.iftp-fm-reset-filters {
+	white-space: nowrap;
+}
+
+/* Author CSS always wins over the UA stylesheet's own `[hidden] { display:
+   none }`, even at equal specificity — so the unconditional `display: flex`
+   above was quietly defeating entries.js's `bar.hidden = true` and showing
+   this row with nothing selected. This rule needs to be listed after it. */
+.iftp-fm-bulk-actions[hidden] {
+	display: none;
+}
+
+.iftp-fm-entries-table-wrap {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: thin;
+	scrollbar-color: #d6dade transparent;
+}
+
+.iftp-fm-entries-table-wrap::-webkit-scrollbar {
+	height: 6px;
+}
+
+.iftp-fm-entries-table-wrap::-webkit-scrollbar-thumb {
+	background: #d6dade;
+	border-radius: 3px;
+}
+
+.iftp-fm-entries-table {
+	width: 100%;
+	/* Below this, the wrapper scrolls the whole table instead of squishing
+	   columns — without it, narrow viewports wrap header labels like
+	   "Reference" onto two lines and drop the sort arrow below the text. */
+	min-width: 720px;
+	border-collapse: collapse;
+}
+
+.iftp-fm-entries-table th,
+.iftp-fm-entries-table td {
+	padding: 12px;
+	vertical-align: top;
+}
+
+.iftp-fm-entries-table thead th {
+	background: #fafbfc;
+	color: #50575e;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .04em;
+	white-space: nowrap;
+	border-bottom: 1px solid #e2e2e2;
+}
+
+.iftp-fm-entries-table tbody tr.iftp-fm-entry-row {
+	border-bottom: 1px solid #eef0f2;
+}
+
+.iftp-fm-entries-table tbody tr.iftp-fm-entry-row:hover {
+	background: #f8fafc;
+}
+
+@media (max-width: 782px) {
+	.iftp-fm-entries-table th,
+	.iftp-fm-entries-table td {
+		padding: 10px;
+		font-size: 13px;
+	}
+}
+
+.iftp-fm-col-check {
+	width: 36px;
+	text-align: center;
+}
+
+/* Explicit size/border/accent instead of relying on wp-admin's own default
+   checkbox look — against this table's lighter, borderless row styling a
+   bare native checkbox was easy to miss entirely. */
+.iftp-fm-entries-table input[type="checkbox"] {
+	width: 18px;
+	height: 18px;
+	margin: 0;
+	border: 1px solid #8c8f94;
+	border-radius: 4px;
+	cursor: pointer;
+	accent-color: #17a8e3;
+}
+
+.iftp-fm-col-amount {
+	white-space: nowrap;
+}
+
+.iftp-fm-sortable {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	text-decoration: none;
+	color: inherit;
+}
+
+.iftp-fm-sort-icon::before {
+	content: '\2195';
+	color: #bbb;
+	font-size: 11px;
+}
+
+.iftp-fm-sortable.is-sorted .iftp-fm-sort-icon::before {
+	color: #17a8e3;
+}
+
+.iftp-fm-sortable--asc .iftp-fm-sort-icon::before {
+	content: '\2191';
+}
+
+.iftp-fm-sortable--desc .iftp-fm-sort-icon::before {
+	content: '\2193';
+}
+
+.iftp-fm-row-actions {
+	margin-top: 4px;
+	font-size: 12px;
+}
+
+.iftp-fm-row-action {
+	color: #666;
+}
+
+.iftp-fm-row-action--delete:hover {
+	color: #a23b3b;
+}
+
+.iftp-fm-row-actions-sep {
+	margin: 0 4px;
+	color: #ccc;
+}
+
+.iftp-fm-entry-details > td {
+	/* Direct-child combinator, not descendant — the panel below nests its
+	   own "Submitted Fields" table with its own <td>s, and a plain
+	   descendant selector here was bleeding this row's padding/border
+	   into those too, pinning the blue accent right against the value text. */
+	padding: 0 !important;
+	background: #fafbfc;
+	border-top: none;
+	border-bottom: 1px solid #eef0f2;
+	/* Ties the panel back to the row it expanded from, same idea as a
+	   diff/expandable-row accent in other modern admin tables — without
+	   it this just read as a separate gray box, not part of the row
+	   above it. */
+	border-left: 3px solid #17a8e3;
+}
+
+.iftp-fm-details-panel {
+	padding: 20px 20px 20px 72px;
+}
+
+.iftp-fm-details-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 16px 28px;
+}
+
+.iftp-fm-detail-item {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.iftp-fm-detail-item > span,
+.iftp-fm-detail-item > a {
+	font-size: 13px;
+	color: #333;
+	word-break: break-word;
+}
+
+.iftp-fm-detail-item code {
+	display: inline-block;
+	width: fit-content;
+	padding: 2px 6px;
+	background: #fff;
+	border: 1px solid #e2e2e2;
+	border-radius: 4px;
+	font-size: 12px;
+	color: #333;
+}
+
+.iftp-fm-detail-label {
+	display: block;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: #6b6b6b;
+}
+
+.iftp-fm-details-fields {
+	margin-top: 20px;
+	padding-top: 18px;
+	border-top: 1px solid #e6e9ec;
+}
+
+.iftp-fm-details-fields-table {
+	margin-top: 10px;
+	width: 100%;
+	max-width: 640px;
+	border-collapse: collapse;
+}
+
+.iftp-fm-details-fields-table tr {
+	border-bottom: 1px solid #eef0f2;
+}
+
+.iftp-fm-details-fields-table tr:last-child {
+	border-bottom: none;
+}
+
+.iftp-fm-details-fields-table th,
+.iftp-fm-details-fields-table td {
+	padding: 7px 0;
+	text-align: left;
+	font-weight: 400;
+	font-size: 13px;
+	color: #333;
+}
+
+.iftp-fm-details-fields-table th {
+	/* min-width, not just padding-right — 16px of padding past the widest
+	   label ("Email Address") still read as barely any gap before the
+	   value column started. */
+	min-width: 140px;
+	padding-right: 24px;
+	color: #666;
+	white-space: nowrap;
+}
+
+.iftp-fm-entries-empty {
+	text-align: center;
+	padding: 40px 20px !important;
+}
+
+.iftp-fm-empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	color: #888;
+}
+
+.iftp-fm-empty-state .dashicons {
+	width: 32px;
+	height: 32px;
+	font-size: 32px;
+	color: #ccc;
+}
+
+.iftp-fm-method-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.iftp-fm-method-pill img {
+	max-width: 16px;
+	height: auto;
+}
+
+.iftp-fm-method-pill[data-entity="CCARD"] img {
+	max-width: none;
+	max-height: 16px;
+	width: auto;
+}
+
+.iftp-fm-method-pill .dashicons {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+.iftp-fm-entries-card-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 12px 16px;
+	background: #fafbfc;
+	border-top: 1px solid #e2e2e2;
+}
+
+.iftp-fm-footer-status {
+	display: flex;
+	align-items: center;
+}
+
+.iftp-fm-entries-count {
+	color: #666;
+	font-size: 13px;
+}
+
+.iftp-fm-entries-count[hidden],
+.iftp-fm-entries-selection[hidden] {
+	display: none;
+}
+
+.iftp-fm-entries-selection {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	color: #333;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.iftp-fm-selection-cancel {
+	font-weight: 400;
+	color: #a23b3b;
+	text-decoration: underline;
+}
+
+.iftp-fm-selection-cancel:hover {
+	color: #8f3232;
+}
+
+.iftp-fm-pagination {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.iftp-fm-page-btn,
+.iftp-fm-page-number {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 26px;
+	height: 26px;
+	padding: 0 6px;
+	border-radius: 3px;
+	text-decoration: none;
+	color: #50575e;
+}
+
+.iftp-fm-page-number.is-current {
+	background: #0b6f99;
+	color: #fff;
+}
+
+.iftp-fm-page-btn:hover,
+.iftp-fm-page-number:hover {
+	background: #f1f1f1;
+}
+
+.iftp-fm-page-ellipsis {
+	padding: 0 4px;
+	color: #999;
+}
+
+/* Confirm dialog + "+ New Payment" popup — same hidden-until-opened
+   approach as the connect/field-settings modals above, but plain fixed
+   overlays (no sui-active dependency, this screen renders no SUI markup
+   at all). */
+
+.iftp-fm-modal[hidden] {
+	display: none;
+}
+
+.iftp-fm-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 30px;
+}
+
+.iftp-fm-modal-overlay {
+	position: absolute;
+	inset: 0;
+	background: rgb(0 0 0 / 60%);
+}
+
+.iftp-fm-modal-box {
+	position: relative;
+	width: 100%;
+	max-width: 440px;
+	background: #fff;
+	border-radius: 4px;
+	box-shadow: 0 10px 40px rgb(0 0 0 / 25%);
+	padding: 24px;
+}
+
+.iftp-fm-modal-box--form {
+	max-width: 480px;
+}
+
+.iftp-fm-modal-box h2 {
+	margin-top: 0;
+}
+
+.iftp-fm-modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 20px;
+}
+
+/* Same specificity as .iftp-fm-entries .button-primary above (two classes)
+   — this rule needs to win the tie via source order, since a plain single
+   class here would otherwise lose to that one and the delete confirmation
+   would render brand-blue instead of red. */
+.iftp-fm-entries .iftp-fm-modal-confirm--danger {
+	background: #a23b3b;
+	border-color: #a23b3b;
+	color: #fff;
+}
+
+.iftp-fm-entries .iftp-fm-modal-confirm--danger:hover,
+.iftp-fm-entries .iftp-fm-modal-confirm--danger:focus {
+	background: #8f3232;
+	border-color: #8f3232;
+	color: #fff;
+}
+
+.iftp-fm-form-row {
+	display: flex;
+	gap: 16px;
+	margin-bottom: 14px;
+}
+
+.iftp-fm-form-field {
+	flex: 1;
+}
+
+.iftp-fm-form-field label {
+	display: block;
+	margin-bottom: 4px;
+	font-weight: 600;
+}
+
+.iftp-fm-form-field input,
+.iftp-fm-form-field select {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.iftp-fm-form-error {
+	margin: 0 0 14px;
+	padding: 8px 12px;
+	border-left: 3px solid #a23b3b;
+	background: #fbeaea;
+	color: #a23b3b;
+}
+
+@media (max-width: 600px) {
+	.iftp-fm-form-row {
+		flex-direction: column;
+		gap: 14px;
+	}
+}
+
+.iftp-fm-form-error[hidden] {
+	display: none;
+}
+
+/* Toast — bottom-right, auto-dismissed by entries.js. */
+
+.iftp-fm-toast[hidden] {
+	display: none;
+}
+
+.iftp-fm-toast {
+	position: fixed;
+	bottom: 72px;
+	right: 24px;
+	z-index: 100001;
+	max-width: calc(100vw - 48px);
+	background: #0b6f99;
+	color: #fff;
+	padding: 10px 16px;
+	border-radius: 4px;
+	box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
+}
+
+.iftp-fm-toast--error {
+	background: #a23b3b;
+}
+
+/* Scroll-to-top — hidden until entries.js reveals it past a scroll
+   threshold. Bottom-right: bottom-left sits on top of the admin menu. */
+
+.iftp-fm-scroll-btn {
+	position: fixed;
+	bottom: 24px;
+	right: 24px;
+	z-index: 99999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	border: none;
+	border-radius: 50%;
+	background: #0b6f99;
+	color: #fff;
+	cursor: pointer;
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity 0.15s, visibility 0.15s;
+}
+
+/* visibility, not just opacity, so the hidden button isn't a Tab stop. */
+.iftp-fm-scroll-btn.is-visible {
+	opacity: 1;
+	visibility: visible;
+}
+
+.iftp-fm-scroll-btn:focus-visible {
+	outline: 2px solid #0b6f99;
+	outline-offset: 2px;
+}
+
+/* Confirmation Type tabs — Paid/Pending/Failed/Cancelled each own a panel;
+   only the active one is shown. */
+
+.iftp-fm-confirmation-tabs {
+	display: flex;
+	gap: 4px;
+	margin-bottom: 16px;
+	border-bottom: 1px solid #e2e2e2;
+}
+
+.iftp-fm-confirmation-tab {
+	padding: 8px 14px;
+	border: none;
+	border-bottom: 2px solid transparent;
+	background: none;
+	color: #666;
+	font-size: 14px;
+	cursor: pointer;
+}
+
+.iftp-fm-confirmation-tab:hover {
+	color: #333;
+}
+
+.iftp-fm-confirmation-tab--active {
+	color: #0b6f99;
+	border-bottom-color: #17a8e3;
+	font-weight: 600;
+}
+
+.iftp-fm-confirmation-tab:focus-visible {
+	outline: 2px solid #17a8e3;
+	outline-offset: -2px;
+}
+
+#iftp-fm-field-modal-wrap .sui-box-body[aria-busy="true"] {
+	opacity: 0.5;
+	pointer-events: none;
+	transition: opacity .2s ease;
+}
+
+.iftp-fm-connect-modal-message:empty {
+	display: none;
+}
+
+.iftp-fm-connect-modal-message {
+	margin: 10px 0 0;
+	color: #a23b3b;
+}
