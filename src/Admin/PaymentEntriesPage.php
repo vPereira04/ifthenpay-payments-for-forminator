@@ -989,7 +989,9 @@ class PaymentEntriesPage {
 	 * @param string $status One of TransactionStore::ALL_STATUSES.
 	 */
 	private function status_badge( string $status ): string {
-		$label = $this->status_filters( false )[ $status ] ?? $status;
+		// Cancelled rows show as "Failed" — same badge styling, no separate label.
+		$label_status = TransactionStore::STATUS_CANCELLED === $status ? TransactionStore::STATUS_FAILED : $status;
+		$label        = $this->status_filters( false )[ $label_status ] ?? $label_status;
 
 		return sprintf( '<span class="iftp-fm-badge iftp-fm-badge--%s">%s</span>', esc_attr( $status ), esc_html( $label ) );
 	}
@@ -1306,12 +1308,14 @@ class PaymentEntriesPage {
 			$filters[''] = __( 'All', 'ifthenpay-payments-for-forminator' );
 		}
 
+		// Cancelled isn't listed here — it's folded into "Failed" everywhere
+		// in this admin list; it only shows on its own in the post-payment
+		// popup (see ConfirmationSettingsField / Ajax\Controller).
 		$labels = array(
-			TransactionStore::STATUS_PENDING   => __( 'Pending', 'ifthenpay-payments-for-forminator' ),
-			TransactionStore::STATUS_PAID      => __( 'Paid', 'ifthenpay-payments-for-forminator' ),
-			TransactionStore::STATUS_FAILED    => __( 'Failed', 'ifthenpay-payments-for-forminator' ),
-			TransactionStore::STATUS_CANCELLED => __( 'Cancelled', 'ifthenpay-payments-for-forminator' ),
-			TransactionStore::STATUS_EXPIRED   => __( 'Expired', 'ifthenpay-payments-for-forminator' ),
+			TransactionStore::STATUS_PENDING => __( 'Pending', 'ifthenpay-payments-for-forminator' ),
+			TransactionStore::STATUS_PAID    => __( 'Paid', 'ifthenpay-payments-for-forminator' ),
+			TransactionStore::STATUS_FAILED  => __( 'Failed', 'ifthenpay-payments-for-forminator' ),
+			TransactionStore::STATUS_EXPIRED => __( 'Expired', 'ifthenpay-payments-for-forminator' ),
 		);
 
 		return $filters + $labels;

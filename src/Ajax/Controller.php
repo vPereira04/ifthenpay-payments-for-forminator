@@ -395,6 +395,9 @@ class Controller {
 	/**
 	 * Re-registers the ifthenpay webhook callback for the given Gateway Key.
 	 *
+	 * I reuse the Gateway Key's existing anti-phishing key — rotating it on
+	 * every save would break callbacks for payments already in flight.
+	 *
 	 * @param string $gateway_key The Gateway Key to register the webhook for.
 	 */
 	private function register_webhook( string $gateway_key ): void {
@@ -402,6 +405,16 @@ class Controller {
 			return;
 		}
 
-		$this->client->activate_callback( $gateway_key, WebhookController::url() );
+		$anti_phishing_key = $this->settings->get_anti_phishing_key( $gateway_key );
+		$is_new            = '' === $anti_phishing_key;
+
+		if ( $is_new ) {
+			$anti_phishing_key = wp_generate_password( 32, false, false );
+		}
+
+		// Only stored once ifthenpay accepted it, otherwise it's still calling back with the old key.
+		if ( $this->client->activate_callback( $gateway_key, $anti_phishing_key, WebhookController::url() ) && $is_new ) {
+			$this->settings->set_anti_phishing_key( $gateway_key, $anti_phishing_key );
+		}
 	}
 }

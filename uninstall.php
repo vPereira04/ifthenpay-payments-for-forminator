@@ -16,7 +16,9 @@ if ( file_exists( $iftp_fm_autoload ) ) {
 }
 
 if ( class_exists( \Ifthenpay\Forminator\Repository\SettingsRepository::class ) ) {
-	( new \Ifthenpay\Forminator\Repository\SettingsRepository() )->delete_all();
+	$iftp_fm_settings = new \Ifthenpay\Forminator\Repository\SettingsRepository();
+	$iftp_fm_settings->delete_all();
+	$iftp_fm_settings->delete_anti_phishing_keys();
 }
 
 global $wpdb;

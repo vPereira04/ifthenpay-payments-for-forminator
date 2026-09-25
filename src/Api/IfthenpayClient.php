@@ -141,18 +141,18 @@ class IfthenpayClient {
 	 *
 	 * Registers (or re-registers) the webhook URL for this gateway key.
 	 *
-	 * @param string $gateway_key The Gateway Key to register the webhook for.
-	 * @param string $webhook_url The webhook URL ifthenpay should call back.
+	 * @param string $gateway_key       The Gateway Key to register the webhook for.
+	 * @param string $anti_phishing_key The key ifthenpay echoes back as `[ANTI_PHISHING_KEY]`.
+	 * @param string $webhook_url       The webhook URL ifthenpay should call back.
 	 */
-	public function activate_callback( string $gateway_key, string $webhook_url ): bool {
+	public function activate_callback( string $gateway_key, string $anti_phishing_key, string $webhook_url ): bool {
 		$response = wp_remote_post(
 			self::API_BASE . '/endpoint/callback/activation/?cms=' . self::CALLBACK_CMS,
 			array(
 				'headers' => array( 'Content-Type' => 'application/json' ),
 				'body'    => (string) wp_json_encode(
 					array(
-						// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- required by the ifthenpay callback-activation API contract, not used for obfuscation.
-						'apKey' => base64_encode( $gateway_key ),
+						'apKey' => $anti_phishing_key,
 						'chave' => $gateway_key,
 						'urlCb' => $webhook_url,
 					)

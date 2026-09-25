@@ -20,7 +20,7 @@
 	 * them as its own `return_url` (that's what stacks Amount/ID with values
 	 * from earlier payments once ifthenpay appends its own copy again).
 	 */
-	var STALE_RETURN_ARGS = [ 'iftp_fm_pay', 'ref', 'transaction_id', 'id', 'amount', 'requestId', 'sk', 'brand', 'pan' ];
+	var STALE_RETURN_ARGS = [ 'iftp_fm_pay', 'ref', 'transaction_id', 'id', 'amount', 'requestId', 'sk', 'brand', 'pan', 'error' ];
 
 	( function cleanReturnUrl() {
 		if ( ! window.history || ! window.history.replaceState ) {
@@ -334,20 +334,23 @@
 			return;
 		}
 
-		if ( 'pending' !== ctx.status && 'failed' !== ctx.status && 'cancelled' !== ctx.status ) {
+		// Already stored as failed/cancelled by the return page itself
+		// (Plugin::resolve_return_context()), so I show it straight away — but
+		// keep watching, in case a late webhook still confirms it as paid.
+		if ( 'failed' === ctx.status || 'cancelled' === ctx.status ) {
+			showPopup( ctx.status );
+			watchForPaidStatus( ctx );
+			return;
+		}
+
+		if ( 'pending' !== ctx.status ) {
 			showPopup( ctx.status );
 			return;
 		}
 
-		// Always lead with "pending", even when the redirect itself says
-		// "error"/"cancel" — that's ifthenpay's callback, which can beat the
-		// webhook (or misreport a hiccup as a failure) and still resolve to
-		// paid right after. Showing "Failed"/"Cancelled" immediately would
-		// mislead the payer before the webhook has had a chance to confirm
-		// the real outcome. Defer behind a wordless spinner when a
-		// redirect-type "Paid" confirmation is configured, instead of
-		// flashing "pending" just to immediately replace it with a
-		// navigation a moment later.
+		// Defer behind a wordless spinner when a redirect-type "Paid"
+		// confirmation is configured, instead of flashing "pending" just to
+		// immediately replace it with a navigation a moment later.
 		var deferPopup = !! iftpFmFrontend.paidRedirectUrl;
 
 		if ( deferPopup ) {

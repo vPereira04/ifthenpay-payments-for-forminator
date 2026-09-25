@@ -32,7 +32,7 @@ class WebhookPayload {
 	private string $ref;
 
 	/**
-	 * The base64-encoded anti-phishing key.
+	 * The anti-phishing key.
 	 *
 	 * @var string
 	 */
@@ -63,7 +63,7 @@ class WebhookPayload {
 	 * Sets up the payload.
 	 *
 	 * @param string $ref        The transaction reference.
-	 * @param string $apk        The base64-encoded anti-phishing key.
+	 * @param string $apk        The anti-phishing key.
 	 * @param float  $amount     The reported paid amount.
 	 * @param string $method     The payment method used.
 	 * @param string $request_id The ifthenpay request id.
@@ -101,7 +101,7 @@ class WebhookPayload {
 	}
 
 	/**
-	 * The base64-encoded anti-phishing key.
+	 * The anti-phishing key.
 	 */
 	public function apk(): string {
 		return $this->apk;

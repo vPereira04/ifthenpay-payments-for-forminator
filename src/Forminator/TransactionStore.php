@@ -529,7 +529,14 @@ class TransactionStore {
 		$status = (string) ( $args['status'] ?? '' );
 
 		if ( '' !== $status ) {
-			$conditions[] = $wpdb->prepare( 'status = %s', $status );
+			// "Failed" folds in cancelled rows — the admin list treats cancelled
+			// as a subset of failed and only surfaces it standalone in the
+			// post-payment popup, not here.
+			if ( self::STATUS_FAILED === $status ) {
+				$conditions[] = $wpdb->prepare( 'status IN (%s, %s)', self::STATUS_FAILED, self::STATUS_CANCELLED );
+			} else {
+				$conditions[] = $wpdb->prepare( 'status = %s', $status );
+			}
 		}
 
 		$form_id = (int) ( $args['form_id'] ?? 0 );
@@ -610,6 +617,12 @@ class TransactionStore {
 
 		foreach ( (array) $rows as $row ) {
 			$counts[ (string) $row->status ] = (int) $row->total;
+		}
+
+		// Cancelled has no tab of its own — its count rolls into "Failed".
+		if ( isset( $counts[ self::STATUS_CANCELLED ] ) ) {
+			$counts[ self::STATUS_FAILED ] = ( $counts[ self::STATUS_FAILED ] ?? 0 ) + $counts[ self::STATUS_CANCELLED ];
+			unset( $counts[ self::STATUS_CANCELLED ] );
 		}
 
 		wp_cache_set( $cache_key, $counts, self::CACHE_GROUP, self::LIST_CACHE_TTL );

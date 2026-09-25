@@ -40,7 +40,7 @@ class PaymentController {
 	 * ifthenpay again on the next round-trip, corrupting the confirmation
 	 * popup's Amount/ID with values stacked from multiple payments.
 	 */
-	private const STALE_RETURN_ARGS = array( 'iftp_fm_pay', 'ref', 'transaction_id', 'id', 'amount', 'requestId', 'sk', 'brand', 'pan' );
+	private const STALE_RETURN_ARGS = array( 'iftp_fm_pay', 'ref', 'transaction_id', 'id', 'amount', 'requestId', 'sk', 'brand', 'pan', 'error' );
 
 	/**
 	 * Settings storage.

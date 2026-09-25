@@ -192,7 +192,8 @@ class Plugin {
 			return null;
 		}
 
-		$record = ( new TransactionStore() )->get( $ref );
+		$transactions = new TransactionStore();
+		$record       = $transactions->get( $ref );
 
 		if ( null === $record ) {
 			return null;
@@ -200,13 +201,16 @@ class Plugin {
 
 		$status = (string) $record['status'];
 
-		// The webhook can land after the browser already bounced back, so a
-		// still-"pending" stored status defers to what the redirect itself
-		// told us for what to display right now.
+		// ifthenpay only ever sends a webhook for a paid payment, so this
+		// redirect is the only signal I get for a decline/cancel — I persist
+		// it, otherwise the row (and the status poll) stays "pending" forever.
+		// mark_paid() still overrides it if the payment is confirmed later.
 		if ( TransactionStore::STATUS_PENDING === $status ) {
 			if ( 'error' === $query_status ) {
+				$transactions->mark_failed( $ref );
 				$status = TransactionStore::STATUS_FAILED;
 			} elseif ( 'cancel' === $query_status ) {
+				$transactions->mark_cancelled( $ref );
 				$status = TransactionStore::STATUS_CANCELLED;
 			}
 		}

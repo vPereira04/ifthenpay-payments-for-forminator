@@ -26,6 +26,7 @@ class SettingsRepository {
 	private const OPTION_BACKOFFICE_KEY = 'iftp_fm_backoffice_key';
 	private const OPTION_GATEWAY_KEY    = 'iftp_fm_gateway_key';
 	private const OPTION_GATEWAY_KEYS   = 'iftp_fm_gateway_keys';
+	private const OPTION_APK_KEYS       = 'iftp_fm_anti_phishing_keys';
 	private const OPTION_METHODS        = 'iftp_fm_methods';
 	private const OPTION_DEFAULT_METHOD = 'iftp_fm_default_method';
 	private const OPTION_DESCRIPTION    = 'iftp_fm_description';
@@ -105,6 +106,39 @@ class SettingsRepository {
 	 */
 	public function set_gateway_keys( array $gateway_keys ): void {
 		update_option( self::OPTION_GATEWAY_KEYS, array_values( array_unique( $gateway_keys ) ), false );
+	}
+
+	/**
+	 * The anti-phishing key registered with ifthenpay for a Gateway Key, or '' when none yet.
+	 *
+	 * @param string $gateway_key The Gateway Key.
+	 */
+	public function get_anti_phishing_key( string $gateway_key ): string {
+		$keys = get_option( self::OPTION_APK_KEYS, array() );
+
+		return is_array( $keys ) ? (string) ( $keys[ $gateway_key ] ?? '' ) : '';
+	}
+
+	/**
+	 * Stores the anti-phishing key registered for a Gateway Key.
+	 *
+	 * @param string $gateway_key       The Gateway Key.
+	 * @param string $anti_phishing_key The random key sent as `apKey` on callback activation.
+	 */
+	public function set_anti_phishing_key( string $gateway_key, string $anti_phishing_key ): void {
+		$keys = get_option( self::OPTION_APK_KEYS, array() );
+		$keys = is_array( $keys ) ? $keys : array();
+
+		$keys[ $gateway_key ] = $anti_phishing_key;
+
+		update_option( self::OPTION_APK_KEYS, $keys, false );
+	}
+
+	/**
+	 * Deletes every stored anti-phishing key — uninstall only, see delete_all().
+	 */
+	public function delete_anti_phishing_keys(): void {
+		delete_option( self::OPTION_APK_KEYS );
 	}
 
 	/**
@@ -399,6 +433,9 @@ class SettingsRepository {
 
 	/**
 	 * Deletes every option this repository owns — used on disconnect and uninstall.
+	 *
+	 * I keep the anti-phishing keys here: ifthenpay still calls back for
+	 * payments started before a disconnect, and those need the key to validate.
 	 */
 	public function delete_all(): void {
 		delete_option( self::OPTION_BACKOFFICE_KEY );
