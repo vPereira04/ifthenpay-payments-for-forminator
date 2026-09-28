@@ -27,6 +27,7 @@ class SettingsRepository {
 	private const OPTION_GATEWAY_KEY    = 'iftp_fm_gateway_key';
 	private const OPTION_GATEWAY_KEYS   = 'iftp_fm_gateway_keys';
 	private const OPTION_APK_KEYS       = 'iftp_fm_anti_phishing_keys';
+	private const OPTION_CALLBACK_HASH  = 'iftp_fm_callback_hash';
 	private const OPTION_METHODS        = 'iftp_fm_methods';
 	private const OPTION_DEFAULT_METHOD = 'iftp_fm_default_method';
 	private const OPTION_DESCRIPTION    = 'iftp_fm_description';
@@ -139,6 +140,22 @@ class SettingsRepository {
 	 */
 	public function delete_anti_phishing_keys(): void {
 		delete_option( self::OPTION_APK_KEYS );
+	}
+
+	/**
+	 * Hash of the Gateway Key + callback URL ifthenpay last accepted, or '' when none yet.
+	 */
+	public function get_callback_hash(): string {
+		return (string) get_option( self::OPTION_CALLBACK_HASH, '' );
+	}
+
+	/**
+	 * Stores the hash of the callback ifthenpay just accepted.
+	 *
+	 * @param string $hash See `WebhookRegistrar::hash()`.
+	 */
+	public function set_callback_hash( string $hash ): void {
+		update_option( self::OPTION_CALLBACK_HASH, $hash, false );
 	}
 
 	/**
@@ -321,10 +338,10 @@ class SettingsRepository {
 	}
 
 	/**
-	 * The redirect target for a "paid" confirmation set to a page or URL —
-	 * empty means show the popup instead of redirecting.
+	 * The page/URL the paid popup links to (opened in a new tab) — empty
+	 * when the confirmation type is a plain popup.
 	 */
-	public function get_paid_redirect_url(): string {
+	public function get_paid_page_url(): string {
 		switch ( $this->get_paid_confirmation_type() ) {
 			case self::CONFIRMATION_TYPE_PAGE:
 				$page_id = $this->get_paid_confirmation_page_id();
@@ -441,6 +458,7 @@ class SettingsRepository {
 		delete_option( self::OPTION_BACKOFFICE_KEY );
 		delete_option( self::OPTION_GATEWAY_KEY );
 		delete_option( self::OPTION_GATEWAY_KEYS );
+		delete_option( self::OPTION_CALLBACK_HASH );
 		delete_option( self::OPTION_METHODS );
 		delete_option( self::OPTION_DEFAULT_METHOD );
 		delete_option( self::OPTION_DESCRIPTION );

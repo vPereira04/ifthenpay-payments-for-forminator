@@ -11,7 +11,7 @@ namespace Ifthenpay\Forminator\Ajax;
 
 use Ifthenpay\Forminator\Admin\GatewaySettingsField;
 use Ifthenpay\Forminator\Api\IfthenpayClient;
-use Ifthenpay\Forminator\Api\Webhook\WebhookController;
+use Ifthenpay\Forminator\Api\Webhook\WebhookRegistrar;
 use Ifthenpay\Forminator\Forminator\FieldSettingsStore;
 use Ifthenpay\Forminator\Mail\IfthenpayEmailHelper;
 use Ifthenpay\Forminator\Repository\SettingsRepository;
@@ -68,6 +68,13 @@ class Controller {
 	private FieldSettingsStore $field_settings;
 
 	/**
+	 * Webhook callback registration.
+	 *
+	 * @var WebhookRegistrar
+	 */
+	private WebhookRegistrar $webhooks;
+
+	/**
 	 * Sets up the router.
 	 *
 	 * @param SettingsRepository|null   $settings       Settings storage; a fresh instance is used when omitted.
@@ -75,19 +82,22 @@ class Controller {
 	 * @param GatewaySettingsField|null $methods_field  Methods table renderer; a fresh instance is used when omitted.
 	 * @param GatewaySync|null          $sync           Gateway catalog sync; a fresh instance is used when omitted.
 	 * @param FieldSettingsStore|null   $field_settings Per-field settings storage; a fresh instance is used when omitted.
+	 * @param WebhookRegistrar|null     $webhooks       Webhook callback registration; a fresh instance is used when omitted.
 	 */
 	public function __construct(
 		?SettingsRepository $settings = null,
 		?IfthenpayClient $client = null,
 		?GatewaySettingsField $methods_field = null,
 		?GatewaySync $sync = null,
-		?FieldSettingsStore $field_settings = null
+		?FieldSettingsStore $field_settings = null,
+		?WebhookRegistrar $webhooks = null
 	) {
 		$this->settings       = $settings ?? new SettingsRepository();
 		$this->client         = $client ?? new IfthenpayClient();
 		$this->methods_field  = $methods_field ?? new GatewaySettingsField();
 		$this->sync           = $sync ?? new GatewaySync( $this->settings, $this->client );
 		$this->field_settings = $field_settings ?? new FieldSettingsStore();
+		$this->webhooks       = $webhooks ?? new WebhookRegistrar( $this->settings, $this->client );
 	}
 
 	/**
@@ -120,7 +130,7 @@ class Controller {
 			wp_send_json_error( array( 'message' => __( 'No Forminator gateway found for this Backoffice Key.', 'ifthenpay-payments-for-forminator' ) ) );
 		}
 
-		$this->register_webhook( $this->settings->get_gateway_key() );
+		$this->webhooks->register_webhook( $this->settings->get_gateway_key() );
 
 		wp_send_json_success(
 			array(
@@ -159,7 +169,7 @@ class Controller {
 			wp_send_json_error( array( 'message' => __( 'Unknown Gateway Key.', 'ifthenpay-payments-for-forminator' ) ) );
 		}
 
-		$this->register_webhook( $gateway_key );
+		$this->webhooks->register_webhook( $gateway_key );
 
 		wp_send_json_success( array( 'table_html' => $this->methods_field->render() ) );
 	}
@@ -204,7 +214,7 @@ class Controller {
 
 		$this->save_confirmation_fields();
 
-		$this->register_webhook( $this->settings->get_gateway_key() );
+		$this->webhooks->register_webhook( $this->settings->get_gateway_key() );
 
 		wp_send_json_success( array( 'table_html' => $this->methods_field->render() ) );
 	}
@@ -389,32 +399,6 @@ class Controller {
 
 		if ( ! current_user_can( forminator_get_admin_cap() ) ) {
 			wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'ifthenpay-payments-for-forminator' ) ), 403 );
-		}
-	}
-
-	/**
-	 * Re-registers the ifthenpay webhook callback for the given Gateway Key.
-	 *
-	 * I reuse the Gateway Key's existing anti-phishing key — rotating it on
-	 * every save would break callbacks for payments already in flight.
-	 *
-	 * @param string $gateway_key The Gateway Key to register the webhook for.
-	 */
-	private function register_webhook( string $gateway_key ): void {
-		if ( '' === $gateway_key ) {
-			return;
-		}
-
-		$anti_phishing_key = $this->settings->get_anti_phishing_key( $gateway_key );
-		$is_new            = '' === $anti_phishing_key;
-
-		if ( $is_new ) {
-			$anti_phishing_key = wp_generate_password( 32, false, false );
-		}
-
-		// Only stored once ifthenpay accepted it, otherwise it's still calling back with the old key.
-		if ( $this->client->activate_callback( $gateway_key, $anti_phishing_key, WebhookController::url() ) && $is_new ) {
-			$this->settings->set_anti_phishing_key( $gateway_key, $anti_phishing_key );
 		}
 	}
 }

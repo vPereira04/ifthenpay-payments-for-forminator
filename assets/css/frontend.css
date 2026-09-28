@@ -211,24 +211,65 @@
 	line-height: 1.5;
 }
 
-.iftp-fm-popup-close {
+.iftp-fm-popup-actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 12px;
+	margin-top: 20px;
+}
+
+.iftp-fm-popup-close,
+.iftp-fm-popup-continue {
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	min-width: 120px;
 	min-height: 44px;
-	margin-top: 20px;
 	padding: 10px 24px;
-	border: none;
+	border: 1px solid #1d2327;
 	border-radius: 4px;
 	background: #1d2327;
 	color: #fff;
 	font-size: 15px;
+	line-height: 1.2;
+	text-decoration: none;
 	cursor: pointer;
 }
 
 .iftp-fm-popup-close:hover {
+	border-color: #000;
 	background: #000;
 }
 
-.iftp-fm-popup-close:focus-visible {
+/* With a Continue link next to it, Close steps back to a secondary style. */
+.iftp-fm-popup-continue:not([hidden]) + .iftp-fm-popup-close {
+	background: #fff;
+	color: #1d2327;
+}
+
+.iftp-fm-popup-continue:not([hidden]) + .iftp-fm-popup-close:hover {
+	background: #f0f0f1;
+}
+
+.iftp-fm-popup-continue[hidden] {
+	display: none;
+}
+
+.iftp-fm-popup-continue {
+	border-color: var(--iftp-fm-accent);
+	background: var(--iftp-fm-accent);
+}
+
+.iftp-fm-popup-continue:hover,
+.iftp-fm-popup-continue:focus {
+	color: #fff;
+	filter: brightness(0.9);
+}
+
+.iftp-fm-popup-close:focus-visible,
+.iftp-fm-popup-continue:focus-visible {
 	outline: 2px solid var(--iftp-fm-accent);
 	outline-offset: 3px;
 }

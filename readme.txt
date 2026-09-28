@@ -113,15 +113,16 @@ All network requests are performed server-side over HTTPS. Sensitive credentials
 
 == Screenshots ==
 
-1. (Admin Only) Backoffice Synchronization under Forminator Settings
-2. (Admin Only) Forminator's Gateway Configuration
-3. (Admin Only) ifthenpay Confirmation Method
-4. (Admin Only) Insert ifthenpay field
-5. (Admin Only) ifthenpay field settings
-6. (Customers Experience) Payment Form
-7. (Customers Experience) ifthenpay Payment Gateway Secure Payment Page
-8. (Customers Experience) ifthenpay Payment Gateway status popup
-9. (Admin Only) Payment Entries
+1.  (Admin Only) Backoffice Synchronization under Forminator Settings
+2.  (Admin Only) Forminator's Gateway Configuration
+3.  (Admin Only) ifthenpay Confirmation Method
+4.  (Admin Only) Insert ifthenpay field
+5.  (Admin Only) ifthenpay field settings
+6.  (Customers Experience) Payment Form
+7.  (Customers Experience) ifthenpay Payment Gateway Secure Payment Page
+8.  (Customers Experience) ifthenpay Payment Gateway status popup
+9.  (Admin Only) E-mail ifthenpay field data
+10. (Admin Only) Payment Entries
 
 == Changelog ==
 

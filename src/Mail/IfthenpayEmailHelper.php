@@ -20,11 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class IfthenpayEmailHelper {
 
-	// Real ifthenpay support inbox — stays commented out until the team
-	// says otherwise. During development/testing every integration sends
-	// here instead: v.pereira.contacto@gmail.com.
-	// public const SUPPORT_EMAIL = 'suporte@ifthenpay.com'.
-	public const SUPPORT_EMAIL = 'v.pereira.contacto@gmail.com';
+	public const SUPPORT_EMAIL = 'suporte@ifthenpay.com';
 
 	/**
 	 * Static-only helper.

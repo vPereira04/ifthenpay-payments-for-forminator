@@ -17,6 +17,7 @@ use Ifthenpay\Forminator\Ajax\Controller as AjaxController;
 use Ifthenpay\Forminator\Ajax\PaymentController;
 use Ifthenpay\Forminator\Ajax\StatusController;
 use Ifthenpay\Forminator\Api\Webhook\WebhookController;
+use Ifthenpay\Forminator\Api\Webhook\WebhookRegistrar;
 use Ifthenpay\Forminator\Fields\IfthenpayField;
 use Ifthenpay\Forminator\Forminator\TransactionStore;
 use Ifthenpay\Forminator\Repository\SettingsRepository;
@@ -62,6 +63,7 @@ class Plugin {
 		// this table existed — register_activation_hook() alone only fires
 		// on a fresh install/reactivation.
 		TransactionStore::maybe_create_table();
+		add_action( 'admin_init', array( new TransactionStore(), 'maybe_backfill_customers' ) );
 
 		add_filter( 'forminator_fields', array( $this, 'register_field' ) );
 
@@ -73,9 +75,9 @@ class Plugin {
 		( new PaymentController() )->register();
 		( new StatusController() )->register();
 		( new WebhookController() )->register();
+		( new WebhookRegistrar() )->register();
 
 		add_action( 'wp_enqueue_scripts', array( $this, 'maybe_enqueue_frontend_assets' ) );
-		add_action( 'template_redirect', array( $this, 'maybe_redirect_paid_confirmation' ) );
 	}
 
 	/**
@@ -111,7 +113,7 @@ class Plugin {
 				'ajaxUrl'         => admin_url( 'admin-ajax.php' ),
 				'nonce'           => wp_create_nonce( PaymentController::NONCE_ACTION ),
 				'statusNonce'     => wp_create_nonce( 'iftp_fm_status' ),
-				'paidRedirectUrl' => $settings->get_paid_redirect_url(),
+				'paidPageUrl'     => $settings->get_paid_page_url(),
 				'return'          => $context,
 				'i18n'            => array(
 					'redirecting' => __( 'Redirecting to secure payment…', 'ifthenpay-payments-for-forminator' ),
@@ -119,6 +121,8 @@ class Plugin {
 					'confirming'  => __( 'Confirming your payment…', 'ifthenpay-payments-for-forminator' ),
 					'ok'          => __( 'OK', 'ifthenpay-payments-for-forminator' ),
 					'close'       => __( 'Close', 'ifthenpay-payments-for-forminator' ),
+					'openPage'    => __( 'Continue', 'ifthenpay-payments-for-forminator' ),
+					'newTab'      => __( '(opens in a new tab)', 'ifthenpay-payments-for-forminator' ),
 				),
 				'titles'          => array(
 					'paid'      => $this->status_title( 'paid' ),
@@ -135,45 +139,6 @@ class Plugin {
 				'paidFields'      => self::paid_fields( $record ),
 			)
 		);
-	}
-
-	/**
-	 * Redirects to the configured "paid" destination the instant we already
-	 * know the payment is paid by the time the return page loads — a popup
-	 * confirmation type has no redirect target, so this is a no-op then, and
-	 * a payment that resolves to "paid" later gets redirected from the
-	 * frontend poll instead.
-	 */
-	public function maybe_redirect_paid_confirmation(): void {
-		$context = $this->resolve_return_context();
-
-		if ( null === $context || TransactionStore::STATUS_PAID !== $context['status'] ) {
-			return;
-		}
-
-		$redirect_url = ( new SettingsRepository() )->get_paid_redirect_url();
-
-		if ( '' === $redirect_url ) {
-			return;
-		}
-
-		// The admin's own "Custom URL" may live on another domain, and
-		// wp_safe_redirect() would quietly swap that for wp-admin instead.
-		$host = wp_parse_url( $redirect_url, PHP_URL_HOST );
-
-		if ( is_string( $host ) && '' !== $host ) {
-			add_filter(
-				'allowed_redirect_hosts',
-				static function ( array $hosts ) use ( $host ): array {
-					$hosts[] = $host;
-
-					return $hosts;
-				}
-			);
-		}
-
-		wp_safe_redirect( $redirect_url );
-		exit;
 	}
 
 	/**

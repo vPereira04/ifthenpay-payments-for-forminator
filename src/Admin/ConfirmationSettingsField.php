@@ -22,9 +22,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Built at reduced fidelity versus the WPREA gold-standard contract: a plain
  * `wp_kses_post()`-sanitized textarea per status, not the full contenteditable
  * Normal/Raw dual-view editor — disclosed in the blueprint (section 3g) and
- * the build report rather than left unmentioned. Paid gets the 3-way type
- * switch (popup/page/URL); Pending/Failed/Cancelled are always a popup,
- * since there's nowhere to send the payer for a non-final outcome.
+ * the build report rather than left unmentioned. Paid is always a popup too,
+ * but its 3-way type switch (popup/page/URL) adds a "Continue" link to a
+ * page/URL that opens in a new tab, so the submitted data stays on screen.
+ * Pending/Failed/Cancelled are a plain popup, since there's nowhere to send
+ * the payer for a non-final outcome.
  */
 class ConfirmationSettingsField {
 
@@ -68,8 +70,8 @@ class ConfirmationSettingsField {
 						<label class="sui-label" for="iftp-fm-paid-type"><?php esc_html_e( 'When a payment is confirmed, show', 'ifthenpay-payments-for-forminator' ); ?></label>
 						<select class="sui-select" id="iftp-fm-paid-type" name="paid_type">
 							<option value="<?php echo esc_attr( SettingsRepository::CONFIRMATION_TYPE_POPUP ); ?>" <?php selected( $paid_type, SettingsRepository::CONFIRMATION_TYPE_POPUP ); ?>><?php esc_html_e( 'Popup message', 'ifthenpay-payments-for-forminator' ); ?></option>
-							<option value="<?php echo esc_attr( SettingsRepository::CONFIRMATION_TYPE_PAGE ); ?>" <?php selected( $paid_type, SettingsRepository::CONFIRMATION_TYPE_PAGE ); ?>><?php esc_html_e( 'WordPress page', 'ifthenpay-payments-for-forminator' ); ?></option>
-							<option value="<?php echo esc_attr( SettingsRepository::CONFIRMATION_TYPE_URL ); ?>" <?php selected( $paid_type, SettingsRepository::CONFIRMATION_TYPE_URL ); ?>><?php esc_html_e( 'Custom URL', 'ifthenpay-payments-for-forminator' ); ?></option>
+							<option value="<?php echo esc_attr( SettingsRepository::CONFIRMATION_TYPE_PAGE ); ?>" <?php selected( $paid_type, SettingsRepository::CONFIRMATION_TYPE_PAGE ); ?>><?php esc_html_e( 'Popup message + WordPress page (new tab)', 'ifthenpay-payments-for-forminator' ); ?></option>
+							<option value="<?php echo esc_attr( SettingsRepository::CONFIRMATION_TYPE_URL ); ?>" <?php selected( $paid_type, SettingsRepository::CONFIRMATION_TYPE_URL ); ?>><?php esc_html_e( 'Popup message + Custom URL (new tab)', 'ifthenpay-payments-for-forminator' ); ?></option>
 						</select>
 					</div>
 					<div class="sui-form-field" id="iftp-fm-paid-page-row" style="<?php echo SettingsRepository::CONFIRMATION_TYPE_PAGE === $paid_type ? '' : 'display:none;'; ?>">
@@ -90,7 +92,7 @@ class ConfirmationSettingsField {
 						<label class="sui-label" for="iftp-fm-paid-url"><?php esc_html_e( 'URL', 'ifthenpay-payments-for-forminator' ); ?></label>
 						<input type="url" class="sui-form-control" id="iftp-fm-paid-url" name="paid_url" value="<?php echo esc_url( $this->settings->get_paid_confirmation_url() ); ?>" placeholder="https://" />
 					</div>
-					<div class="sui-form-field" id="iftp-fm-paid-message-row" style="<?php echo SettingsRepository::CONFIRMATION_TYPE_POPUP === $paid_type ? '' : 'display:none;'; ?>">
+					<div class="sui-form-field" id="iftp-fm-paid-message-row">
 						<label class="sui-label" for="iftp-fm-paid-title"><?php esc_html_e( 'Paid popup title', 'ifthenpay-payments-for-forminator' ); ?></label>
 						<input type="text" class="sui-form-control" id="iftp-fm-paid-title" name="paid_title" value="<?php echo esc_attr( $this->settings->get_confirmation_title( 'paid' ) ); ?>" placeholder="<?php echo esc_attr( Plugin::default_status_title( 'paid' ) ); ?>" />
 						<label class="sui-label" for="iftp-fm-paid-message" style="margin-top:10px;"><?php esc_html_e( 'Paid popup message', 'ifthenpay-payments-for-forminator' ); ?></label>

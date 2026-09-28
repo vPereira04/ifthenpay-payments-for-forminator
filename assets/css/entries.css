@@ -1,0 +1,3137 @@
+/* Payment Entries screen (admin.php?page=iftp-fm-transactions). */
+
+/* stylelint-disable selector-class-pattern -- BEM (block__element--modifier) is this screen's convention; the shared config only allows kebab-case. */
+
+/* Tokens live on the root wrapper so the fixed modal, toast and scroll
+   button (all rendered inside it) inherit them. */
+.iftp-fm-entries {
+	/* Brand */
+	--iftp-fm-brand: #00609c;
+	--iftp-fm-brand-hover: #004f80;
+	--iftp-fm-brand-active: #003e63;
+	--iftp-fm-brand-tint: #eef5fa;
+	--iftp-fm-brand-tint-strong: #d4e7f4;
+	--iftp-fm-ramp-1: #00609c;
+	--iftp-fm-ramp-2: #0078b4;
+	--iftp-fm-ramp-3: #008dc8;
+	--iftp-fm-ramp-4: #009bd7;
+	--iftp-fm-ramp-5: #00a4df;
+	--iftp-fm-ramp-6: #00a7e2;
+	--iftp-fm-ramp: linear-gradient(90deg, #00609c 0%, #0078b4 20%, #008dc8 40%, #009bd7 60%, #00a4df 80%, #00a7e2 100%);
+	--iftp-fm-band: linear-gradient(115deg, #003e63 0%, #00609c 55%, #0078b4 100%);
+
+	/* Text */
+	--iftp-fm-text-strong: #1d2327;
+	--iftp-fm-text: #3c434a;
+	--iftp-fm-text-muted: #646970;
+	--iftp-fm-text-disabled: #a7aaad;
+	--iftp-fm-text-inverse: #fff;
+	--iftp-fm-text-inverse-muted: #d9e7f0;
+
+	/* Surfaces */
+	--iftp-fm-surface: #fff;
+	--iftp-fm-surface-sunken: #f6f8fa;
+	--iftp-fm-surface-hover: #f0f6fc;
+	--iftp-fm-surface-selected: #e5f0f8;
+	--iftp-fm-surface-disabled: #f6f7f7;
+	--iftp-fm-overlay: rgb(0 30 50 / 60%);
+
+	/* Borders */
+	--iftp-fm-border: #dcdcde;
+	--iftp-fm-border-subtle: #eaedf0;
+	--iftp-fm-border-control: #8c8f94;
+	--iftp-fm-border-control-hover: #646970;
+
+	/* Status */
+	--iftp-fm-pending-fg: #7c4a00;
+	--iftp-fm-pending-bg: #fef8ec;
+	--iftp-fm-pending-dot: #dba617;
+	--iftp-fm-paid-fg: #0f6b2f;
+	--iftp-fm-paid-bg: #edf7f0;
+	--iftp-fm-paid-dot: #00a32a;
+	--iftp-fm-failed-fg: #8b1a1c;
+	--iftp-fm-failed-bg: #fff5f4;
+	--iftp-fm-failed-dot: #d63638;
+	--iftp-fm-expired-fg: #50575e;
+	--iftp-fm-expired-bg: #f0f0f1;
+	--iftp-fm-expired-dot: #8c8f94;
+
+	/* Danger actions */
+	--iftp-fm-danger: #b32d2e;
+	--iftp-fm-danger-hover: #8a2424;
+	--iftp-fm-danger-bg: #fff5f4;
+	--iftp-fm-danger-border: #f0c4c4;
+
+	/* Toast */
+	--iftp-fm-toast-bg: #003e63;
+	--iftp-fm-toast-error-bg: #8a2424;
+
+	/* Focus */
+	--iftp-fm-focus: #00609c;
+	--iftp-fm-focus-inverse: #fff;
+	--iftp-fm-focus-width: 2px;
+	--iftp-fm-focus-offset: 2px;
+
+	/* Spacing (4px grid) */
+	--iftp-fm-space-1: 4px;
+	--iftp-fm-space-2: 8px;
+	--iftp-fm-space-3: 12px;
+	--iftp-fm-space-4: 16px;
+	--iftp-fm-space-5: 20px;
+	--iftp-fm-space-6: 24px;
+	--iftp-fm-space-7: 28px;
+	--iftp-fm-space-8: 32px;
+	--iftp-fm-space-10: 40px;
+	--iftp-fm-space-14: 56px;
+
+	/* Radii */
+	--iftp-fm-radius-sm: 4px;
+	--iftp-fm-radius-md: 6px;
+	--iftp-fm-radius-lg: 8px;
+	--iftp-fm-radius-xl: 12px;
+	--iftp-fm-radius-pill: 999px;
+
+	/* Elevation */
+	--iftp-fm-shadow-1: 0 1px 2px rgb(0 37 61 / 6%), 0 1px 3px rgb(0 37 61 / 4%);
+	--iftp-fm-shadow-2: 0 4px 12px rgb(0 37 61 / 12%), 0 1px 3px rgb(0 37 61 / 8%);
+	--iftp-fm-shadow-3: 0 24px 48px -12px rgb(0 37 61 / 30%), 0 2px 6px rgb(0 37 61 / 8%);
+
+	/* Type */
+	--iftp-fm-font-mono: ui-monospace, sfmono-regular, menlo, consolas, "Liberation Mono", monospace;
+	--iftp-fm-fs-xs: 11px;
+	--iftp-fm-fs-sm: 12px;
+	--iftp-fm-fs-base: 13px;
+	--iftp-fm-fs-md: 14px;
+	--iftp-fm-fs-lg: 18px;
+	--iftp-fm-fs-xl: 22px;
+	--iftp-fm-lh-tight: 1.25;
+	--iftp-fm-lh-base: 1.5;
+	--iftp-fm-fw-regular: 400;
+	--iftp-fm-fw-medium: 500;
+	--iftp-fm-fw-semibold: 600;
+	--iftp-fm-tracking-caps: 0.06em;
+
+	/* Control sizes */
+	--iftp-fm-control-h: 36px;
+	--iftp-fm-control-h-sm: 32px;
+
+	/* Motion */
+	--iftp-fm-dur-fast: 120ms;
+	--iftp-fm-dur-base: 160ms;
+	--iftp-fm-dur-slow: 200ms;
+	--iftp-fm-ease: cubic-bezier(0.2, 0, 0, 1);
+	--iftp-fm-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+	/* Mask glyphs */
+	--iftp-fm-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3.5 8.5 3 3 6-7' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
+	/* Layers (admin bar is 99999) */
+	--iftp-fm-z-popover: 50;
+	--iftp-fm-z-bulk: 9990;
+	--iftp-fm-z-scroll: 99999;
+	--iftp-fm-z-modal: 100000;
+	--iftp-fm-z-toast: 100001;
+
+	color: var(--iftp-fm-text);
+	font-size: var(--iftp-fm-fs-base);
+	line-height: var(--iftp-fm-lh-base);
+}
+
+@keyframes iftp-fm-fade-in {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes iftp-fm-slide-up {
+	from {
+		transform: translateY(100%);
+	}
+}
+
+@keyframes iftp-fm-modal-in {
+	from {
+		opacity: 0;
+		transform: translateY(8px) scale(0.98);
+	}
+}
+
+@keyframes iftp-fm-toast-in {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+}
+
+@keyframes iftp-fm-popover-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+}
+
+/* Masthead */
+
+.iftp-fm-entries .iftp-fm-entries__masthead {
+	position: relative;
+	overflow: hidden;
+	isolation: isolate;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--iftp-fm-space-6);
+	margin: var(--iftp-fm-space-3) 0 0;
+	padding: var(--iftp-fm-space-6) var(--iftp-fm-space-7);
+	min-height: 104px;
+	box-sizing: border-box;
+	background: var(--iftp-fm-band);
+	border-radius: var(--iftp-fm-radius-xl);
+	color: var(--iftp-fm-text-inverse);
+	box-shadow: var(--iftp-fm-shadow-1);
+}
+
+.iftp-fm-entries .iftp-fm-entries__masthead::before {
+	content: "";
+	position: absolute;
+	inset: auto 0 0;
+	height: 3px;
+	background: var(--iftp-fm-ramp);
+}
+
+.iftp-fm-entries .iftp-fm-entries__masthead::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	right: -32px;
+	width: 200px;
+	height: 200px;
+	transform: translateY(-50%);
+	background: url("../img/icon-white.svg") center / contain no-repeat;
+	opacity: 0.07;
+	pointer-events: none;
+	z-index: -1;
+}
+
+.iftp-fm-entries .iftp-fm-entries__masthead-brand {
+	display: flex;
+	align-items: center;
+	gap: var(--iftp-fm-space-5);
+	min-width: 0;
+}
+
+.iftp-fm-entries .iftp-fm-entries__logo {
+	display: block;
+	width: 94px;
+	height: 24px;
+	flex: none;
+}
+
+.iftp-fm-entries .iftp-fm-entries__masthead-divider {
+	width: 1px;
+	height: 32px;
+	background: rgb(255 255 255 / 32%);
+	flex: none;
+}
+
+/* Two classes so it beats core's `.wrap h1` padding. */
+.iftp-fm-entries .iftp-fm-entries__title {
+	margin: 0;
+	padding: 0;
+	font-size: var(--iftp-fm-fs-xl);
+	line-height: var(--iftp-fm-lh-tight);
+	font-weight: var(--iftp-fm-fw-semibold);
+	color: var(--iftp-fm-text-inverse);
+}
+
+.iftp-fm-entries .iftp-fm-entries__subtitle {
+	margin: var(--iftp-fm-space-1) 0 0;
+	max-width: 64ch;
+	font-size: var(--iftp-fm-fs-base);
+	color: var(--iftp-fm-text-inverse-muted);
+}
+
+.iftp-fm-entries .iftp-fm-new-entry-trigger {
+	flex: none;
+}
+
+/* Totals summary (read-only, colour comes only from the badges) */
+
+.iftp-fm-entries .iftp-fm-summary {
+	margin-top: var(--iftp-fm-space-5);
+	background: var(--iftp-fm-surface);
+	border: 1px solid var(--iftp-fm-border);
+	border-radius: var(--iftp-fm-radius-xl);
+	box-shadow: var(--iftp-fm-shadow-1);
+}
+
+.iftp-fm-entries .iftp-fm-summary__list {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	margin: 0;
+}
+
+.iftp-fm-entries .iftp-fm-summary__item {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	grid-template-areas:
+		"label count"
+		"amount amount";
+	align-items: center;
+	gap: var(--iftp-fm-space-2) var(--iftp-fm-space-3);
+	min-width: 0;
+	padding: var(--iftp-fm-space-4) var(--iftp-fm-space-5);
+}
+
+.iftp-fm-entries .iftp-fm-summary__item + .iftp-fm-summary__item {
+	border-left: 1px solid var(--iftp-fm-border-subtle);
+}
+
+.iftp-fm-entries .iftp-fm-summary__label {
+	grid-area: label;
+	margin: 0;
+}
+
+.iftp-fm-entries .iftp-fm-summary__count {
+	grid-area: count;
+	justify-self: end;
+	margin: 0;
+	font-size: var(--iftp-fm-fs-sm);
+	color: var(--iftp-fm-text-muted);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.iftp-fm-entries .iftp-fm-summary__amount {
+	grid-area: amount;
+	margin: 0;
+	font-size: var(--iftp-fm-fs-lg);
+	line-height: var(--iftp-fm-lh-tight);
+	font-weight: var(--iftp-fm-fw-semibold);
+	color: var(--iftp-fm-text-strong);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.iftp-fm-entries .iftp-fm-summary__item--empty .iftp-fm-summary__amount {
+	color: var(--iftp-fm-text-muted);
+}
+
+/* Buttons */
+
+.iftp-fm-entries .iftp-fm-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: var(--iftp-fm-control-h);
+	padding: 0 var(--iftp-fm-space-4);
+	box-sizing: border-box;
+	border: 1px solid transparent;
+	border-radius: var(--iftp-fm-radius-md);
+	font: inherit;
+	font-size: var(--iftp-fm-fs-base);
+	font-weight: var(--iftp-fm-fw-semibold);
+	line-height: 1;
+	white-space: nowrap;
+	text-decoration: none;
+	cursor: pointer;
+	transition:
+		background-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		border-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		color var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-btn svg {
+	flex: none;
+}
+
+.iftp-fm-entries .iftp-fm-btn:focus {
+	box-shadow: none;
+}
+
+.iftp-fm-entries .iftp-fm-btn:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+}
+
+.iftp-fm-entries .iftp-fm-btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.iftp-fm-entries .iftp-fm-btn[data-iftp-new-entry-submit]:disabled {
+	cursor: progress;
+}
+
+.iftp-fm-entries .iftp-fm-btn--primary {
+	background: var(--iftp-fm-brand);
+	border-color: var(--iftp-fm-brand);
+	color: #fff;
+}
+
+.iftp-fm-entries .iftp-fm-btn--primary:hover:not(:disabled) {
+	background: var(--iftp-fm-brand-hover);
+	border-color: var(--iftp-fm-brand-hover);
+	color: #fff;
+}
+
+.iftp-fm-entries .iftp-fm-btn--primary:active:not(:disabled) {
+	background: var(--iftp-fm-brand-active);
+	border-color: var(--iftp-fm-brand-active);
+	color: #fff;
+}
+
+/* The #c3c4c7 border is decorative — the brand label marks it as a button. */
+.iftp-fm-entries .iftp-fm-btn--secondary {
+	background: var(--iftp-fm-surface);
+	border-color: #c3c4c7;
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-btn--secondary:hover:not(:disabled) {
+	background: var(--iftp-fm-brand);
+	border-color: var(--iftp-fm-brand);
+	color: #fff;
+}
+
+.iftp-fm-entries .iftp-fm-btn--secondary:active:not(:disabled) {
+	background: var(--iftp-fm-brand-active);
+	border-color: var(--iftp-fm-brand-active);
+	color: #fff;
+}
+
+.iftp-fm-entries .iftp-fm-btn--inverse {
+	background: #fff;
+	border-color: #fff;
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-btn--inverse:focus-visible {
+	outline: 2px solid var(--iftp-fm-focus-inverse);
+	outline-offset: 2px;
+}
+
+.iftp-fm-entries .iftp-fm-btn--inverse:hover:not(:disabled) {
+	background: #e8f2f9;
+	border-color: #e8f2f9;
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-btn--inverse:active:not(:disabled) {
+	background: var(--iftp-fm-brand-tint-strong);
+	border-color: var(--iftp-fm-brand-tint-strong);
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-btn--link {
+	height: auto;
+	padding: 0;
+	border: 0;
+	background: none;
+	font-weight: var(--iftp-fm-fw-medium);
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-btn--link:focus-visible {
+	border-radius: 2px;
+}
+
+.iftp-fm-entries .iftp-fm-btn--link:disabled {
+	opacity: 1;
+	color: var(--iftp-fm-text-disabled);
+}
+
+.iftp-fm-entries .iftp-fm-btn--link:hover:not(:disabled) {
+	color: var(--iftp-fm-brand-hover);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.iftp-fm-entries .iftp-fm-btn--link:active:not(:disabled) {
+	color: var(--iftp-fm-brand-active);
+}
+
+/* Two classes, so it beats --primary on the same element in any order. */
+.iftp-fm-entries .iftp-fm-btn.iftp-fm-modal-confirm--danger {
+	background: var(--iftp-fm-danger);
+	border-color: var(--iftp-fm-danger);
+	color: #fff;
+}
+
+.iftp-fm-entries .iftp-fm-btn.iftp-fm-modal-confirm--danger:focus-visible {
+	outline-color: var(--iftp-fm-danger);
+}
+
+.iftp-fm-entries .iftp-fm-btn.iftp-fm-modal-confirm--danger:hover:not(:disabled),
+.iftp-fm-entries .iftp-fm-btn.iftp-fm-modal-confirm--danger:active:not(:disabled) {
+	background: var(--iftp-fm-danger-hover);
+	border-color: var(--iftp-fm-danger-hover);
+	color: #fff;
+}
+
+/* Card + toolbar */
+
+/* Not clipped, so the Columns popover can overhang short tables. */
+.iftp-fm-entries .iftp-fm-entries-card {
+	margin-top: var(--iftp-fm-space-5);
+	background: var(--iftp-fm-surface);
+	border: 1px solid var(--iftp-fm-border);
+	border-radius: var(--iftp-fm-radius-xl);
+	box-shadow: var(--iftp-fm-shadow-1);
+	overflow: visible;
+}
+
+/* Tighter gap, so the summary reads as part of the list it totals. */
+.iftp-fm-entries .iftp-fm-summary + .iftp-fm-entries-card {
+	margin-top: var(--iftp-fm-space-3);
+}
+
+.iftp-fm-entries .iftp-fm-entries-card-header {
+	display: flex;
+	flex-direction: column;
+	gap: var(--iftp-fm-space-3);
+	padding: var(--iftp-fm-space-4) var(--iftp-fm-space-5);
+	background: var(--iftp-fm-surface);
+	border-bottom: 1px solid var(--iftp-fm-border);
+}
+
+/* Everything in the row is 32px; 40px min-height means the 40px bulk bar never shifts the table. */
+.iftp-fm-entries .iftp-fm-entries-toolbar-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--iftp-fm-space-2) var(--iftp-fm-space-4);
+	min-height: var(--iftp-fm-space-10);
+}
+
+/* Won't shrink, so the tools wrap to a second line instead of the tabs scrolling on desktop. */
+.iftp-fm-entries .iftp-fm-entries__status-nav {
+	flex: 1 0 auto;
+	min-width: 0;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.iftp-fm-entries .iftp-fm-entries__status-nav::-webkit-scrollbar {
+	display: none;
+}
+
+@media (width >= 783px) {
+	/* Selection mode: the bulk bar takes the tabs' place. */
+	.iftp-fm-entries[data-iftp-has-selection] .iftp-fm-entries__status-nav {
+		display: none;
+	}
+}
+
+/* View tools (search, Filters, Columns, Export CSV) */
+
+.iftp-fm-entries .iftp-fm-entries__view-tools {
+	display: flex;
+	align-items: center;
+	gap: var(--iftp-fm-space-2);
+	margin-left: auto;
+	flex: none;
+}
+
+.iftp-fm-entries .iftp-fm-entries__search {
+	position: relative;
+	flex: 0 1 220px;
+	min-width: 160px;
+}
+
+/* Shared sizing for Filters, Columns and Export; relative anchors the badge and the dot. */
+.iftp-fm-entries .iftp-fm-entries__tool {
+	position: relative;
+	height: var(--iftp-fm-control-h-sm);
+	padding: 0 var(--iftp-fm-space-3);
+}
+
+.iftp-fm-entries .iftp-fm-entries__filters-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	box-sizing: border-box;
+	border-radius: var(--iftp-fm-radius-pill);
+	background: var(--iftp-fm-brand);
+	color: #fff;
+	font-size: var(--iftp-fm-fs-xs);
+	font-weight: var(--iftp-fm-fw-semibold);
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
+}
+
+/* The closed button goes brand on hover, so the badge inverts to stay visible. */
+.iftp-fm-entries .iftp-fm-entries__filters-toggle[aria-expanded="false"]:hover:not(:disabled) .iftp-fm-entries__filters-count,
+.iftp-fm-entries .iftp-fm-entries__filters-toggle[aria-expanded="false"]:active:not(:disabled) .iftp-fm-entries__filters-count {
+	background: #fff;
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-entries__columns {
+	position: relative;
+}
+
+/* Same weight as --secondary:hover and declared later, so it holds while hovered. */
+.iftp-fm-entries .iftp-fm-entries__filters-toggle[aria-expanded="true"]:not(:disabled),
+.iftp-fm-entries .iftp-fm-entries__columns-trigger[aria-expanded="true"]:not(:disabled) {
+	background: var(--iftp-fm-brand-tint-strong);
+	border-color: var(--iftp-fm-brand);
+	color: var(--iftp-fm-brand);
+}
+
+/* Decorative "some columns hidden" dot; the checkboxes carry the real state. */
+.iftp-fm-entries[data-iftp-hidden-cols]:not([data-iftp-hidden-cols=""]) .iftp-fm-entries__columns-trigger::after {
+	content: "";
+	position: absolute;
+	top: -3px;
+	right: -3px;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--iftp-fm-brand);
+	box-shadow: 0 0 0 2px var(--iftp-fm-surface);
+}
+
+/* Columns popover. Shown/hidden by the [hidden] guard. */
+
+.iftp-fm-entries .iftp-fm-columns-menu {
+	position: absolute;
+	top: calc(100% + 6px);
+	right: 0;
+	z-index: var(--iftp-fm-z-popover);
+	width: 256px;
+	max-height: min(360px, calc(100vh - 120px));
+	overflow-y: auto;
+	box-sizing: border-box;
+	padding: 6px;
+	background: var(--iftp-fm-surface);
+	border: 1px solid var(--iftp-fm-border);
+	border-radius: var(--iftp-fm-radius-lg);
+	box-shadow: var(--iftp-fm-shadow-2);
+	animation: iftp-fm-popover-in var(--iftp-fm-dur-base) var(--iftp-fm-ease-out);
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__title {
+	margin: 0;
+	padding: 6px 10px 4px;
+	font-size: var(--iftp-fm-fs-xs);
+	font-weight: var(--iftp-fm-fw-semibold);
+	letter-spacing: var(--iftp-fm-tracking-caps);
+	text-transform: uppercase;
+	color: var(--iftp-fm-text-muted);
+}
+
+/* Plain text on purpose: nothing here suggests Reference can change. */
+.iftp-fm-entries .iftp-fm-columns-menu__locked {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 36px;
+	margin-bottom: var(--iftp-fm-space-1);
+	padding: 0 10px 0 28px; /* text lines up with the option labels below */
+	border-bottom: 1px solid var(--iftp-fm-border-subtle);
+	color: var(--iftp-fm-text);
+	font-size: var(--iftp-fm-fs-base);
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__locked-icon {
+	flex: none;
+	margin: 0 2px;
+	color: var(--iftp-fm-text-muted);
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__locked-hint {
+	margin-left: auto;
+	font-size: var(--iftp-fm-fs-xs);
+	color: var(--iftp-fm-text-muted);
+	white-space: nowrap;
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* Relative, so the drop line can sit on the item's edge. */
+.iftp-fm-entries .iftp-fm-columns-menu__item {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: var(--iftp-fm-space-1);
+	min-height: 36px;
+	margin: 0;
+	padding: 0 var(--iftp-fm-space-1) 0 6px;
+	border-radius: var(--iftp-fm-radius-md);
+	transition:
+		background-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		opacity var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__item:hover,
+.iftp-fm-entries .iftp-fm-columns-menu__item:has(:focus-visible) {
+	background: var(--iftp-fm-surface-hover);
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__handle {
+	display: inline-grid;
+	place-items: center;
+	flex: none;
+	width: 14px;
+	height: 24px;
+	color: var(--iftp-fm-text-muted);
+	cursor: grab;
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__handle:active {
+	cursor: grabbing;
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__item:hover .iftp-fm-columns-menu__handle {
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__option {
+	display: flex;
+	flex: 1 1 auto;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+	min-height: 36px;
+	padding: 0 var(--iftp-fm-space-1);
+	color: var(--iftp-fm-text-strong);
+	font-size: var(--iftp-fm-fs-base);
+	cursor: pointer;
+	user-select: none;
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__option-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__move {
+	display: flex;
+	flex: none;
+	gap: 2px;
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__move-btn {
+	appearance: none;
+	display: inline-grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: var(--iftp-fm-radius-md);
+	background: none;
+	color: var(--iftp-fm-text-muted);
+	cursor: pointer;
+	transition:
+		background-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		color var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__move-btn:focus {
+	box-shadow: none;
+	outline: none;
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__move-btn:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: 0;
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__move-btn:hover:not([aria-disabled="true"]) {
+	background: var(--iftp-fm-brand-tint-strong);
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__move-btn:active:not([aria-disabled="true"]) {
+	color: var(--iftp-fm-brand-active);
+}
+
+/* aria-disabled, not disabled, so focus survives a move to the edge. */
+.iftp-fm-entries .iftp-fm-columns-menu__move-btn[aria-disabled="true"] {
+	color: var(--iftp-fm-text-disabled);
+	cursor: default;
+}
+
+/* Drag states; JS sets these classes (see entries.js). */
+.iftp-fm-entries .iftp-fm-columns-menu__item--dragging {
+	opacity: 0.5;
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__item--drop-before::before,
+.iftp-fm-entries .iftp-fm-columns-menu__item--drop-after::after {
+	content: "";
+	position: absolute;
+	left: 6px;
+	right: var(--iftp-fm-space-1);
+	height: 2px;
+	border-radius: 1px;
+	background: var(--iftp-fm-brand); /* 6.66 vs white, 6.12 vs hover */
+	pointer-events: none;
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__item--drop-before::before {
+	top: -1px;
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__item--drop-after::after {
+	bottom: -1px;
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__footer {
+	margin-top: var(--iftp-fm-space-1);
+	padding: 6px 10px 2px;
+	border-top: 1px solid var(--iftp-fm-border-subtle);
+}
+
+.iftp-fm-entries .iftp-fm-columns-menu__reset {
+	min-height: 28px;
+	font-size: var(--iftp-fm-fs-sm);
+}
+
+/* Status tabs */
+
+/* The 2px padding keeps focus rings from being clipped by the scroller. */
+.iftp-fm-entries .iftp-fm-status-tabs {
+	display: flex;
+	gap: var(--iftp-fm-space-1);
+	margin: 0;
+	padding: 2px;
+	list-style: none;
+}
+
+.iftp-fm-entries .iftp-fm-status-tabs li {
+	flex: none;
+	margin: 0;
+}
+
+.iftp-fm-entries .iftp-fm-status-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--iftp-fm-space-2);
+	height: var(--iftp-fm-control-h-sm);
+	padding: 0 6px 0 var(--iftp-fm-space-3);
+	border-radius: var(--iftp-fm-radius-pill);
+	font-size: var(--iftp-fm-fs-base);
+	font-weight: var(--iftp-fm-fw-medium);
+	color: var(--iftp-fm-text);
+	text-decoration: none;
+	white-space: nowrap;
+	transition:
+		background-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		color var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-status-tab:hover {
+	background: var(--iftp-fm-surface-hover);
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-status-tab:active {
+	background: var(--iftp-fm-brand-tint-strong);
+}
+
+.iftp-fm-entries .iftp-fm-status-tab:focus {
+	box-shadow: none;
+}
+
+.iftp-fm-entries .iftp-fm-status-tab:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+}
+
+.iftp-fm-entries .iftp-fm-status-tab.iftp-fm-status-tab--current {
+	background: var(--iftp-fm-brand);
+	color: #fff;
+	font-weight: var(--iftp-fm-fw-semibold);
+}
+
+.iftp-fm-entries .iftp-fm-status-tab.iftp-fm-status-tab--current:hover {
+	background: var(--iftp-fm-brand-hover);
+}
+
+.iftp-fm-entries .iftp-fm-status-tab .count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 20px;
+	height: 20px;
+	padding: 0 6px;
+	box-sizing: border-box;
+	border-radius: var(--iftp-fm-radius-pill);
+	background: #f0f0f1;
+	color: #50575e;
+	font-size: var(--iftp-fm-fs-xs);
+	font-weight: var(--iftp-fm-fw-semibold);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Solid #004f80, not a white alpha — that one fails contrast. */
+.iftp-fm-entries .iftp-fm-status-tab--current .count {
+	background: var(--iftp-fm-brand-hover);
+	color: #fff;
+}
+
+/* Shared form controls */
+
+.iftp-fm-entries select,
+.iftp-fm-entries input[type="date"],
+.iftp-fm-entries input[type="search"],
+.iftp-fm-entries input[type="text"],
+.iftp-fm-entries input[type="email"],
+.iftp-fm-entries input[type="number"] {
+	height: var(--iftp-fm-control-h);
+	min-height: 0;
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0 var(--iftp-fm-space-3);
+	border: 1px solid var(--iftp-fm-border-control);
+	border-radius: var(--iftp-fm-radius-md);
+	background-color: var(--iftp-fm-surface);
+	color: var(--iftp-fm-text-strong);
+	font-size: var(--iftp-fm-fs-base);
+	line-height: calc(var(--iftp-fm-control-h) - 2px);
+	box-shadow: none;
+	transition:
+		border-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		box-shadow var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+/* Replaces core's own select arrow. */
+.iftp-fm-entries select {
+	appearance: none;
+	padding-right: 32px;
+	cursor: pointer;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23646970' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 12px center;
+	background-size: 10px 6px;
+}
+
+.iftp-fm-entries select::-ms-expand {
+	display: none;
+}
+
+.iftp-fm-entries input[type="search"] {
+	padding-left: 34px;
+	background: var(--iftp-fm-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='4.75' fill='none' stroke='%23646970' stroke-width='1.5'/%3E%3Cpath d='m10.5 10.5 3 3' stroke='%23646970' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat 11px center / 16px 16px;
+}
+
+.iftp-fm-entries input[type="date"] {
+	padding: 0 10px;
+}
+
+.iftp-fm-entries input[type="date"]::-webkit-calendar-picker-indicator {
+	opacity: 0.6;
+	cursor: pointer;
+}
+
+.iftp-fm-entries input[type="date"]:hover::-webkit-calendar-picker-indicator {
+	opacity: 1;
+}
+
+.iftp-fm-entries input::placeholder {
+	color: var(--iftp-fm-text-muted);
+	opacity: 1;
+}
+
+/* Also overrides core's `select:hover { color: #2271b1 }`. */
+.iftp-fm-entries select:hover,
+.iftp-fm-entries input[type="date"]:hover,
+.iftp-fm-entries input[type="search"]:hover,
+.iftp-fm-entries input[type="text"]:hover,
+.iftp-fm-entries input[type="email"]:hover,
+.iftp-fm-entries input[type="number"]:hover {
+	border-color: var(--iftp-fm-border-control-hover);
+	color: var(--iftp-fm-text-strong);
+}
+
+/* The transparent outline still draws a ring in Windows High Contrast. */
+.iftp-fm-entries select:focus,
+.iftp-fm-entries input[type="date"]:focus,
+.iftp-fm-entries input[type="search"]:focus,
+.iftp-fm-entries input[type="text"]:focus,
+.iftp-fm-entries input[type="email"]:focus,
+.iftp-fm-entries input[type="number"]:focus {
+	border-color: var(--iftp-fm-brand);
+	box-shadow: 0 0 0 1px var(--iftp-fm-brand);
+	outline: 2px solid transparent;
+	color: var(--iftp-fm-text-strong);
+}
+
+.iftp-fm-entries select:disabled,
+.iftp-fm-entries input[type="date"]:disabled,
+.iftp-fm-entries input[type="search"]:disabled,
+.iftp-fm-entries input[type="text"]:disabled,
+.iftp-fm-entries input[type="email"]:disabled,
+.iftp-fm-entries input[type="number"]:disabled {
+	background-color: var(--iftp-fm-surface-disabled);
+	color: var(--iftp-fm-text-disabled);
+	border-color: var(--iftp-fm-border);
+}
+
+/* Toolbar search at 32px, to line up with the tabs. It sits after the shared rules it resizes. */
+.iftp-fm-entries .iftp-fm-entries__search input[type="search"] {
+	width: 100%;
+	height: var(--iftp-fm-control-h-sm);
+	line-height: calc(var(--iftp-fm-control-h-sm) - 2px);
+}
+
+/* Filter panel. It stays in flow, so opening it pushes the table down. */
+
+.iftp-fm-entries .iftp-fm-filter-panel {
+	padding: var(--iftp-fm-space-4);
+	background: var(--iftp-fm-surface-sunken);
+	border: 1px solid var(--iftp-fm-border-subtle);
+	border-radius: var(--iftp-fm-radius-lg);
+	animation: iftp-fm-fade-in var(--iftp-fm-dur-base) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-filter-panel__form {
+	margin: 0;
+}
+
+.iftp-fm-entries .iftp-fm-filter-panel__fields {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: var(--iftp-fm-space-4) var(--iftp-fm-space-6);
+}
+
+.iftp-fm-entries .iftp-fm-filter-panel__field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.iftp-fm-entries .iftp-fm-filter-panel__label {
+	display: block;
+	font-size: var(--iftp-fm-fs-xs);
+	font-weight: var(--iftp-fm-fw-semibold);
+	letter-spacing: var(--iftp-fm-tracking-caps);
+	text-transform: uppercase;
+	color: var(--iftp-fm-text-muted);
+}
+
+.iftp-fm-entries .iftp-fm-filter-panel__field--form select {
+	width: 184px;
+	max-width: 100%;
+}
+
+.iftp-fm-entries .iftp-fm-filter-panel__field--method select {
+	width: 160px;
+	max-width: 100%;
+}
+
+.iftp-fm-entries .iftp-fm-filter-panel__range {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.iftp-fm-entries .iftp-fm-filter-panel__field--amount input[type="number"] {
+	width: 112px;
+}
+
+.iftp-fm-entries .iftp-fm-filter-panel__field--created input[type="date"] {
+	width: 148px;
+}
+
+.iftp-fm-entries .iftp-fm-filter-panel__range-sep {
+	color: var(--iftp-fm-text-muted);
+}
+
+.iftp-fm-entries .iftp-fm-filter-panel__actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--iftp-fm-space-4);
+	margin-top: var(--iftp-fm-space-4);
+}
+
+/* Date presets. The 2px padding keeps focus rings unclipped, as on the tabs. */
+
+.iftp-fm-entries .iftp-fm-date-presets {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--iftp-fm-space-1);
+	margin: 0;
+	padding: 2px;
+	list-style: none;
+}
+
+.iftp-fm-entries .iftp-fm-date-presets li {
+	margin: 0;
+}
+
+/* The #dcdcde border is decorative — the label and pill shape identify it. */
+.iftp-fm-entries .iftp-fm-date-preset {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: var(--iftp-fm-control-h-sm);
+	padding: 0 var(--iftp-fm-space-3);
+	box-sizing: border-box;
+	border: 1px solid var(--iftp-fm-border);
+	border-radius: var(--iftp-fm-radius-pill);
+	background: var(--iftp-fm-surface);
+	color: var(--iftp-fm-text);
+	font-size: var(--iftp-fm-fs-sm);
+	font-weight: var(--iftp-fm-fw-medium);
+	line-height: 1;
+	white-space: nowrap;
+	text-decoration: none;
+	transition:
+		background-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		border-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		color var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-date-preset:hover {
+	background: var(--iftp-fm-surface-hover);
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-date-preset:active {
+	background: var(--iftp-fm-brand-tint-strong);
+}
+
+.iftp-fm-entries .iftp-fm-date-preset:focus {
+	box-shadow: none;
+}
+
+.iftp-fm-entries .iftp-fm-date-preset:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+}
+
+.iftp-fm-entries .iftp-fm-date-preset.iftp-fm-date-preset--current {
+	background: var(--iftp-fm-brand-tint);
+	border-color: var(--iftp-fm-brand);
+	color: var(--iftp-fm-brand);
+	font-weight: var(--iftp-fm-fw-semibold);
+}
+
+.iftp-fm-entries .iftp-fm-date-preset.iftp-fm-date-preset--current:hover {
+	background: var(--iftp-fm-brand-tint-strong);
+}
+
+/* The check glyph keeps the current state from being colour-only. */
+.iftp-fm-entries .iftp-fm-date-preset--current::before {
+	content: "";
+	width: 12px;
+	height: 12px;
+	flex: none;
+	background: currentcolor;
+	mask: var(--iftp-fm-icon-check) center / contain no-repeat;
+}
+
+/* Cancels the list's 2px focus-ring padding so the chips line up with the inputs. */
+.iftp-fm-entries .iftp-fm-filter-panel__field--created .iftp-fm-date-presets {
+	margin: 2px -2px 0;
+}
+
+/* Active-filter chips. Each one is a plain link that drops its filter. */
+
+.iftp-fm-entries .iftp-fm-active-filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--iftp-fm-space-2) var(--iftp-fm-space-3);
+}
+
+/* The open panel already shows these values. */
+.iftp-fm-entries .iftp-fm-filter-panel:not([hidden]) ~ .iftp-fm-active-filters {
+	display: none;
+}
+
+/* 2px padding keeps focus rings unclipped, as on the tabs. */
+.iftp-fm-entries .iftp-fm-active-filters__list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--iftp-fm-space-2);
+	min-width: 0;
+	margin: 0;
+	padding: 2px;
+	list-style: none;
+}
+
+.iftp-fm-entries .iftp-fm-active-filters__list li {
+	min-width: 0;
+	margin: 0;
+}
+
+/* The tint-strong border is decorative; the text and the × identify the chip. */
+.iftp-fm-entries .iftp-fm-filter-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--iftp-fm-space-1);
+	max-width: 100%;
+	height: 28px;
+	padding: 0 var(--iftp-fm-space-2) 0 10px;
+	box-sizing: border-box;
+	border: 1px solid var(--iftp-fm-brand-tint-strong);
+	border-radius: var(--iftp-fm-radius-pill);
+	background: var(--iftp-fm-brand-tint);
+	color: var(--iftp-fm-text);
+	font-size: var(--iftp-fm-fs-sm);
+	font-weight: var(--iftp-fm-fw-medium);
+	line-height: 1;
+	white-space: nowrap;
+	text-decoration: none;
+	transition:
+		background-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		border-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+/* The key isn't muted: #646970 on the hover tint is only 4.36. */
+.iftp-fm-entries .iftp-fm-filter-chip:hover {
+	background: var(--iftp-fm-brand-tint-strong);
+	border-color: var(--iftp-fm-brand);
+	color: var(--iftp-fm-text);
+}
+
+.iftp-fm-entries .iftp-fm-filter-chip:active {
+	background: var(--iftp-fm-brand-tint-strong);
+}
+
+.iftp-fm-entries .iftp-fm-filter-chip:focus {
+	box-shadow: none;
+}
+
+.iftp-fm-entries .iftp-fm-filter-chip:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+}
+
+/* 1.25 line-height, so the clip box doesn't cut descenders. */
+.iftp-fm-entries .iftp-fm-filter-chip__value {
+	display: block;
+	min-width: 0;
+	max-width: 220px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-weight: var(--iftp-fm-fw-semibold);
+	line-height: var(--iftp-fm-lh-tight);
+	color: var(--iftp-fm-text-strong);
+}
+
+.iftp-fm-entries .iftp-fm-filter-chip__remove {
+	flex: none;
+	margin-left: 2px;
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-active-filters__clear {
+	font-size: var(--iftp-fm-fs-sm);
+}
+
+/* Bulk-actions bar. On desktop it sits where the tabs were while rows are selected. */
+
+.iftp-fm-entries .iftp-fm-bulk-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--iftp-fm-space-2);
+	flex: none;
+	padding: var(--iftp-fm-space-1);
+	background: var(--iftp-fm-surface-selected);
+	border-radius: var(--iftp-fm-radius-lg);
+	animation: iftp-fm-fade-in var(--iftp-fm-dur-base) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-bulk-actions__count {
+	padding-right: var(--iftp-fm-space-1);
+	font-weight: var(--iftp-fm-fw-semibold);
+	color: var(--iftp-fm-text-strong);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.iftp-fm-entries .iftp-fm-bulk-actions__clear {
+	appearance: none;
+	display: inline-grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: var(--iftp-fm-radius-md);
+	background: none;
+	color: var(--iftp-fm-text);
+	cursor: pointer;
+	transition:
+		background-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		color var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-bulk-actions__clear:hover {
+	background: var(--iftp-fm-brand-tint-strong);
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-bulk-actions__clear:active {
+	background: var(--iftp-fm-brand-tint-strong);
+	color: var(--iftp-fm-brand-active);
+}
+
+.iftp-fm-entries .iftp-fm-bulk-actions__clear:focus {
+	box-shadow: none;
+	outline: none;
+}
+
+/* Offset 0: the bar's 4px padding holds the ring. */
+.iftp-fm-entries .iftp-fm-bulk-actions__clear:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: 0;
+}
+
+.iftp-fm-entries .iftp-fm-bulk-actions select {
+	min-width: 180px;
+	height: var(--iftp-fm-control-h-sm);
+	line-height: calc(var(--iftp-fm-control-h-sm) - 2px);
+}
+
+.iftp-fm-entries .iftp-fm-bulk-actions .iftp-fm-btn {
+	height: var(--iftp-fm-control-h-sm);
+}
+
+/* Table */
+
+/* Focusable scroll region, so the ring is inset to stay inside the card. */
+.iftp-fm-entries .iftp-fm-entries-table-wrap {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: thin;
+	scrollbar-color: var(--iftp-fm-border) transparent;
+}
+
+.iftp-fm-entries .iftp-fm-entries-table-wrap::-webkit-scrollbar {
+	height: 6px;
+}
+
+.iftp-fm-entries .iftp-fm-entries-table-wrap::-webkit-scrollbar-thumb {
+	background: var(--iftp-fm-border);
+	border-radius: 3px;
+}
+
+.iftp-fm-entries .iftp-fm-entries-table-wrap:focus-visible {
+	outline: 2px solid var(--iftp-fm-focus);
+	outline-offset: -2px;
+}
+
+.iftp-fm-entries .iftp-fm-entries-table {
+	width: 100%;
+	min-width: 900px;
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+.iftp-fm-entries .iftp-fm-entries-table thead th {
+	height: 40px;
+	padding: 0 var(--iftp-fm-space-4);
+	background: var(--iftp-fm-surface-sunken);
+	border-bottom: 1px solid var(--iftp-fm-border);
+	text-align: start;
+	vertical-align: middle;
+	white-space: nowrap;
+	font-size: var(--iftp-fm-fs-xs);
+	font-weight: var(--iftp-fm-fw-semibold);
+	letter-spacing: var(--iftp-fm-tracking-caps);
+	text-transform: uppercase;
+	color: var(--iftp-fm-text-muted);
+}
+
+.iftp-fm-entries .iftp-fm-entries-table th.iftp-fm-col-check {
+	width: 44px;
+}
+
+.iftp-fm-entries .iftp-fm-entries-table th[data-col="method"] {
+	width: 140px;
+}
+
+.iftp-fm-entries .iftp-fm-entries-table th.iftp-fm-col-amount {
+	width: 120px;
+}
+
+.iftp-fm-entries .iftp-fm-entries-table th[data-col="status"] {
+	width: 120px;
+}
+
+.iftp-fm-entries .iftp-fm-entries-table th[data-col="entry"] {
+	width: 80px;
+}
+
+.iftp-fm-entries .iftp-fm-entries-table th[data-col="created"] {
+	width: 170px;
+}
+
+.iftp-fm-entries .iftp-fm-entry-row > td {
+	padding: 14px var(--iftp-fm-space-4);
+	vertical-align: middle;
+	border-bottom: 1px solid var(--iftp-fm-border-subtle);
+	color: var(--iftp-fm-text);
+	font-size: var(--iftp-fm-fs-base);
+}
+
+.iftp-fm-entries .iftp-fm-entries-table .iftp-fm-col-check {
+	padding-right: 0;
+	text-align: center;
+}
+
+.iftp-fm-entries .iftp-fm-entry-row > td[data-col="ref"] strong {
+	color: var(--iftp-fm-text-strong);
+	font-weight: var(--iftp-fm-fw-semibold);
+	font-variant-numeric: tabular-nums;
+}
+
+.iftp-fm-entries .iftp-fm-entries-table .iftp-fm-col-amount {
+	text-align: end;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.iftp-fm-entries .iftp-fm-entry-row > td.iftp-fm-col-amount {
+	font-weight: var(--iftp-fm-fw-semibold);
+	color: var(--iftp-fm-text-strong);
+}
+
+.iftp-fm-entries .iftp-fm-entry-row > td[data-col="created"] {
+	white-space: nowrap;
+	color: var(--iftp-fm-text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.iftp-fm-entries .iftp-fm-entry-row > td[data-col="customer"],
+.iftp-fm-entries .iftp-fm-entry-row > td[data-col="method"],
+.iftp-fm-entries .iftp-fm-entry-row > td[data-col="entry"] {
+	color: var(--iftp-fm-text-muted);
+}
+
+/* The max-width also caps the auto-layout column. */
+.iftp-fm-entries .iftp-fm-customer {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	max-width: 240px;
+}
+
+.iftp-fm-entries .iftp-fm-customer__name,
+.iftp-fm-entries .iftp-fm-customer__email {
+	display: block;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.iftp-fm-entries .iftp-fm-customer__name {
+	color: var(--iftp-fm-text-strong);
+	font-weight: var(--iftp-fm-fw-medium);
+}
+
+.iftp-fm-entries .iftp-fm-customer__email {
+	font-size: var(--iftp-fm-fs-sm);
+	color: var(--iftp-fm-brand);
+	text-decoration: none;
+}
+
+.iftp-fm-entries .iftp-fm-customer__email:hover {
+	color: var(--iftp-fm-brand-hover);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.iftp-fm-entries .iftp-fm-customer__email:focus {
+	box-shadow: none;
+}
+
+.iftp-fm-entries .iftp-fm-customer__email:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+	border-radius: 2px;
+}
+
+.iftp-fm-entries td[data-col="entry"] a {
+	color: var(--iftp-fm-brand);
+	font-weight: var(--iftp-fm-fw-semibold);
+	text-decoration: none;
+	font-variant-numeric: tabular-nums;
+}
+
+.iftp-fm-entries td[data-col="entry"] a:hover {
+	color: var(--iftp-fm-brand-hover);
+	text-decoration: underline;
+}
+
+.iftp-fm-entries td[data-col="entry"] a:focus {
+	box-shadow: none;
+}
+
+.iftp-fm-entries td[data-col="entry"] a:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+}
+
+/* Row states. :has() is progressive — without it rows just lose the tint. */
+.iftp-fm-entries .iftp-fm-entry-row {
+	transition: background-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-entry-row:hover {
+	background: var(--iftp-fm-surface-hover);
+}
+
+.iftp-fm-entries .iftp-fm-entry-row:has(+ .iftp-fm-entry-details:not([hidden])) {
+	background: var(--iftp-fm-surface-sunken);
+}
+
+/* Declared after expanded, so selected wins for selected + expanded. */
+.iftp-fm-entries .iftp-fm-entry-row:has(.iftp-fm-row-check:checked) {
+	background: var(--iftp-fm-surface-selected);
+}
+
+/* Checkbox. Out-ranks core's 25px mobile size too; the cell gives the tap area. */
+
+.iftp-fm-entries input[type="checkbox"] {
+	appearance: none;
+	display: inline-grid;
+	place-content: center;
+	width: 18px;
+	height: 18px;
+	margin: 0;
+	border: 1.5px solid var(--iftp-fm-border-control);
+	border-radius: var(--iftp-fm-radius-sm);
+	background: var(--iftp-fm-surface);
+	box-shadow: none;
+	cursor: pointer;
+	transition:
+		background-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		border-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries input[type="checkbox"]::before {
+	content: none;
+}
+
+.iftp-fm-entries input[type="checkbox"]:hover {
+	border-color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries input[type="checkbox"]:checked {
+	background: var(--iftp-fm-brand);
+	border-color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries input[type="checkbox"]:checked::before {
+	content: "";
+	width: 12px;
+	height: 12px;
+	margin: 0;
+	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='m2.5 6.25 2.25 2.25 4.75-5' fill='none' stroke='%23fff' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px 12px no-repeat;
+}
+
+.iftp-fm-entries input[type="checkbox"]:focus {
+	box-shadow: none;
+	outline: none;
+}
+
+.iftp-fm-entries input[type="checkbox"]:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+}
+
+/* Sort links */
+
+.iftp-fm-entries .iftp-fm-sortable {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: inherit;
+	text-decoration: none;
+	border-radius: 2px;
+}
+
+.iftp-fm-entries .iftp-fm-col-amount .iftp-fm-sortable {
+	justify-content: flex-end;
+}
+
+.iftp-fm-entries .iftp-fm-sortable:hover {
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-sortable:focus {
+	box-shadow: none;
+}
+
+.iftp-fm-entries .iftp-fm-sortable:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+}
+
+.iftp-fm-entries .iftp-fm-sortable--asc,
+.iftp-fm-entries .iftp-fm-sortable--desc {
+	color: var(--iftp-fm-text-strong);
+}
+
+.iftp-fm-entries .iftp-fm-sort-icon {
+	display: inline-block;
+	width: 8px;
+	height: 12px;
+	flex: none;
+	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 12'%3E%3Cpath d='M1 4.5 4 1.5l3 3M1 7.5l3 3 3-3' fill='none' stroke='%238c8f94' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 8px 12px no-repeat;
+}
+
+.iftp-fm-entries .iftp-fm-sortable--asc .iftp-fm-sort-icon {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 12'%3E%3Cpath d='M1 4.5 4 1.5l3 3' fill='none' stroke='%2300609c' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M1 7.5l3 3 3-3' fill='none' stroke='%23c3c4c7' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.iftp-fm-entries .iftp-fm-sortable--desc .iftp-fm-sort-icon {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 12'%3E%3Cpath d='M1 4.5 4 1.5l3 3' fill='none' stroke='%23c3c4c7' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M1 7.5l3 3 3-3' fill='none' stroke='%2300609c' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* Row actions — always visible, touch and keyboard users need them. */
+
+.iftp-fm-entries .iftp-fm-row-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: var(--iftp-fm-space-1);
+	font-size: var(--iftp-fm-fs-sm);
+}
+
+.iftp-fm-entries .iftp-fm-row-action {
+	font-size: var(--iftp-fm-fs-sm);
+	font-weight: var(--iftp-fm-fw-medium);
+}
+
+.iftp-fm-entries .iftp-fm-details-toggle::after {
+	content: "";
+	width: 5px;
+	height: 5px;
+	margin: -3px 0 0 5px;
+	border-right: 1.5px solid currentcolor;
+	border-bottom: 1.5px solid currentcolor;
+	transform: rotate(45deg);
+	transition: transform var(--iftp-fm-dur-base) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-entry-row:has(+ .iftp-fm-entry-details:not([hidden])) .iftp-fm-details-toggle::after {
+	transform: rotate(-135deg);
+	margin-top: 3px;
+}
+
+.iftp-fm-entries .iftp-fm-row-action--delete {
+	color: var(--iftp-fm-text-muted);
+}
+
+.iftp-fm-entries .iftp-fm-row-action--delete:focus-visible {
+	color: var(--iftp-fm-danger);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	outline-color: var(--iftp-fm-danger);
+}
+
+.iftp-fm-entries .iftp-fm-row-action--delete:hover:not(:disabled) {
+	color: var(--iftp-fm-danger);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.iftp-fm-entries .iftp-fm-row-actions-sep {
+	color: var(--iftp-fm-border);
+}
+
+/* JS adds --copied for 2s after a successful copy; the toast is the announcement. */
+.iftp-fm-entries .iftp-fm-btn.iftp-fm-row-action--copied,
+.iftp-fm-entries .iftp-fm-btn.iftp-fm-row-action--copied:hover:not(:disabled) {
+	color: var(--iftp-fm-paid-fg);
+	text-decoration: none;
+}
+
+.iftp-fm-entries .iftp-fm-row-action--copied::before {
+	content: "";
+	width: 12px;
+	height: 12px;
+	flex: none;
+	background: currentcolor;
+	mask: var(--iftp-fm-icon-check) center / contain no-repeat;
+}
+
+/* Details panel. Child combinators keep the nested fields table out. */
+
+.iftp-fm-entries .iftp-fm-entry-details > td {
+	padding: 0;
+	background: var(--iftp-fm-surface-sunken);
+	border-bottom: 1px solid var(--iftp-fm-border-subtle);
+	box-shadow: inset 3px 0 0 var(--iftp-fm-brand);
+}
+
+/* 60px lines up with the Reference column (44px check column + 16px). */
+.iftp-fm-entries .iftp-fm-details-panel {
+	padding: var(--iftp-fm-space-5) var(--iftp-fm-space-6) var(--iftp-fm-space-6) 60px;
+}
+
+.iftp-fm-entries .iftp-fm-entry-details:not([hidden]) .iftp-fm-details-panel {
+	animation: iftp-fm-fade-in var(--iftp-fm-dur-base) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-details-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: var(--iftp-fm-space-4) var(--iftp-fm-space-7);
+}
+
+.iftp-fm-entries .iftp-fm-detail-item {
+	display: flex;
+	flex-direction: column;
+	gap: var(--iftp-fm-space-1);
+	min-width: 0;
+}
+
+.iftp-fm-entries .iftp-fm-detail-item--wide {
+	grid-column: span 2;
+}
+
+.iftp-fm-entries .iftp-fm-detail-item > span:not(.iftp-fm-detail-label),
+.iftp-fm-entries .iftp-fm-detail-item > a[href] {
+	font-size: var(--iftp-fm-fs-base);
+	color: var(--iftp-fm-text-strong);
+	overflow-wrap: anywhere;
+}
+
+.iftp-fm-entries .iftp-fm-detail-item > a[href] {
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-detail-item > a[href]:hover {
+	text-decoration: underline;
+}
+
+.iftp-fm-entries .iftp-fm-detail-item > a[href]:focus {
+	box-shadow: none;
+}
+
+.iftp-fm-entries .iftp-fm-detail-item > a[href]:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+}
+
+.iftp-fm-entries .iftp-fm-detail-item code {
+	width: fit-content;
+	padding: 2px 6px;
+	background: var(--iftp-fm-surface);
+	border: 1px solid var(--iftp-fm-border-subtle);
+	border-radius: var(--iftp-fm-radius-sm);
+	font-family: var(--iftp-fm-font-mono);
+	font-size: var(--iftp-fm-fs-sm);
+	color: var(--iftp-fm-text-strong);
+}
+
+.iftp-fm-entries .iftp-fm-detail-label {
+	font-size: var(--iftp-fm-fs-xs);
+	font-weight: var(--iftp-fm-fw-semibold);
+	letter-spacing: var(--iftp-fm-tracking-caps);
+	text-transform: uppercase;
+	color: var(--iftp-fm-text-muted);
+}
+
+.iftp-fm-entries .iftp-fm-details-fields {
+	margin-top: var(--iftp-fm-space-5);
+	max-width: 720px;
+	background: var(--iftp-fm-surface);
+	border: 1px solid var(--iftp-fm-border);
+	border-radius: var(--iftp-fm-radius-lg);
+	overflow: hidden;
+}
+
+.iftp-fm-entries .iftp-fm-details-fields > .iftp-fm-detail-label {
+	display: block;
+	padding: 10px var(--iftp-fm-space-4);
+	border-bottom: 1px solid var(--iftp-fm-border-subtle);
+}
+
+.iftp-fm-entries .iftp-fm-details-fields-table {
+	width: 100%;
+	margin: 0;
+	border-collapse: collapse;
+}
+
+.iftp-fm-entries .iftp-fm-details-fields-table tr {
+	border-bottom: 1px solid var(--iftp-fm-border-subtle);
+}
+
+.iftp-fm-entries .iftp-fm-details-fields-table tr:last-child {
+	border-bottom: 0;
+}
+
+.iftp-fm-entries .iftp-fm-details-fields-table tbody th,
+.iftp-fm-entries .iftp-fm-details-fields-table tbody td {
+	padding: 10px var(--iftp-fm-space-4);
+	text-align: start;
+	vertical-align: top;
+	font-size: var(--iftp-fm-fs-base);
+	font-weight: var(--iftp-fm-fw-regular);
+	background: none;
+	border: 0;
+	box-shadow: none;
+}
+
+.iftp-fm-entries .iftp-fm-details-fields-table tbody th {
+	width: 180px;
+	min-width: 140px;
+	color: var(--iftp-fm-text-muted);
+	font-weight: var(--iftp-fm-fw-medium);
+}
+
+.iftp-fm-entries .iftp-fm-details-fields-table tbody td {
+	color: var(--iftp-fm-text-strong);
+	overflow-wrap: anywhere;
+}
+
+/* The last entry row is usually followed by its hidden details row, so
+   :last-child alone would miss it and double the footer border. */
+.iftp-fm-entries .iftp-fm-entry-row:nth-last-child(2) > td {
+	border-bottom: 0;
+}
+
+.iftp-fm-entries .iftp-fm-entries-table > tbody > tr:last-child > td {
+	border-bottom: 0;
+}
+
+/* Expanded/selected row cells. Kept below the other cell rules so the
+   high-specificity :has() selectors never have to be out-ranked. */
+.iftp-fm-entries .iftp-fm-entry-row:has(+ .iftp-fm-entry-details:not([hidden])) > td {
+	border-bottom-color: transparent;
+}
+
+.iftp-fm-entries .iftp-fm-entry-row:has(+ .iftp-fm-entry-details:not([hidden])) > td:first-child,
+.iftp-fm-entries .iftp-fm-entry-row:has(.iftp-fm-row-check:checked) > td:first-child {
+	box-shadow: inset 3px 0 0 var(--iftp-fm-brand);
+}
+
+/* Status badges — the label always carries the meaning, the dot is decoration. */
+
+.iftp-fm-entries .iftp-fm-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 22px;
+	padding: 0 10px 0 8px;
+	box-sizing: border-box;
+	border-radius: var(--iftp-fm-radius-pill);
+	font-size: var(--iftp-fm-fs-sm);
+	font-weight: var(--iftp-fm-fw-semibold);
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.iftp-fm-entries .iftp-fm-badge::before {
+	content: "";
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: currentcolor;
+	flex: none;
+}
+
+.iftp-fm-entries .iftp-fm-badge--pending {
+	color: var(--iftp-fm-pending-fg);
+	background: var(--iftp-fm-pending-bg);
+}
+
+.iftp-fm-entries .iftp-fm-badge--pending::before {
+	background: var(--iftp-fm-pending-dot);
+}
+
+.iftp-fm-entries .iftp-fm-badge--paid {
+	color: var(--iftp-fm-paid-fg);
+	background: var(--iftp-fm-paid-bg);
+}
+
+.iftp-fm-entries .iftp-fm-badge--paid::before {
+	background: var(--iftp-fm-paid-dot);
+}
+
+.iftp-fm-entries .iftp-fm-badge--failed,
+.iftp-fm-entries .iftp-fm-badge--cancelled {
+	color: var(--iftp-fm-failed-fg);
+	background: var(--iftp-fm-failed-bg);
+}
+
+.iftp-fm-entries .iftp-fm-badge--failed::before,
+.iftp-fm-entries .iftp-fm-badge--cancelled::before {
+	background: var(--iftp-fm-failed-dot);
+}
+
+.iftp-fm-entries .iftp-fm-badge--expired {
+	color: var(--iftp-fm-expired-fg);
+	background: var(--iftp-fm-expired-bg);
+}
+
+.iftp-fm-entries .iftp-fm-badge--expired::before {
+	background: var(--iftp-fm-expired-dot);
+}
+
+/* Method pill */
+
+.iftp-fm-entries .iftp-fm-method-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 26px;
+	padding: 0 10px 0 6px;
+	box-sizing: border-box;
+	border: 1px solid var(--iftp-fm-border);
+	border-radius: var(--iftp-fm-radius-md);
+	background: var(--iftp-fm-surface);
+	color: var(--iftp-fm-text);
+	font-size: var(--iftp-fm-fs-sm);
+	font-weight: var(--iftp-fm-fw-semibold);
+	white-space: nowrap;
+}
+
+/* Fixed slot, so every label starts at the same x. */
+.iftp-fm-entries .iftp-fm-method-pill__logo {
+	display: block;
+	width: 28px;
+	height: 16px;
+	object-fit: contain;
+	flex: none;
+}
+
+.iftp-fm-entries .iftp-fm-method-pill[data-entity="CCARD"] .iftp-fm-method-pill__logo {
+	width: 40px;
+}
+
+.iftp-fm-entries .iftp-fm-method-pill__icon {
+	width: 16px;
+	height: 16px;
+	color: var(--iftp-fm-brand);
+	flex: none;
+}
+
+.iftp-fm-entries .iftp-fm-method-pill--plain {
+	padding-left: 10px;
+}
+
+/* Empty state */
+
+.iftp-fm-entries .iftp-fm-entries-empty {
+	padding: var(--iftp-fm-space-14) var(--iftp-fm-space-6);
+	text-align: center;
+	border-bottom: 0;
+}
+
+.iftp-fm-entries tr:has(> .iftp-fm-entries-empty):hover {
+	background: none;
+}
+
+.iftp-fm-entries .iftp-fm-empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--iftp-fm-space-3);
+}
+
+.iftp-fm-entries .iftp-fm-empty-state__icon {
+	display: grid;
+	place-items: center;
+	width: 56px;
+	height: 56px;
+	border-radius: 50%;
+	background: var(--iftp-fm-band);
+	box-shadow: var(--iftp-fm-shadow-1);
+}
+
+.iftp-fm-entries .iftp-fm-empty-state__icon img {
+	display: block;
+	width: 28px;
+	height: 28px;
+}
+
+.iftp-fm-entries .iftp-fm-empty-state__text {
+	margin: 0;
+	max-width: 40ch;
+	font-size: var(--iftp-fm-fs-md);
+	font-weight: var(--iftp-fm-fw-semibold);
+	color: var(--iftp-fm-text);
+}
+
+/* Footer + pagination */
+
+/* The card no longer clips, so the sunken footer rounds its own corners. */
+.iftp-fm-entries .iftp-fm-entries-card-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--iftp-fm-space-3);
+	min-height: 56px;
+	box-sizing: border-box;
+	padding: var(--iftp-fm-space-3) var(--iftp-fm-space-5);
+	background: var(--iftp-fm-surface-sunken);
+	border-top: 1px solid var(--iftp-fm-border);
+	border-radius: 0 0 calc(var(--iftp-fm-radius-xl) - 1px) calc(var(--iftp-fm-radius-xl) - 1px);
+}
+
+.iftp-fm-entries .iftp-fm-footer-status {
+	display: flex;
+	align-items: center;
+	min-height: var(--iftp-fm-control-h-sm);
+}
+
+.iftp-fm-entries .iftp-fm-entries-count {
+	font-size: var(--iftp-fm-fs-base);
+	color: var(--iftp-fm-text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.iftp-fm-entries .iftp-fm-entries-selection {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--iftp-fm-space-3);
+	height: 28px;
+	padding: 0 var(--iftp-fm-space-3);
+	border-radius: var(--iftp-fm-radius-pill);
+	background: var(--iftp-fm-surface-selected);
+	color: var(--iftp-fm-text-strong);
+	font-size: var(--iftp-fm-fs-base);
+	font-weight: var(--iftp-fm-fw-semibold);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Per page + pagination share the footer's right side. */
+.iftp-fm-entries .iftp-fm-entries-card-footer__nav {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--iftp-fm-space-3) var(--iftp-fm-space-5);
+	margin-left: auto;
+}
+
+.iftp-fm-entries .iftp-fm-per-page {
+	display: flex;
+	align-items: center;
+	gap: var(--iftp-fm-space-2);
+	margin: 0;
+}
+
+.iftp-fm-entries .iftp-fm-per-page__label {
+	font-size: var(--iftp-fm-fs-base);
+	color: var(--iftp-fm-text-muted); /* 5.20 on the sunken footer */
+	white-space: nowrap;
+}
+
+/* (0,3,0) beats the shared select rule; font-size is left to it (16px ≤782). */
+.iftp-fm-entries .iftp-fm-per-page .iftp-fm-per-page__select {
+	width: auto;
+	min-width: 72px;
+	height: var(--iftp-fm-control-h-sm);
+	line-height: calc(var(--iftp-fm-control-h-sm) - 2px);
+}
+
+/* Shown without JS, and by entries.js in custom mode; same height as the select. */
+.iftp-fm-entries .iftp-fm-per-page__submit {
+	height: var(--iftp-fm-control-h-sm);
+	padding: 0 var(--iftp-fm-space-3);
+}
+
+/* "Custom…" value box; its own [hidden] rule (near the end) hides it until that option is picked. */
+.iftp-fm-entries .iftp-fm-per-page__custom {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+/* (0,3,1): sizes only, so the shared hover/focus look still applies. Same height as the select. */
+.iftp-fm-entries .iftp-fm-per-page__custom input[type="number"] {
+	width: 64px;
+	height: var(--iftp-fm-control-h-sm);
+	line-height: calc(var(--iftp-fm-control-h-sm) - 2px);
+	font-variant-numeric: tabular-nums;
+	appearance: textfield;
+}
+
+.iftp-fm-entries .iftp-fm-per-page__custom input[type="number"]::-webkit-inner-spin-button,
+.iftp-fm-entries .iftp-fm-per-page__custom input[type="number"]::-webkit-outer-spin-button {
+	appearance: none;
+	margin: 0;
+}
+
+/* Flags only after interaction and holds on hover; the brand focus ring wins while editing. */
+.iftp-fm-entries .iftp-fm-per-page__custom :user-invalid,
+.iftp-fm-entries .iftp-fm-per-page__custom :user-invalid:hover {
+	border-color: var(--iftp-fm-danger);
+	box-shadow: 0 0 0 1px var(--iftp-fm-danger);
+}
+
+.iftp-fm-entries .iftp-fm-per-page__hint {
+	font-size: var(--iftp-fm-fs-xs);
+	color: var(--iftp-fm-text-muted); /* 5.20 on the sunken footer */
+	white-space: nowrap;
+}
+
+.iftp-fm-entries .iftp-fm-pagination {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--iftp-fm-space-1);
+}
+
+.iftp-fm-entries .iftp-fm-page-number,
+.iftp-fm-entries .iftp-fm-page-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: var(--iftp-fm-control-h-sm);
+	height: var(--iftp-fm-control-h-sm);
+	padding: 0 var(--iftp-fm-space-2);
+	box-sizing: border-box;
+	border: 1px solid transparent;
+	border-radius: var(--iftp-fm-radius-lg);
+	color: var(--iftp-fm-text);
+	font-size: var(--iftp-fm-fs-base);
+	font-weight: var(--iftp-fm-fw-medium);
+	font-variant-numeric: tabular-nums;
+	text-decoration: none;
+	transition:
+		background-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		border-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		color var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-page-btn {
+	background: var(--iftp-fm-surface);
+	border-color: var(--iftp-fm-border);
+}
+
+.iftp-fm-entries .iftp-fm-page-btn svg {
+	width: 16px;
+	height: 16px;
+}
+
+.iftp-fm-entries a.iftp-fm-page-number:hover,
+.iftp-fm-entries a.iftp-fm-page-btn:hover {
+	background: var(--iftp-fm-surface-hover);
+	color: var(--iftp-fm-brand);
+	border-color: var(--iftp-fm-border);
+}
+
+.iftp-fm-entries a.iftp-fm-page-number:active,
+.iftp-fm-entries a.iftp-fm-page-btn:active {
+	background: var(--iftp-fm-brand-tint-strong);
+}
+
+.iftp-fm-entries a.iftp-fm-page-number:focus,
+.iftp-fm-entries a.iftp-fm-page-btn:focus {
+	box-shadow: none;
+}
+
+.iftp-fm-entries a.iftp-fm-page-number:focus-visible,
+.iftp-fm-entries a.iftp-fm-page-btn:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+}
+
+.iftp-fm-entries .iftp-fm-page-number--current {
+	background: var(--iftp-fm-brand);
+	color: #fff;
+	font-weight: var(--iftp-fm-fw-semibold);
+	cursor: default;
+}
+
+/* Page jump: each … is a one-field GET form, so Enter navigates with no JS. */
+.iftp-fm-entries .iftp-fm-page-jump {
+	display: inline-flex;
+	margin: 0;
+}
+
+/* (0,3,0), so it beats the shared number-input rule (0,2,1) but not its :hover/:focus (0,3,1).
+   The control border (not the pills' #dcdcde) is what says this one takes typing. */
+.iftp-fm-entries .iftp-fm-page-jump .iftp-fm-page-jump__input {
+	width: 48px;
+	height: var(--iftp-fm-control-h-sm);
+	padding: 0 var(--iftp-fm-space-1);
+	border-radius: var(--iftp-fm-radius-lg); /* same as the page pills */
+	font-size: var(--iftp-fm-fs-base);
+	font-weight: var(--iftp-fm-fw-medium);
+	line-height: calc(var(--iftp-fm-control-h-sm) - 2px);
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+	appearance: textfield;
+}
+
+.iftp-fm-entries .iftp-fm-page-jump__input::-webkit-inner-spin-button,
+.iftp-fm-entries .iftp-fm-page-jump__input::-webkit-outer-spin-button {
+	appearance: none;
+	margin: 0;
+}
+
+.iftp-fm-entries .iftp-fm-page-jump .iftp-fm-page-jump__input::placeholder {
+	color: var(--iftp-fm-text-muted);
+	opacity: 1;
+}
+
+/* Progressive: flags the pill after a rejected Enter; the native bubble says why. */
+.iftp-fm-entries .iftp-fm-page-jump .iftp-fm-page-jump__input:user-invalid {
+	border-color: var(--iftp-fm-danger);
+	box-shadow: 0 0 0 1px var(--iftp-fm-danger);
+}
+
+/* Modals */
+
+.iftp-fm-entries .iftp-fm-modal {
+	position: fixed;
+	inset: 0;
+	z-index: var(--iftp-fm-z-modal);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--iftp-fm-space-6);
+}
+
+.iftp-fm-entries .iftp-fm-modal-overlay {
+	position: absolute;
+	inset: 0;
+	background: var(--iftp-fm-overlay);
+	animation: iftp-fm-fade-in var(--iftp-fm-dur-base) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-modal-box {
+	position: relative;
+	width: 100%;
+	max-width: 440px;
+	max-height: calc(100vh - 48px);
+	overflow: auto;
+	box-sizing: border-box;
+	padding: var(--iftp-fm-space-7) var(--iftp-fm-space-7) var(--iftp-fm-space-6);
+	background: var(--iftp-fm-surface);
+	border-radius: var(--iftp-fm-radius-xl);
+	box-shadow: var(--iftp-fm-shadow-3);
+	animation: iftp-fm-modal-in var(--iftp-fm-dur-slow) var(--iftp-fm-ease-out);
+}
+
+.iftp-fm-entries .iftp-fm-modal-box--form {
+	max-width: 520px;
+}
+
+.iftp-fm-entries .iftp-fm-modal-box::before {
+	content: "";
+	position: absolute;
+	inset: 0 0 auto;
+	height: 4px;
+	background: var(--iftp-fm-ramp);
+}
+
+/* JS only toggles the class on the button; the strip follows via :has(). */
+.iftp-fm-entries .iftp-fm-modal-box:has(.iftp-fm-modal-confirm--danger)::before {
+	background: var(--iftp-fm-danger);
+}
+
+.iftp-fm-entries .iftp-fm-modal-box h2 {
+	margin: 0 0 var(--iftp-fm-space-2);
+	font-size: var(--iftp-fm-fs-lg);
+	line-height: var(--iftp-fm-lh-tight);
+	font-weight: var(--iftp-fm-fw-semibold);
+	color: var(--iftp-fm-text-strong);
+}
+
+.iftp-fm-entries .iftp-fm-modal-box > p {
+	margin: 0;
+	font-size: var(--iftp-fm-fs-base);
+	line-height: var(--iftp-fm-lh-base);
+	color: var(--iftp-fm-text);
+}
+
+.iftp-fm-entries .iftp-fm-modal-box form {
+	margin-top: var(--iftp-fm-space-5);
+}
+
+.iftp-fm-entries .iftp-fm-modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--iftp-fm-space-2);
+	margin-top: var(--iftp-fm-space-6);
+}
+
+.iftp-fm-entries .iftp-fm-form-row {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--iftp-fm-space-4);
+	margin-bottom: var(--iftp-fm-space-4);
+}
+
+.iftp-fm-entries .iftp-fm-form-field {
+	min-width: 0;
+}
+
+.iftp-fm-entries .iftp-fm-form-field label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: var(--iftp-fm-fs-sm);
+	font-weight: var(--iftp-fm-fw-semibold);
+	color: var(--iftp-fm-text);
+}
+
+.iftp-fm-entries .iftp-fm-form-field input,
+.iftp-fm-entries .iftp-fm-form-field select {
+	width: 100%;
+}
+
+.iftp-fm-entries .iftp-fm-form-required {
+	color: var(--iftp-fm-danger);
+	margin-left: 2px;
+}
+
+.iftp-fm-entries .iftp-fm-form-affix {
+	position: relative;
+}
+
+.iftp-fm-entries .iftp-fm-form-affix input {
+	padding-right: 32px;
+}
+
+.iftp-fm-entries .iftp-fm-form-affix__suffix {
+	position: absolute;
+	right: 12px;
+	top: 50%;
+	transform: translateY(-50%);
+	color: var(--iftp-fm-text-muted);
+	pointer-events: none;
+}
+
+/* Spinners would sit under the € suffix. */
+.iftp-fm-entries .iftp-fm-form-affix input[type="number"] {
+	appearance: textfield;
+}
+
+.iftp-fm-entries .iftp-fm-form-affix input[type="number"]::-webkit-inner-spin-button,
+.iftp-fm-entries .iftp-fm-form-affix input[type="number"]::-webkit-outer-spin-button {
+	appearance: none;
+	margin: 0;
+}
+
+.iftp-fm-entries .iftp-fm-form-error {
+	display: flex;
+	gap: var(--iftp-fm-space-2);
+	align-items: flex-start;
+	margin: 0 0 var(--iftp-fm-space-4);
+	padding: 10px var(--iftp-fm-space-3);
+	background: var(--iftp-fm-danger-bg);
+	border: 1px solid var(--iftp-fm-danger-border);
+	border-radius: var(--iftp-fm-radius-md);
+	color: var(--iftp-fm-failed-fg);
+	font-size: var(--iftp-fm-fs-base);
+}
+
+/* Toast (icon shape differs as well as colour, so it isn't colour-only) */
+
+.iftp-fm-entries .iftp-fm-toast {
+	--iftp-fm-toast-icon: var(--iftp-fm-icon-check);
+
+	position: fixed;
+	right: var(--iftp-fm-space-6);
+	bottom: 76px;
+	z-index: var(--iftp-fm-z-toast);
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	max-width: min(420px, calc(100vw - 48px));
+	box-sizing: border-box;
+	padding: var(--iftp-fm-space-3) var(--iftp-fm-space-4);
+	background: var(--iftp-fm-toast-bg);
+	color: #fff;
+	border-radius: var(--iftp-fm-radius-lg);
+	box-shadow: var(--iftp-fm-shadow-2);
+	font-size: var(--iftp-fm-fs-base);
+	font-weight: var(--iftp-fm-fw-medium);
+	animation: iftp-fm-toast-in var(--iftp-fm-dur-slow) var(--iftp-fm-ease-out);
+}
+
+.iftp-fm-entries .iftp-fm-toast--error,
+.iftp-fm-entries .iftp-fm-form-error {
+	--iftp-fm-toast-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6.5' fill='none' stroke='%23000' stroke-width='1.5'/%3E%3Cpath d='M8 4.75v4' stroke='%23000' stroke-width='1.5' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='11.25' r='.9'/%3E%3C/svg%3E");
+}
+
+.iftp-fm-entries .iftp-fm-toast--error {
+	background: var(--iftp-fm-toast-error-bg);
+}
+
+.iftp-fm-entries .iftp-fm-toast::before,
+.iftp-fm-entries .iftp-fm-form-error::before {
+	content: "";
+	width: 16px;
+	height: 16px;
+	flex: none;
+	background: currentcolor;
+	mask: var(--iftp-fm-toast-icon) center / contain no-repeat;
+}
+
+.iftp-fm-entries .iftp-fm-form-error::before {
+	margin-top: 1px;
+}
+
+/* Scroll-to-top */
+
+/* visibility, not just opacity, so the hidden button isn't a Tab stop. */
+.iftp-fm-entries .iftp-fm-scroll-btn {
+	position: fixed;
+	right: var(--iftp-fm-space-6);
+	bottom: var(--iftp-fm-space-6);
+	z-index: var(--iftp-fm-z-scroll);
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border: 1px solid var(--iftp-fm-border);
+	border-radius: var(--iftp-fm-radius-pill);
+	background: var(--iftp-fm-surface);
+	color: var(--iftp-fm-brand);
+	box-shadow: var(--iftp-fm-shadow-2);
+	cursor: pointer;
+	opacity: 0;
+	visibility: hidden;
+	transform: translateY(8px);
+	transition:
+		opacity var(--iftp-fm-dur-base) var(--iftp-fm-ease),
+		visibility var(--iftp-fm-dur-base),
+		transform var(--iftp-fm-dur-base) var(--iftp-fm-ease),
+		background-color var(--iftp-fm-dur-fast),
+		color var(--iftp-fm-dur-fast);
+}
+
+.iftp-fm-entries .iftp-fm-scroll-btn.is-visible {
+	opacity: 1;
+	visibility: visible;
+	transform: none;
+}
+
+.iftp-fm-entries .iftp-fm-scroll-btn:hover {
+	background: var(--iftp-fm-brand);
+	border-color: var(--iftp-fm-brand);
+	color: #fff;
+}
+
+.iftp-fm-entries .iftp-fm-scroll-btn:active {
+	background: var(--iftp-fm-brand-active);
+	border-color: var(--iftp-fm-brand-active);
+	color: #fff;
+}
+
+.iftp-fm-entries .iftp-fm-scroll-btn:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+}
+
+.iftp-fm-entries .iftp-fm-scroll-btn svg {
+	width: 18px;
+	height: 18px;
+}
+
+/* ≤ 782px */
+
+@media (width <= 782px) {
+	.iftp-fm-entries {
+		--iftp-fm-control-h: 40px;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__masthead {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--iftp-fm-space-4);
+		padding: var(--iftp-fm-space-5);
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__masthead-brand {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--iftp-fm-space-3);
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__masthead-divider {
+		display: none;
+	}
+
+	.iftp-fm-entries .iftp-fm-summary__list {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.iftp-fm-entries .iftp-fm-summary__item {
+		padding: 14px var(--iftp-fm-space-4);
+	}
+
+	.iftp-fm-entries .iftp-fm-summary__item:nth-child(odd) {
+		border-left: 0;
+	}
+
+	.iftp-fm-entries .iftp-fm-summary__item:nth-child(n + 3) {
+		border-top: 1px solid var(--iftp-fm-border-subtle);
+	}
+
+	/* Tabs get their own row; the tools share the next one, search taking what's left. */
+	.iftp-fm-entries .iftp-fm-entries__status-nav {
+		flex: 1 1 100%;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__view-tools {
+		flex: 1 1 100%;
+		margin-left: 0;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__search {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__tool {
+		height: var(--iftp-fm-control-h);
+	}
+
+	.iftp-fm-entries .iftp-fm-columns-menu__item,
+	.iftp-fm-entries .iftp-fm-columns-menu__option {
+		min-height: 44px;
+	}
+
+	.iftp-fm-entries .iftp-fm-columns-menu__move-btn {
+		width: 36px;
+		height: 36px;
+	}
+
+
+	/* 16px stops iOS zooming on focus. */
+	.iftp-fm-entries select,
+	.iftp-fm-entries input[type="date"],
+	.iftp-fm-entries input[type="search"],
+	.iftp-fm-entries input[type="text"],
+	.iftp-fm-entries input[type="email"],
+	.iftp-fm-entries input[type="number"] {
+		font-size: 16px;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__search input[type="search"] {
+		height: var(--iftp-fm-control-h);
+		line-height: calc(var(--iftp-fm-control-h) - 2px);
+	}
+
+	.iftp-fm-entries .iftp-fm-filter-panel__fields {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--iftp-fm-space-4);
+	}
+
+	.iftp-fm-entries .iftp-fm-filter-panel__field--amount,
+	.iftp-fm-entries .iftp-fm-filter-panel__field--created {
+		grid-column: 1 / -1;
+	}
+
+	/* (0,2,1), later than the desktop widths. */
+	.iftp-fm-entries .iftp-fm-filter-panel__field select {
+		width: 100%;
+	}
+
+	.iftp-fm-entries .iftp-fm-filter-panel__range .iftp-fm-form-affix {
+		flex: 1 1 0;
+		min-width: 0;
+	}
+
+	/* (0,3,1), later than the desktop 112/148px. */
+	.iftp-fm-entries .iftp-fm-filter-panel__field--amount input[type="number"] {
+		width: 100%;
+	}
+
+	.iftp-fm-entries .iftp-fm-filter-panel__field--created input[type="date"] {
+		flex: 1 1 0;
+		width: auto;
+		min-width: 0;
+	}
+
+	/* 32px touch target. */
+	.iftp-fm-entries .iftp-fm-filter-chip {
+		height: var(--iftp-fm-control-h-sm);
+	}
+
+	/* Docked to the viewport bottom while rows are selected. */
+	.iftp-fm-entries .iftp-fm-bulk-actions {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: var(--iftp-fm-z-bulk);
+		margin: 0;
+		padding: var(--iftp-fm-space-3) var(--iftp-fm-space-4) calc(var(--iftp-fm-space-3) + env(safe-area-inset-bottom));
+		background: var(--iftp-fm-surface);
+		border-top: 1px solid var(--iftp-fm-border);
+		border-radius: 0;
+		box-shadow: var(--iftp-fm-shadow-2);
+		animation: iftp-fm-slide-up var(--iftp-fm-dur-slow) var(--iftp-fm-ease-out);
+	}
+
+	.iftp-fm-entries .iftp-fm-bulk-actions select {
+		flex: 1;
+		min-width: 0;
+		height: var(--iftp-fm-control-h);
+		line-height: calc(var(--iftp-fm-control-h) - 2px);
+	}
+
+	.iftp-fm-entries .iftp-fm-bulk-actions .iftp-fm-btn {
+		height: var(--iftp-fm-control-h);
+	}
+
+	.iftp-fm-entries .iftp-fm-bulk-actions__clear {
+		width: var(--iftp-fm-control-h);
+		height: var(--iftp-fm-control-h);
+	}
+
+	/* Lift the floating layers and the card clear of the docked bar. */
+	.iftp-fm-entries:has(.iftp-fm-bulk-actions:not([hidden])) .iftp-fm-scroll-btn {
+		bottom: 80px;
+	}
+
+	.iftp-fm-entries:has(.iftp-fm-bulk-actions:not([hidden])) .iftp-fm-toast {
+		bottom: 132px;
+	}
+
+	.iftp-fm-entries:has(.iftp-fm-bulk-actions:not([hidden])) .iftp-fm-entries-card {
+		margin-bottom: 72px;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries-table thead th {
+		padding: 0 var(--iftp-fm-space-3);
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-row > td {
+		padding: var(--iftp-fm-space-3);
+	}
+
+	.iftp-fm-entries .iftp-fm-row-action {
+		min-height: 32px;
+		padding: 0 2px;
+	}
+
+	/* The base rule out-ranks the shared 16px, so I restate it to stop iOS zoom. */
+	.iftp-fm-entries .iftp-fm-page-jump .iftp-fm-page-jump__input {
+		width: 56px;
+		font-size: 16px;
+	}
+}
+
+/* ≤ 600px */
+
+@media (width <= 600px) {
+	.iftp-fm-entries .iftp-fm-entries__title {
+		font-size: 20px;
+	}
+
+	.iftp-fm-entries .iftp-fm-new-entry-trigger {
+		align-self: stretch;
+		width: 100%;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__masthead::after {
+		display: none;
+	}
+
+	.iftp-fm-entries .iftp-fm-summary__item {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas:
+			"label"
+			"amount"
+			"count";
+		gap: var(--iftp-fm-space-1);
+		padding: var(--iftp-fm-space-3) 14px;
+	}
+
+	.iftp-fm-entries .iftp-fm-summary__count {
+		justify-self: start;
+	}
+
+	.iftp-fm-entries .iftp-fm-summary__amount {
+		font-size: 16px;
+	}
+
+	/* The popover opens full-width against this row. */
+	.iftp-fm-entries .iftp-fm-entries-toolbar-row {
+		position: relative;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__columns {
+		position: static;
+		flex: none;
+	}
+
+	/* Icon-only tools; the label stays in the accessible name. */
+	.iftp-fm-entries .iftp-fm-entries__tool {
+		width: var(--iftp-fm-control-h);
+		padding: 0;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__tool-label {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__filters-count {
+		position: absolute;
+		top: -6px;
+		right: -6px;
+		box-shadow: 0 0 0 2px var(--iftp-fm-surface);
+	}
+
+	.iftp-fm-entries .iftp-fm-columns-menu {
+		left: 0;
+		right: 0;
+		width: auto;
+		max-height: min(60vh, 420px);
+	}
+
+	.iftp-fm-entries .iftp-fm-filter-panel {
+		padding: var(--iftp-fm-space-3);
+	}
+
+	.iftp-fm-entries .iftp-fm-filter-panel__fields {
+		gap: var(--iftp-fm-space-3);
+	}
+
+	/* Stacked in DOM order (Clear, then Apply), so the focus order matches what's on screen. */
+	.iftp-fm-entries .iftp-fm-filter-panel__actions {
+		flex-direction: column;
+		align-items: stretch;
+		gap: var(--iftp-fm-space-2);
+	}
+
+	.iftp-fm-entries .iftp-fm-filter-panel__clear {
+		align-self: center;
+		min-height: var(--iftp-fm-control-h-sm);
+	}
+
+	.iftp-fm-entries .iftp-fm-filter-panel__apply {
+		width: 100%;
+	}
+
+	/* Chips wrap; a long form title ellipsises inside the card. */
+	.iftp-fm-entries .iftp-fm-filter-chip__value {
+		max-width: 100%;
+	}
+
+	/* Rows become cards; each cell carries its own visible data-label. */
+	.iftp-fm-entries .iftp-fm-entries-table,
+	.iftp-fm-entries .iftp-fm-entries-table thead,
+	.iftp-fm-entries .iftp-fm-entries-table tbody {
+		display: block;
+		min-width: 0;
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-details,
+	.iftp-fm-entries .iftp-fm-entry-details > td {
+		display: block;
+	}
+
+	.iftp-fm-entries tr:has(> .iftp-fm-entries-empty),
+	.iftp-fm-entries .iftp-fm-entries-empty {
+		display: block;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries-table thead tr {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--iftp-fm-space-2);
+		padding: 10px var(--iftp-fm-space-4);
+		background: var(--iftp-fm-surface-sunken);
+		border-bottom: 1px solid var(--iftp-fm-border);
+	}
+
+	.iftp-fm-entries .iftp-fm-entries-table thead th,
+	.iftp-fm-entries .iftp-fm-entries-table thead th[data-col],
+	.iftp-fm-entries .iftp-fm-entries-table thead th.iftp-fm-col-check {
+		display: block;
+		height: auto;
+		width: auto;
+		padding: 0;
+		border: 0;
+		background: none;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries-table thead th[data-col="form"],
+	.iftp-fm-entries .iftp-fm-entries-table thead th[data-col="method"],
+	.iftp-fm-entries .iftp-fm-entries-table thead th[data-col="entry"] {
+		display: none;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries-table thead .iftp-fm-sortable {
+		height: 28px;
+		padding: 0 10px;
+		border: 1px solid var(--iftp-fm-border);
+		border-radius: var(--iftp-fm-radius-pill);
+		background: var(--iftp-fm-surface);
+		font-size: var(--iftp-fm-fs-sm);
+		letter-spacing: 0;
+		text-transform: none;
+		font-weight: var(--iftp-fm-fw-medium);
+		color: var(--iftp-fm-text);
+	}
+
+	.iftp-fm-entries .iftp-fm-entries-table thead .iftp-fm-sortable--asc,
+	.iftp-fm-entries .iftp-fm-entries-table thead .iftp-fm-sortable--desc {
+		border-color: var(--iftp-fm-brand);
+		background: var(--iftp-fm-brand-tint);
+		color: var(--iftp-fm-brand);
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-row {
+		display: grid;
+		grid-template-columns: 28px minmax(0, 1fr) auto;
+		grid-template-areas:
+			"check ref amount"
+			"check ref status";
+		gap: 6px var(--iftp-fm-space-3);
+		padding: 14px var(--iftp-fm-space-4);
+		border-bottom: 1px solid var(--iftp-fm-border-subtle);
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-row > td,
+	.iftp-fm-entries .iftp-fm-entries-table .iftp-fm-col-check {
+		display: block;
+		padding: 0;
+		border: 0;
+		width: auto;
+		text-align: start;
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-row > td.iftp-fm-col-check {
+		grid-area: check;
+		align-self: start;
+		padding-top: 1px;
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-row > td[data-col="ref"] {
+		grid-area: ref;
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-row > td.iftp-fm-col-amount {
+		grid-area: amount;
+		justify-self: end;
+		font-size: 15px;
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-row > td[data-col="status"] {
+		grid-area: status;
+		justify-self: end;
+	}
+
+	/* Labelled cells auto-flow in DOM order, so a hidden column leaves no empty row. */
+	.iftp-fm-entries .iftp-fm-entry-row > td[data-label] {
+		grid-column: 2 / -1;
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-row > td[data-col="customer"],
+	.iftp-fm-entries .iftp-fm-entry-row > td[data-col="form"],
+	.iftp-fm-entries .iftp-fm-entry-row > td[data-col="method"],
+	.iftp-fm-entries .iftp-fm-entry-row > td[data-col="entry"],
+	.iftp-fm-entries .iftp-fm-entry-row > td[data-col="created"] {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		white-space: normal;
+	}
+
+	/* Lines the label up with the name's first line. */
+	.iftp-fm-entries .iftp-fm-entry-row > td[data-col="customer"] {
+		align-items: baseline;
+	}
+
+	.iftp-fm-entries .iftp-fm-customer {
+		flex: 1 1 auto;
+		max-width: none;
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-row > td[data-label]::before {
+		content: attr(data-label);
+		flex: 0 0 72px;
+		font-size: var(--iftp-fm-fs-xs);
+		font-weight: var(--iftp-fm-fw-semibold);
+		letter-spacing: var(--iftp-fm-tracking-caps);
+		text-transform: uppercase;
+		color: var(--iftp-fm-text-muted);
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-row:nth-last-child(2) {
+		border-bottom: 0;
+	}
+
+	/* The brand bar moves from the first cell to the card itself. */
+	.iftp-fm-entries .iftp-fm-entry-row:has(+ .iftp-fm-entry-details:not([hidden])) > td:first-child,
+	.iftp-fm-entries .iftp-fm-entry-row:has(.iftp-fm-row-check:checked) > td:first-child {
+		box-shadow: none;
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-row:has(+ .iftp-fm-entry-details:not([hidden])),
+	.iftp-fm-entries .iftp-fm-entry-row:has(.iftp-fm-row-check:checked) {
+		box-shadow: inset 3px 0 0 var(--iftp-fm-brand);
+	}
+
+	.iftp-fm-entries .iftp-fm-entry-row:has(+ .iftp-fm-entry-details:not([hidden])) {
+		border-bottom-color: transparent;
+	}
+
+	.iftp-fm-entries .iftp-fm-details-panel {
+		padding: var(--iftp-fm-space-4);
+	}
+
+	.iftp-fm-entries .iftp-fm-details-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--iftp-fm-space-3) var(--iftp-fm-space-4);
+	}
+
+	.iftp-fm-entries .iftp-fm-detail-item--wide {
+		grid-column: 1 / -1;
+	}
+
+	.iftp-fm-entries .iftp-fm-details-fields-table tbody th {
+		width: 40%;
+		min-width: 0;
+		white-space: normal;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries-card-footer {
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		padding: var(--iftp-fm-space-4);
+	}
+
+	/* The footer is already a centered column. */
+	.iftp-fm-entries .iftp-fm-entries-card-footer__nav {
+		flex-direction: column;
+		justify-content: center;
+		margin-left: 0;
+	}
+
+	.iftp-fm-entries .iftp-fm-pagination {
+		justify-content: center;
+	}
+
+	.iftp-fm-entries .iftp-fm-page-number,
+	.iftp-fm-entries .iftp-fm-page-btn {
+		min-width: 36px;
+		height: 36px;
+	}
+
+	/* The custom box stays beside the select if it fits, else wraps under it. */
+	.iftp-fm-entries .iftp-fm-per-page {
+		flex-wrap: wrap;
+		justify-content: center;
+	}
+
+	/* 36px, to match the phone pills. */
+	.iftp-fm-entries .iftp-fm-per-page .iftp-fm-per-page__select,
+	.iftp-fm-entries .iftp-fm-per-page__custom input[type="number"],
+	.iftp-fm-entries .iftp-fm-page-jump .iftp-fm-page-jump__input {
+		height: 36px;
+		line-height: 34px;
+	}
+
+	.iftp-fm-entries .iftp-fm-per-page__submit {
+		height: 36px;
+	}
+
+	.iftp-fm-entries .iftp-fm-modal {
+		padding: var(--iftp-fm-space-3);
+	}
+
+	.iftp-fm-entries .iftp-fm-modal-box {
+		padding: var(--iftp-fm-space-6) var(--iftp-fm-space-5) var(--iftp-fm-space-5);
+		max-height: calc(100vh - 24px);
+	}
+
+	.iftp-fm-entries .iftp-fm-form-row {
+		grid-template-columns: 1fr;
+		gap: var(--iftp-fm-space-4);
+	}
+
+	/* column-reverse puts the primary action on top. */
+	.iftp-fm-entries .iftp-fm-modal-actions {
+		flex-direction: column-reverse;
+	}
+
+	.iftp-fm-entries .iftp-fm-modal-actions .iftp-fm-btn {
+		width: 100%;
+	}
+
+	.iftp-fm-entries .iftp-fm-toast {
+		left: var(--iftp-fm-space-3);
+		right: var(--iftp-fm-space-3);
+		bottom: 68px;
+		max-width: none;
+	}
+
+	.iftp-fm-entries .iftp-fm-scroll-btn {
+		right: var(--iftp-fm-space-4);
+		bottom: var(--iftp-fm-space-4);
+	}
+}
+
+/* Touch browsers mostly can't do HTML5 drag; the Move buttons cover it. */
+@media (hover: none) and (pointer: coarse) {
+	.iftp-fm-entries .iftp-fm-columns-menu__handle {
+		display: none;
+	}
+
+	.iftp-fm-entries .iftp-fm-columns-menu__locked {
+		padding-left: 10px;
+	}
+}
+
+/* Column visibility. The root attribute comes from user meta and JS updates
+   it on toggle; (0,4,0) so it also beats the phone card cell rules. */
+
+.iftp-fm-entries[data-iftp-hidden-cols~="customer"] .iftp-fm-entries-table [data-col="customer"],
+.iftp-fm-entries[data-iftp-hidden-cols~="form"] .iftp-fm-entries-table [data-col="form"],
+.iftp-fm-entries[data-iftp-hidden-cols~="method"] .iftp-fm-entries-table [data-col="method"],
+.iftp-fm-entries[data-iftp-hidden-cols~="amount"] .iftp-fm-entries-table [data-col="amount"],
+.iftp-fm-entries[data-iftp-hidden-cols~="status"] .iftp-fm-entries-table [data-col="status"],
+.iftp-fm-entries[data-iftp-hidden-cols~="entry"] .iftp-fm-entries-table [data-col="entry"],
+.iftp-fm-entries[data-iftp-hidden-cols~="created"] .iftp-fm-entries-table [data-col="created"] {
+	display: none;
+}
+
+/* Windows High Contrast */
+
+@media (forced-colors: active) {
+	/* Keeps the navy band, otherwise the white wordmark vanishes on a light canvas. */
+	.iftp-fm-entries .iftp-fm-entries__masthead {
+		forced-color-adjust: none;
+	}
+
+	.iftp-fm-entries .iftp-fm-status-tab.iftp-fm-status-tab--current,
+	.iftp-fm-entries .iftp-fm-page-number--current,
+	.iftp-fm-entries .iftp-fm-date-preset--current {
+		outline: 2px solid Highlight;
+	}
+
+	/* A non-colour cue for both open disclosures. */
+	.iftp-fm-entries .iftp-fm-entries__filters-toggle[aria-expanded="true"],
+	.iftp-fm-entries .iftp-fm-entries__columns-trigger[aria-expanded="true"] {
+		outline: 2px solid Highlight;
+	}
+
+	.iftp-fm-entries .iftp-fm-date-preset--current::before,
+	.iftp-fm-entries .iftp-fm-row-action--copied::before,
+	.iftp-fm-entries[data-iftp-hidden-cols]:not([data-iftp-hidden-cols=""]) .iftp-fm-entries__columns-trigger::after {
+		background: CanvasText;
+	}
+
+	.iftp-fm-entries .iftp-fm-columns-menu__item--drop-before::before,
+	.iftp-fm-entries .iftp-fm-columns-menu__item--drop-after::after {
+		background: Highlight;
+	}
+
+	.iftp-fm-entries .iftp-fm-columns-menu__move-btn[aria-disabled="true"] {
+		color: GrayText;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__filters-count {
+		border: 1px solid CanvasText;
+	}
+
+	.iftp-fm-entries .iftp-fm-status-tab .count {
+		border: 1px solid CanvasText;
+	}
+
+	.iftp-fm-entries input[type="checkbox"] {
+		appearance: auto;
+	}
+
+	.iftp-fm-entries input[type="checkbox"]::before,
+	.iftp-fm-entries input[type="checkbox"]:checked::before {
+		content: none;
+	}
+
+	.iftp-fm-entries .iftp-fm-badge {
+		border: 1px solid CanvasText;
+	}
+
+	.iftp-fm-entries .iftp-fm-badge::before,
+	.iftp-fm-entries .iftp-fm-badge--pending::before,
+	.iftp-fm-entries .iftp-fm-badge--paid::before,
+	.iftp-fm-entries .iftp-fm-badge--failed::before,
+	.iftp-fm-entries .iftp-fm-badge--cancelled::before,
+	.iftp-fm-entries .iftp-fm-badge--expired::before {
+		background: CanvasText;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.iftp-fm-entries {
+		--iftp-fm-dur-fast: 0ms;
+		--iftp-fm-dur-base: 0ms;
+		--iftp-fm-dur-slow: 0ms;
+	}
+
+	.iftp-fm-entries *,
+	.iftp-fm-entries *::before,
+	.iftp-fm-entries *::after {
+		animation: none !important;
+		transition-duration: 0ms !important;
+	}
+}
+
+/* No JS: WP swaps body.no-js for .js inline at <body>, so these only match with scripts off. */
+.no-js .iftp-fm-entries .iftp-fm-entries__filters-toggle,
+.no-js .iftp-fm-entries .iftp-fm-entries__columns {
+	display: none;
+}
+
+/* The always-open panel already shows the applied values. */
+.no-js .iftp-fm-entries .iftp-fm-filter-panel ~ .iftp-fm-active-filters {
+	display: none;
+}
+
+/* The panel is left out of the guard below, so the no-JS rule can open it. */
+.iftp-fm-entries .iftp-fm-filter-panel[hidden] {
+	display: none;
+}
+
+/* Without JS the panel is the only filter UI. */
+.no-js .iftp-fm-entries .iftp-fm-filter-panel[hidden] {
+	display: block;
+}
+
+/* Same for the per-page custom box. */
+.iftp-fm-entries .iftp-fm-per-page__custom[hidden] {
+	display: none;
+}
+
+/* Without JS nothing reveals it on "Custom…", so I keep it visible. */
+.no-js .iftp-fm-entries .iftp-fm-per-page__custom[hidden] {
+	display: inline-flex;
+}
+
+/* Author display rules beat the UA's [hidden], and JS relies on the attribute. */
+.iftp-fm-entries [hidden]:not(.iftp-fm-filter-panel, .iftp-fm-per-page__custom) {
+	display: none !important;
+}

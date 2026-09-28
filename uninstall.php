@@ -27,3 +27,9 @@ global $wpdb;
 $wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'iftp_fm_transactions' );
 
 delete_option( 'iftp_fm_db_version' );
+delete_option( 'iftp_fm_customer_backfill_done' );
+delete_option( 'iftp_fm_customer_backfill_cursor' );
+
+// Per-user Payment Entries column choices, for every user.
+delete_metadata( 'user', 0, 'iftp_fm_entries_hidden_cols', '', true );
+delete_metadata( 'user', 0, 'iftp_fm_entries_col_order', '', true );

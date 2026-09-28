@@ -183,6 +183,30 @@ class FieldSettingsStore {
 	}
 
 	/**
+	 * The element_ids of every ifthenpay field on a form.
+	 *
+	 * @param int $form_id The form to look in.
+	 * @return string[]
+	 */
+	public function ifthenpay_field_slugs( int $form_id ): array {
+		$model = $this->load_model( $form_id );
+
+		if ( null === $model ) {
+			return array();
+		}
+
+		$slugs = array();
+
+		foreach ( $model->get_fields() as $field ) {
+			if ( 'ifthenpay' === (string) $field->__get( 'type' ) ) {
+				$slugs[] = $field->slug;
+			}
+		}
+
+		return $slugs;
+	}
+
+	/**
 	 * The form's first ifthenpay field, or null.
 	 *
 	 * @param Forminator_Form_Model $model The loaded form model.

@@ -2,7 +2,9 @@
  * Payment Entries admin dashboard — drives the parts of the screen that
  * don't need a full page reload: bulk select/status-change/delete, the
  * "+ New Payment" popup, row details toggling, a confirm dialog + toast in
- * place of window.confirm()/alert(), and a scroll-to-top button.
+ * place of window.confirm()/alert(), a scroll-to-top button, the
+ * copy-link row action, the columns popover (show/hide and reorder), the
+ * filter panel disclosure, the per-page auto-submit, and "Export selected".
  *
  * Sort/filter/pagination stay plain GET links/form submits (see
  * `Admin\PaymentEntriesPage::filtered_url()`) — only the actions below ever
@@ -36,9 +38,42 @@
 		bindBulkActions( wrap );
 		bindNewEntryModal( wrap );
 		bindScrollButton( wrap );
+		bindCopyLink( wrap );
+		bindColumnsMenu( wrap );
+		bindFilterPanel( wrap );
+		bindPerPage( wrap );
 
 		restoreSelectionState( wrap );
 	} );
+
+	function submitForm( form ) {
+		if ( 'function' === typeof form.requestSubmit ) {
+			form.requestSubmit(); // runs native validation first
+		} else {
+			form.submit();
+		}
+	}
+
+	// Table cells can't use CSS order, so I move the real cells. Check + Reference stay first.
+	function applyColumnOrder( wrap, order ) {
+		wrap.querySelectorAll( '.iftp-fm-entries-table thead tr, .iftp-fm-entries-table .iftp-fm-entry-row' ).forEach( function ( row ) {
+			var cells = {};
+
+			Array.prototype.forEach.call( row.children, function ( cell ) {
+				cells[ cell.getAttribute( 'data-col' ) ] = cell;
+			} );
+
+			order.forEach( function ( slug ) {
+				if ( cells[ slug ] ) {
+					row.appendChild( cells[ slug ] );
+				}
+			} );
+		} );
+	}
+
+	function rootColumnOrder( wrap ) {
+		return ( wrap.getAttribute( 'data-iftp-col-order' ) || '' ).split( ' ' ).filter( Boolean );
+	}
 
 	function post( action, data ) {
 		var body = new URLSearchParams();
@@ -65,9 +100,12 @@
 		var body = wrap.querySelector( '[data-iftp-entries-body]' );
 		var pagination = wrap.querySelector( '[data-iftp-pagination]' );
 		var totalCount = wrap.querySelector( '[data-iftp-total-count]' );
+		var summary = wrap.querySelector( '[data-iftp-summary]' );
 
 		if ( body && 'string' === typeof data.rowsHtml ) {
 			body.innerHTML = data.rowsHtml;
+			// A column save may still be in flight, so the server's rows can be in the old order.
+			applyColumnOrder( wrap, rootColumnOrder( wrap ) );
 		}
 
 		if ( pagination && 'string' === typeof data.paginationHtml ) {
@@ -76,6 +114,10 @@
 
 		if ( totalCount && 'string' === typeof data.totalLabel ) {
 			totalCount.textContent = data.totalLabel;
+		}
+
+		if ( summary && 'string' === typeof data.summaryHtml ) {
+			summary.innerHTML = data.summaryHtml;
 		}
 
 		if ( totalCount && 'number' === typeof data.total ) {
@@ -96,6 +138,9 @@
 						total += parseInt( data.counts[ key ], 10 ) || 0;
 					} );
 					countEl.textContent = total;
+				} else if ( countEl ) {
+					// The server leaves out statuses with no rows, so I zero those tabs.
+					countEl.textContent = 0;
 				}
 			} );
 		}
@@ -127,6 +172,9 @@
 		params[ prefix + 'form_id' ] = f.form_id;
 		params[ prefix + 'date_from' ] = f.date_from;
 		params[ prefix + 'date_to' ] = f.date_to;
+		params[ prefix + 'pay_method' ] = f.pay_method || '';
+		params[ prefix + 'amount_min' ] = f.amount_min || '';
+		params[ prefix + 'amount_max' ] = f.amount_max || '';
 		params[ prefix + 'orderby' ] = f.orderby;
 		params[ prefix + 'order' ] = f.order;
 		params[ prefix + 'per_page' ] = f.per_page;
@@ -147,6 +195,7 @@
 
 			if ( target ) {
 				target.hidden = ! target.hidden;
+				toggle.setAttribute( 'aria-expanded', target.hidden ? 'false' : 'true' );
 			}
 		} );
 	}
@@ -278,14 +327,19 @@
 		} );
 	}
 
+	// The footer Cancel and the bulk-bar × both hide themselves, so I move focus to select-all.
 	function bindSelectionCancel( wrap ) {
-		var cancelBtn = wrap.querySelector( '[data-iftp-selection-cancel]' );
-
-		if ( cancelBtn ) {
+		wrap.querySelectorAll( '[data-iftp-selection-cancel]' ).forEach( function ( cancelBtn ) {
 			cancelBtn.addEventListener( 'click', function () {
+				var selectAll = wrap.querySelector( '[data-iftp-select-all]' );
+
 				clearSelection( wrap );
+
+				if ( selectAll ) {
+					selectAll.focus();
+				}
 			} );
-		}
+		} );
 	}
 
 	/**
@@ -299,12 +353,20 @@
 		var rangeLabel = wrap.querySelector( '[data-iftp-total-count]' );
 		var selectionSummary = wrap.querySelector( '[data-iftp-selection-summary]' );
 		var selectionText = wrap.querySelector( '[data-iftp-selection-text]' );
+		var bulkCount = wrap.querySelector( '[data-iftp-bulk-count]' );
 		var count = selectedRefsSet.size;
 		var hasSelection = count > 0;
 		var total = rangeLabel ? parseInt( rangeLabel.getAttribute( 'data-iftp-total' ) || '0', 10 ) : 0;
 
+		// CSS keys selection mode (bulk bar in place of the tabs) off this.
+		wrap.toggleAttribute( 'data-iftp-has-selection', hasSelection );
+
 		if ( bar ) {
 			bar.hidden = ! hasSelection;
+		}
+
+		if ( bulkCount && iftpFmEntries.i18n.bulkSelectedCount ) {
+			bulkCount.textContent = iftpFmEntries.i18n.bulkSelectedCount.replace( '%s', count );
 		}
 
 		if ( rangeLabel ) {
@@ -373,6 +435,18 @@
 			var value = select.value;
 			var refs = Array.from( selectedRefsSet );
 
+			// I skip the confirm here: exporting changes nothing.
+			if ( 'export' === value ) {
+				if ( 0 === refs.length ) {
+					showToast( iftpFmEntries.i18n.exportNothingSelected, true );
+					return;
+				}
+
+				exportEntries( refs );
+				select.value = '';
+				return;
+			}
+
 			if ( '' === value || 0 === refs.length ) {
 				return;
 			}
@@ -421,6 +495,42 @@
 			.catch( function () {
 				showToast( iftpFmEntries.i18n.updateStatusError, true );
 			} );
+	}
+
+	/**
+	 * Posts the selected refs to the admin-post export handler through a
+	 * throwaway form, so the browser handles the CSV download itself.
+	 *
+	 * @param {string[]} refs
+	 */
+	function exportEntries( refs ) {
+		var url = new URL( iftpFmEntries.exportUrl, window.location.href );
+		var form = document.createElement( 'form' );
+		var f = iftpFmEntries.currentFilters;
+
+		url.searchParams.set( 'action', 'iftp_fm_export' );
+		form.method = 'post';
+		form.action = url.toString();
+		form.hidden = true;
+
+		function addField( name, value ) {
+			var input = document.createElement( 'input' );
+			input.type = 'hidden';
+			input.name = name;
+			input.value = value;
+			form.appendChild( input );
+		}
+
+		addField( '_wpnonce', iftpFmEntries.exportNonce );
+		addField( 'orderby', f.orderby || '' );
+		addField( 'order', f.order || '' );
+		refs.forEach( function ( ref ) {
+			addField( 'refs[]', ref );
+		} );
+
+		document.body.appendChild( form );
+		form.submit();
+		form.remove();
 	}
 
 	function bindNewEntryModal( wrap ) {
@@ -639,12 +749,571 @@
 			return;
 		}
 
+		var reducedMotion = window.matchMedia( '(prefers-reduced-motion: reduce)' );
+
 		window.addEventListener( 'scroll', function () {
 			btn.classList.toggle( 'is-visible', window.scrollY > 400 );
 		} );
 
 		btn.addEventListener( 'click', function () {
-			window.scrollTo( { top: 0, behavior: 'smooth' } );
+			window.scrollTo( { top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' } );
+		} );
+	}
+
+	// Delegated, since rows get swapped in by AJAX.
+	function bindCopyLink( wrap ) {
+		wrap.addEventListener( 'click', function ( event ) {
+			var btn = event.target.closest( '[data-iftp-copy-link]' );
+
+			if ( ! btn ) {
+				return;
+			}
+
+			copyText( btn.getAttribute( 'data-iftp-copy-link' ), btn )
+				.then( function () {
+					btn.classList.add( 'iftp-fm-row-action--copied' );
+
+					if ( btn.iftpCopiedTimer ) {
+						clearTimeout( btn.iftpCopiedTimer );
+					}
+
+					btn.iftpCopiedTimer = setTimeout( function () {
+						btn.classList.remove( 'iftp-fm-row-action--copied' );
+						btn.iftpCopiedTimer = null;
+					}, 2000 );
+
+					showToast( iftpFmEntries.i18n.copyLinkSuccess );
+				} )
+				.catch( function () {
+					showToast( iftpFmEntries.i18n.copyLinkError, true );
+				} );
+		} );
+	}
+
+	/**
+	 * @param {string}  text
+	 * @param {Element} returnFocusTo Refocused after the textarea fallback.
+	 * @return {Promise} Resolves once copied.
+	 */
+	function copyText( text, returnFocusTo ) {
+		if ( navigator.clipboard && window.isSecureContext ) {
+			return navigator.clipboard.writeText( text ).catch( function () {
+				return legacyCopy( text, returnFocusTo );
+			} );
+		}
+
+		return legacyCopy( text, returnFocusTo );
+	}
+
+	// Plain-http admins have no Clipboard API, so I fall back to execCommand.
+	function legacyCopy( text, returnFocusTo ) {
+		var textarea = document.createElement( 'textarea' );
+		var copied = false;
+
+		textarea.value = text;
+		textarea.setAttribute( 'readonly', '' );
+		textarea.style.position = 'fixed';
+		textarea.style.top = '0';
+		textarea.style.left = '-9999px';
+		textarea.style.opacity = '0';
+		document.body.appendChild( textarea );
+		textarea.select();
+
+		try {
+			copied = document.execCommand( 'copy' );
+		} catch ( e ) {
+			copied = false;
+		}
+
+		textarea.remove();
+
+		if ( returnFocusTo && document.body.contains( returnFocusTo ) ) {
+			returnFocusTo.focus();
+		}
+
+		return copied ? Promise.resolve() : Promise.reject( new Error( 'copy failed' ) );
+	}
+
+	function bindColumnsMenu( wrap ) {
+		var trigger = wrap.querySelector( '[data-iftp-columns-trigger]' );
+		var panel = wrap.querySelector( '[data-iftp-columns-menu]' );
+
+		if ( ! trigger || ! panel ) {
+			return;
+		}
+
+		var toggles = Array.prototype.slice.call( panel.querySelectorAll( '[data-iftp-col-toggle]' ) );
+		var list = panel.querySelector( '[data-iftp-col-list]' );
+		var status = wrap.querySelector( '[data-iftp-col-status]' );
+		var reset = panel.querySelector( '[data-iftp-col-reset]' );
+		var DRAGGING = 'iftp-fm-columns-menu__item--dragging';
+		var DROP_BEFORE = 'iftp-fm-columns-menu__item--drop-before';
+		var DROP_AFTER = 'iftp-fm-columns-menu__item--drop-after';
+		var saveTimer = null;
+		var announceTimer = null;
+		var dragging = null;
+
+		function isOpen() {
+			return ! panel.hidden;
+		}
+
+		function setOpen( open ) {
+			panel.hidden = ! open;
+			trigger.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+		}
+
+		function isInside( node ) {
+			return !! node && ( trigger.contains( node ) || panel.contains( node ) );
+		}
+
+		function hiddenCols() {
+			return toggles
+				.filter( function ( input ) {
+					return ! input.checked;
+				} )
+				.map( function ( input ) {
+					return input.getAttribute( 'data-iftp-col-toggle' );
+				} );
+		}
+
+		function items() {
+			return list ? Array.prototype.slice.call( list.querySelectorAll( '[data-iftp-col-item]' ) ) : [];
+		}
+
+		function readOrder() {
+			var order = items().map( function ( item ) {
+				return item.getAttribute( 'data-iftp-col-item' );
+			} );
+
+			return order.length ? order : rootColumnOrder( wrap );
+		}
+
+		function save() {
+			post( 'iftp_fm_save_columns', { hidden: hiddenCols(), order: readOrder() } )
+				.then( function ( response ) {
+					if ( ! response.success ) {
+						showToast( ( response.data && response.data.message ) || iftpFmEntries.i18n.columnsSaveError, true );
+					}
+				} )
+				.catch( function () {
+					showToast( iftpFmEntries.i18n.columnsSaveError, true );
+				} );
+		}
+
+		// I update the view right away; only the save waits.
+		function scheduleSave() {
+			if ( saveTimer ) {
+				clearTimeout( saveTimer );
+			}
+
+			saveTimer = setTimeout( save, 400 );
+		}
+
+		function setEdge( btn, atEdge ) {
+			if ( ! btn ) {
+				return;
+			}
+
+			if ( atEdge ) {
+				btn.setAttribute( 'aria-disabled', 'true' );
+			} else {
+				btn.removeAttribute( 'aria-disabled' );
+			}
+		}
+
+		function syncMoveButtons() {
+			var all = items();
+
+			all.forEach( function ( item, i ) {
+				setEdge( item.querySelector( '[data-iftp-col-move="up"]' ), 0 === i );
+				setEdge( item.querySelector( '[data-iftp-col-move="down"]' ), all.length - 1 === i );
+			} );
+		}
+
+		// Cleared first, so the same message twice in a row still gets spoken.
+		function announce( message ) {
+			if ( ! status || ! message ) {
+				return;
+			}
+
+			status.textContent = '';
+
+			if ( announceTimer ) {
+				clearTimeout( announceTimer );
+			}
+
+			announceTimer = setTimeout( function () {
+				status.textContent = message;
+			}, 100 );
+		}
+
+		function commit( item ) {
+			var order = readOrder();
+
+			// A drop back where it started changes nothing, so there's nothing to save.
+			if ( order.join( ' ' ) === rootColumnOrder( wrap ).join( ' ' ) ) {
+				return;
+			}
+
+			var labelEl = item.querySelector( '.iftp-fm-columns-menu__option-label' );
+			var slug = item.getAttribute( 'data-iftp-col-item' );
+
+			wrap.setAttribute( 'data-iftp-col-order', order.join( ' ' ) );
+			applyColumnOrder( wrap, order );
+			syncMoveButtons();
+			announce(
+				( iftpFmEntries.i18n.columnMoved || '' )
+					.replace( '%1$s', labelEl ? labelEl.textContent.trim() : slug )
+					.replace( '%2$s', order.indexOf( slug ) + 1 )
+					.replace( '%3$s', order.length )
+			);
+			scheduleSave();
+		}
+
+		function clearDropMarks() {
+			items().forEach( function ( item ) {
+				item.classList.remove( DROP_BEFORE, DROP_AFTER );
+			} );
+		}
+
+		function markDrop( target, before ) {
+			items().forEach( function ( item ) {
+				item.classList.toggle( DROP_BEFORE, item === target && before );
+				item.classList.toggle( DROP_AFTER, item === target && ! before );
+			} );
+		}
+
+		// Text-selection drags can target a text node, which has no closest().
+		function closestItem( node ) {
+			var el = node && 1 !== node.nodeType ? node.parentElement : node;
+
+			return el && el.closest ? el.closest( '[data-iftp-col-item]' ) : null;
+		}
+
+		trigger.addEventListener( 'click', function () {
+			setOpen( ! isOpen() );
+		} );
+
+		panel.addEventListener( 'change', function ( event ) {
+			if ( ! event.target.matches( '[data-iftp-col-toggle]' ) ) {
+				return;
+			}
+
+			wrap.setAttribute( 'data-iftp-hidden-cols', hiddenCols().join( ' ' ) );
+			scheduleSave();
+		} );
+
+		// I move the neighbour, not the item, so the focused button never leaves the DOM.
+		panel.addEventListener( 'click', function ( event ) {
+			var btn = event.target.closest( '[data-iftp-col-move]' );
+			var item = btn ? btn.closest( '[data-iftp-col-item]' ) : null;
+			var neighbour;
+
+			if ( ! item || ! list || 'true' === btn.getAttribute( 'aria-disabled' ) ) {
+				return;
+			}
+
+			if ( 'up' === btn.getAttribute( 'data-iftp-col-move' ) ) {
+				neighbour = item.previousElementSibling;
+
+				if ( neighbour ) {
+					list.insertBefore( neighbour, item.nextElementSibling );
+				}
+			} else {
+				neighbour = item.nextElementSibling;
+
+				if ( neighbour ) {
+					list.insertBefore( neighbour, item );
+				}
+			}
+
+			commit( item );
+			btn.focus();
+		} );
+
+		if ( list ) {
+			list.addEventListener( 'dragstart', function ( event ) {
+				var el = event.target && 1 === event.target.nodeType ? event.target : null;
+				var handle = el ? el.closest( '[data-iftp-col-drag]' ) : null;
+				var item = handle ? handle.closest( '[data-iftp-col-item]' ) : null;
+
+				if ( ! item ) {
+					return;
+				}
+
+				dragging = item;
+				event.dataTransfer.effectAllowed = 'move';
+				// Firefox won't start a drag without data. A custom type keeps the slug from dropping into the search field as text.
+				event.dataTransfer.setData( 'application/x-iftp-fm-column', item.getAttribute( 'data-iftp-col-item' ) );
+
+				if ( 'function' === typeof event.dataTransfer.setDragImage ) {
+					event.dataTransfer.setDragImage( item, 16, item.offsetHeight / 2 );
+				}
+
+				// One tick later, so the drag ghost isn't the dimmed row.
+				setTimeout( function () {
+					if ( dragging === item ) {
+						item.classList.add( DRAGGING );
+					}
+				}, 0 );
+			} );
+
+			list.addEventListener( 'dragover', function ( event ) {
+				var target;
+				var rect;
+
+				// Files and drags from outside the list aren't mine.
+				if ( ! dragging ) {
+					return;
+				}
+
+				target = closestItem( event.target );
+
+				if ( ! target || target === dragging ) {
+					clearDropMarks();
+					return;
+				}
+
+				event.preventDefault();
+				event.dataTransfer.dropEffect = 'move';
+				rect = target.getBoundingClientRect();
+				markDrop( target, event.clientY < rect.top + rect.height / 2 );
+			} );
+
+			list.addEventListener( 'dragleave', function ( event ) {
+				if ( ! list.contains( event.relatedTarget ) ) {
+					clearDropMarks();
+				}
+			} );
+
+			list.addEventListener( 'drop', function ( event ) {
+				var item = dragging;
+				var target;
+
+				if ( ! item ) {
+					return;
+				}
+
+				event.preventDefault();
+				target = list.querySelector( '.' + DROP_BEFORE + ', .' + DROP_AFTER );
+
+				if ( target && target !== item ) {
+					list.insertBefore( item, target.classList.contains( DROP_BEFORE ) ? target : target.nextElementSibling );
+				}
+
+				clearDropMarks();
+
+				if ( target ) {
+					commit( item );
+				}
+			} );
+
+			// Covers Escape-cancelled drags and drops outside the popover too.
+			list.addEventListener( 'dragend', function () {
+				if ( dragging ) {
+					dragging.classList.remove( DRAGGING );
+				}
+
+				clearDropMarks();
+				dragging = null;
+			} );
+		}
+
+		if ( reset ) {
+			reset.addEventListener( 'click', function () {
+				var defaults = Array.isArray( iftpFmEntries.defaultColumnOrder ) ? iftpFmEntries.defaultColumnOrder : readOrder();
+				var bySlug = {};
+
+				items().forEach( function ( item ) {
+					bySlug[ item.getAttribute( 'data-iftp-col-item' ) ] = item;
+				} );
+
+				defaults.forEach( function ( slug ) {
+					if ( bySlug[ slug ] ) {
+						list.appendChild( bySlug[ slug ] );
+					}
+				} );
+
+				toggles.forEach( function ( input ) {
+					input.checked = true;
+				} );
+
+				wrap.setAttribute( 'data-iftp-hidden-cols', '' );
+				wrap.setAttribute( 'data-iftp-col-order', defaults.join( ' ' ) );
+				applyColumnOrder( wrap, defaults );
+				syncMoveButtons();
+				announce( iftpFmEntries.i18n.columnsReset );
+				scheduleSave();
+			} );
+		}
+
+		document.addEventListener( 'keydown', function ( event ) {
+			if ( 'Escape' === event.key && isOpen() ) {
+				setOpen( false );
+				trigger.focus();
+			}
+		} );
+
+		document.addEventListener( 'click', function ( event ) {
+			if ( isOpen() && ! isInside( event.target ) ) {
+				setOpen( false );
+			}
+		} );
+
+		// A null relatedTarget is a click on nothing focusable; the click handler covers that.
+		function onFocusOut( event ) {
+			if ( isOpen() && event.relatedTarget && ! isInside( event.relatedTarget ) ) {
+				setOpen( false );
+			}
+		}
+
+		trigger.addEventListener( 'focusout', onFocusOut );
+		panel.addEventListener( 'focusout', onFocusOut );
+	}
+
+	// An inline disclosure, not a popover: only the toggle and Escape close it.
+	function bindFilterPanel( wrap ) {
+		var toggle = wrap.querySelector( '[data-iftp-filters-toggle]' );
+		var panel = wrap.querySelector( '[data-iftp-filter-panel]' );
+		var form = wrap.querySelector( '#iftp-fm-filter-form' );
+
+		if ( ! toggle || ! panel || ! form ) {
+			return;
+		}
+
+		var firstField = panel.querySelector( '#iftp-fm-form-filter' );
+		var dateFrom = panel.querySelector( '#iftp-fm-date-from' );
+		var dateTo = panel.querySelector( '#iftp-fm-date-to' );
+
+		function setOpen( open ) {
+			panel.hidden = ! open;
+			toggle.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+		}
+
+		toggle.addEventListener( 'click', function () {
+			var open = panel.hidden;
+
+			setOpen( open );
+
+			// It sits after Columns and Export in tab order, so I take the admin straight to it.
+			if ( open && firstField ) {
+				firstField.focus();
+			}
+		} );
+
+		panel.addEventListener( 'keydown', function ( event ) {
+			if ( 'Escape' === event.key && ! panel.hidden ) {
+				setOpen( false );
+				toggle.focus();
+			}
+		} );
+
+		// Submitting the form (not following the link) keeps unapplied form/method/amount edits.
+		panel.addEventListener( 'click', function ( event ) {
+			var preset = event.target.closest( '[data-iftp-date-preset]' );
+
+			if ( ! preset || ! dateFrom || ! dateTo ) {
+				return;
+			}
+
+			// Ctrl/Cmd/Shift-click still opens the link the browser's way.
+			if ( event.ctrlKey || event.metaKey || event.shiftKey || event.altKey ) {
+				return;
+			}
+
+			event.preventDefault();
+			dateFrom.value = preset.getAttribute( 'data-iftp-date-from' ) || '';
+			dateTo.value = preset.getAttribute( 'data-iftp-date-to' ) || '';
+			submitForm( form );
+		} );
+	}
+
+	// Arrowing a closed select fires change on Windows, so I don't reload on those (WCAG 3.2.2).
+	function bindPerPage( wrap ) {
+		var form = wrap.querySelector( '[data-iftp-per-page-form]' );
+		var select = form ? form.querySelector( '[data-iftp-per-page]' ) : null;
+		var go = form ? form.querySelector( '[data-iftp-per-page-submit]' ) : null;
+		var custom = form ? form.querySelector( '[data-iftp-per-page-custom]' ) : null;
+		var customInput = form ? form.querySelector( '#iftp-fm-per-page-custom' ) : null;
+		var NAV_KEYS = [ 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown' ];
+		var keyNav = false;
+
+		if ( ! select ) {
+			return;
+		}
+
+		// Off "custom", I disable the number box too, so a stale bad value can't block a preset's submit.
+		function syncCustom() {
+			var isCustom = 'custom' === select.value;
+
+			if ( custom ) {
+				custom.hidden = ! isCustom;
+			}
+
+			if ( customInput ) {
+				customInput.disabled = ! isCustom;
+				customInput.required = isCustom;
+			}
+
+			if ( go ) {
+				go.hidden = ! isCustom;
+			}
+
+			return isCustom;
+		}
+
+		function focusCustom() {
+			if ( customInput ) {
+				customInput.focus();
+				customInput.select();
+			}
+		}
+
+		syncCustom();
+
+		select.addEventListener( 'keydown', function ( event ) {
+			if ( 'Enter' === event.key ) {
+				event.preventDefault();
+
+				if ( 'custom' === select.value ) {
+					focusCustom();
+				} else {
+					submitForm( form );
+				}
+
+				return;
+			}
+
+			// Type-ahead letters change the value too; Space and Alt+Arrow just open the list.
+			keyNav =
+				! event.altKey &&
+				( -1 !== NAV_KEYS.indexOf( event.key ) ||
+					( 1 === event.key.length && ' ' !== event.key && ! event.ctrlKey && ! event.metaKey ) );
+		} );
+
+		select.addEventListener( 'pointerdown', function () {
+			keyNav = false;
+		} );
+
+		select.addEventListener( 'change', function () {
+			// While arrowing I only reveal the box; jumping focus would strand the admin mid-list.
+			if ( syncCustom() ) {
+				if ( ! keyNav ) {
+					focusCustom();
+				}
+
+				return;
+			}
+
+			if ( keyNav ) {
+				if ( go ) {
+					go.hidden = false;
+				}
+
+				return;
+			}
+
+			submitForm( form );
 		} );
 	}
 } )();

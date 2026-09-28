@@ -3,7 +3,8 @@
  * form carrying it (before Forminator's own AJAX submit runs), starts the
  * ifthenpay payment, and — on return — shows the confirmation popup with
  * fast pending→paid resolution (quick check, two-speed poll, visibility
- * re-check, deferred popup for a redirect-type "Paid" confirmation).
+ * re-check). A page/URL "Paid" confirmation is linked from the popup and
+ * opens in a new tab, so the submitted data stays on screen here.
  */
 ( function () {
 	'use strict';
@@ -316,21 +317,25 @@
 	// ---------------------------------------------------------------------
 
 	var context = iftpFmFrontend.return;
+	var paidPageTried = false;
+	var paidPageBlocked = false;
 
 	if ( context ) {
 		maybeWatchForPaidStatus( context );
 	}
 
 	function maybeWatchForPaidStatus( ctx ) {
-		var isRedirectPaid = 'paid' === ctx.status && iftpFmFrontend.paidRedirectUrl;
+		showPopup( ctx.status );
 
-		if ( isRedirectPaid ) {
-			window.location.href = iftpFmFrontend.paidRedirectUrl;
-			return;
-		}
+		if ( 'pending' === ctx.status ) {
+			quickCheck( ctx, function ( resolved ) {
+				if ( resolved && 'paid' === resolved.status ) {
+					updatePopup( 'paid' );
+					return;
+				}
 
-		if ( 'paid' === ctx.status ) {
-			showPopup( 'paid' );
+				watchForPaidStatus( ctx );
+			} );
 			return;
 		}
 
@@ -338,48 +343,8 @@
 		// (Plugin::resolve_return_context()), so I show it straight away — but
 		// keep watching, in case a late webhook still confirms it as paid.
 		if ( 'failed' === ctx.status || 'cancelled' === ctx.status ) {
-			showPopup( ctx.status );
 			watchForPaidStatus( ctx );
-			return;
 		}
-
-		if ( 'pending' !== ctx.status ) {
-			showPopup( ctx.status );
-			return;
-		}
-
-		// Defer behind a wordless spinner when a redirect-type "Paid"
-		// confirmation is configured, instead of flashing "pending" just to
-		// immediately replace it with a navigation a moment later.
-		var deferPopup = !! iftpFmFrontend.paidRedirectUrl;
-
-		if ( deferPopup ) {
-			showSpinner( '' );
-		} else {
-			showPopup( 'pending' );
-		}
-
-		quickCheck( ctx, function ( resolved ) {
-			if ( deferPopup ) {
-				hideSpinner();
-			}
-
-			if ( resolved && 'paid' === resolved.status ) {
-				if ( iftpFmFrontend.paidRedirectUrl ) {
-					window.location.href = iftpFmFrontend.paidRedirectUrl;
-					return;
-				}
-
-				showPopup( 'paid' );
-				return;
-			}
-
-			if ( deferPopup ) {
-				showPopup( 'pending' );
-			}
-
-			watchForPaidStatus( ctx );
-		} );
 	}
 
 	function quickCheck( ctx, done ) {
@@ -414,10 +379,6 @@
 
 				if ( 'paid' === resolved.status ) {
 					stop();
-
-					if ( iftpFmFrontend.paidRedirectUrl ) {
-						window.location.href = iftpFmFrontend.paidRedirectUrl;
-					}
 				}
 			} ).catch( function () {
 				// A dropped request just waits for the next tick.
@@ -488,12 +449,24 @@
 				'<h2 class="iftp-fm-popup-title" id="iftp-fm-popup-title"></h2>' +
 				'<p class="iftp-fm-popup-message" id="iftp-fm-popup-message" aria-live="polite"></p>' +
 				'<table class="iftp-fm-popup-fields"><tbody></tbody></table>' +
+				'<div class="iftp-fm-popup-actions">' +
+				'<a class="iftp-fm-popup-continue" target="_blank" rel="noopener"><span class="iftp-fm-popup-continue-label"></span><span class="iftp-fm-sr-only"></span></a>' +
 				'<button type="button" class="iftp-fm-popup-close"></button>' +
+				'</div>' +
 				'</div>';
 			popup.querySelector( '.iftp-fm-popup-close' ).textContent = iftpFmFrontend.i18n.close;
+			popup.querySelector( '.iftp-fm-popup-continue-label' ).textContent = iftpFmFrontend.i18n.openPage;
+			popup.querySelector( '.iftp-fm-popup-continue .iftp-fm-sr-only' ).textContent = ' ' + iftpFmFrontend.i18n.newTab;
 			document.body.appendChild( popup );
 
 			popup.querySelector( '.iftp-fm-popup-close' ).addEventListener( 'click', hidePopup );
+
+			// Once they've opened it, there's nothing left for Continue to do.
+			popup.querySelector( '.iftp-fm-popup-continue' ).addEventListener( 'click', function () {
+				paidPageBlocked = false;
+				this.hidden = true;
+				popup.querySelector( '.iftp-fm-popup-close' ).focus();
+			} );
 
 			// Backdrop click and Escape close it too.
 			popup.addEventListener( 'click', function ( e ) {
@@ -507,17 +480,27 @@
 					hidePopup();
 				}
 
-				// Only one focusable control, so Tab just stays on it.
 				if ( 'Tab' === e.key && 'none' !== popup.style.display && '' !== popup.style.display ) {
-					e.preventDefault();
-					popup.querySelector( '.iftp-fm-popup-close' ).focus();
+					trapFocus( popup, e );
 				}
 			} );
 		}
 
-		updatePopup( status );
 		popup.style.display = 'flex';
 		popup.querySelector( '.iftp-fm-popup-close' ).focus();
+		updatePopup( status );
+	}
+
+	// Keeps Tab cycling between the popup's visible buttons.
+	function trapFocus( popup, e ) {
+		var controls = Array.prototype.filter.call( popup.querySelectorAll( 'a[href], button' ), function ( el ) {
+			return ! el.hidden;
+		} );
+		var index = controls.indexOf( document.activeElement );
+		var next = e.shiftKey ? index - 1 : index + 1;
+
+		e.preventDefault();
+		controls[ ( next + controls.length ) % controls.length ].focus();
 	}
 
 	function hidePopup() {
@@ -539,6 +522,56 @@
 		popup.querySelector( '.iftp-fm-popup-title' ).textContent = ( iftpFmFrontend.titles || {} )[ status ] || '';
 		popup.querySelector( '.iftp-fm-popup-message' ).textContent = ( iftpFmFrontend.messages || {} )[ status ] || '';
 		renderPopupFields( popup, 'paid' === status ? iftpFmFrontend.paidFields || [] : [] );
+
+		if ( 'paid' === status ) {
+			openPaidPage();
+		}
+
+		// Continue only shows up when the browser blocked the new tab.
+		renderPopupContinue( popup, 'paid' === status && paidPageBlocked ? iftpFmFrontend.paidPageUrl : '' );
+	}
+
+	/**
+	 * The fallback for a blocked openPaidPage() — a real click is the one
+	 * thing a pop-up blocker always lets through.
+	 */
+	function renderPopupContinue( popup, url ) {
+		var link = popup.querySelector( '.iftp-fm-popup-continue' );
+
+		if ( url ) {
+			link.href = url;
+		} else {
+			link.removeAttribute( 'href' );
+		}
+
+		link.hidden = ! url;
+
+		if ( url ) {
+			link.focus();
+		}
+	}
+
+	/**
+	 * Opens the page/URL "Paid" confirmation in a new tab by itself, once.
+	 * window.open() hands back null when a pop-up blocker stops it, which
+	 * is how I know to show Continue instead.
+	 */
+	function openPaidPage() {
+		if ( paidPageTried || ! iftpFmFrontend.paidPageUrl ) {
+			return;
+		}
+
+		paidPageTried = true;
+
+		// No 'noopener' feature here — with it window.open() always returns
+		// null, so I cut the opener off by hand instead.
+		var tab = window.open( iftpFmFrontend.paidPageUrl, '_blank' );
+
+		if ( tab ) {
+			tab.opener = null;
+		}
+
+		paidPageBlocked = ! tab;
 	}
 
 	/**

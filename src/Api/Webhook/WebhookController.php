@@ -9,8 +9,13 @@ declare(strict_types=1);
 
 namespace Ifthenpay\Forminator\Api\Webhook;
 
+use Ifthenpay\Forminator\Forminator\FieldSettingsStore;
 use Ifthenpay\Forminator\Forminator\TransactionStore;
+use Forminator_CForm_Front_Action;
+use Forminator_CForm_Front_Mail;
 use Forminator_Form_Entry_Model;
+use Forminator_Form_Model;
+use Forminator_Front_Action;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -56,14 +61,23 @@ class WebhookController {
 	private WebhookValidator $validator;
 
 	/**
+	 * Per-field ifthenpay settings storage.
+	 *
+	 * @var FieldSettingsStore
+	 */
+	private FieldSettingsStore $field_settings;
+
+	/**
 	 * Sets up the controller.
 	 *
-	 * @param TransactionStore|null $transactions Transactions storage; a fresh instance is used when omitted.
-	 * @param WebhookValidator|null $validator    Anti-phishing + amount validator; a fresh instance is used when omitted.
+	 * @param TransactionStore|null   $transactions   Transactions storage; a fresh instance is used when omitted.
+	 * @param WebhookValidator|null   $validator      Anti-phishing + amount validator; a fresh instance is used when omitted.
+	 * @param FieldSettingsStore|null $field_settings Per-field settings storage; a fresh instance is used when omitted.
 	 */
-	public function __construct( ?TransactionStore $transactions = null, ?WebhookValidator $validator = null ) {
-		$this->transactions = $transactions ?? new TransactionStore();
-		$this->validator    = $validator ?? new WebhookValidator();
+	public function __construct( ?TransactionStore $transactions = null, ?WebhookValidator $validator = null, ?FieldSettingsStore $field_settings = null ) {
+		$this->transactions   = $transactions ?? new TransactionStore();
+		$this->validator      = $validator ?? new WebhookValidator();
+		$this->field_settings = $field_settings ?? new FieldSettingsStore();
 	}
 
 	/**
@@ -190,6 +204,44 @@ class WebhookController {
 
 		if ( null !== $entry_id ) {
 			$this->transactions->record_entry_id( $payload->ref(), $entry_id );
+			$this->send_notifications( $entry_id );
+		}
+	}
+
+	/**
+	 * Sends the form's own email notifications for the new entry. Forminator
+	 * only sends these from its AJAX submit handler, which an ifthenpay
+	 * payment never goes through, so I replay the same state setup its
+	 * "Resend Notification Email" action uses
+	 * (`Forminator_CForm_User_Data::resend_notification_email()`).
+	 *
+	 * @param int $entry_id The Forminator entry just created.
+	 */
+	private function send_notifications( int $entry_id ): void {
+		if ( ! class_exists( Forminator_CForm_Front_Mail::class ) || ! function_exists( 'recreate_prepared_data' ) ) {
+			return;
+		}
+
+		// A mail failure mustn't fail the webhook — the payment is already recorded.
+		try {
+			// A fresh model, so meta_data holds what set_fields() just wrote.
+			$entry = new Forminator_Form_Entry_Model( $entry_id );
+			$form  = Forminator_Form_Model::model()->load( (int) $entry->form_id );
+
+			if ( false === $form ) {
+				return;
+			}
+
+			Forminator_Front_Action::$module_id       = (int) $entry->form_id;
+			Forminator_Front_Action::$module_object   = $form;
+			Forminator_Front_Action::$prepared_data   = recreate_prepared_data( $form, $entry );
+			Forminator_Front_Action::$module_settings = $form->get_form_settings();
+			Forminator_CForm_Front_Action::check_fields_visibility();
+
+			( new Forminator_CForm_Front_Mail() )->process_mail( $form, $entry );
+		} catch ( \Throwable $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- intentional production error log for admin troubleshooting of failed notification emails.
+			error_log( 'ifthenpay Payments for Forminator: notification email failed for entry ' . $entry_id . ' - ' . $e->getMessage() );
 		}
 	}
 
@@ -239,6 +291,19 @@ class WebhookController {
 			$meta[] = array(
 				'name'  => (string) $element_id,
 				'value' => (string) $value,
+			);
+		}
+
+		// The snapshot never includes our own field, so without this it shows
+		// as "N/A" in {all_fields} emails and the native Entries column.
+		$payment_url = (string) ( $record['payment_url'] ?? '' );
+		/* translators: %s: the ifthenpay payment page URL. */
+		$field_value = '' !== $payment_url ? sprintf( __( 'Paid - %s', 'ifthenpay-payments-for-forminator' ), $payment_url ) : __( 'Paid', 'ifthenpay-payments-for-forminator' );
+
+		foreach ( $this->field_settings->ifthenpay_field_slugs( (int) $record['form_id'] ) as $field_slug ) {
+			$meta[] = array(
+				'name'  => $field_slug,
+				'value' => $field_value,
 			);
 		}
 

@@ -145,8 +145,10 @@ Below are screenshots demonstrating key features and interfaces of the plugin:
    ![Secure Payment Page](.wordpress-org/screenshot-7.png)
 8. **(Customers Experience) ifthenpay Payment Gateway status popup**
    ![Status Popup](.wordpress-org/screenshot-8.png)
-9. **(Admin Only) Payment Entries**
-   ![Payment Entries](.wordpress-org/screenshot-9.png)
+9. **(Admin Only) E-mail ifthenpay field data** <br>
+   ![E-mail field data](.wordpress-org/screenshot-9.png) <br>
+10. **(Admin Only) Payment Entries**
+   ![Payment Entries](.wordpress-org/screenshot-10.png)
 
 ### Support
 

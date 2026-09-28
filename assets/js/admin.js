@@ -203,14 +203,13 @@
 			} );
 	} );
 
-	// Confirmation Type — Paid gets a 3-way switch; only the matching row
-	// (page dropdown / URL field / popup message) is shown at a time.
+	// Confirmation Type — Paid always shows the popup; the page dropdown /
+	// URL field only show up for the type that links to them.
 	$( document ).on( 'change', '#iftp-fm-paid-type', function () {
 		var type = $( this ).val();
 
 		$( '#iftp-fm-paid-page-row' ).toggle( 'page' === type );
 		$( '#iftp-fm-paid-url-row' ).toggle( 'url' === type );
-		$( '#iftp-fm-paid-message-row' ).toggle( 'popup' === type );
 	} );
 
 	// Confirmation Type — Paid/Pending/Failed/Cancelled tabs: only one
