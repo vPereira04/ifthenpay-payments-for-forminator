@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Ifthenpay\Forminator\Admin;
 
 use Ifthenpay\Forminator\Forminator\TransactionStore;
+use Ifthenpay\Forminator\Plugin;
 use Ifthenpay\Forminator\Repository\SettingsRepository;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -37,7 +38,7 @@ class PaymentEntriesPage {
 	private const PAGE_SLUG        = 'iftp-fm-transactions';
 	private const DEFAULT_PER_PAGE = 10;
 	private const PER_PAGE_OPTIONS = array( 5, 10, 20, 30, 50 );
-	private const PER_PAGE_MIN     = 5;
+	private const PER_PAGE_MIN     = 1;
 	private const PER_PAGE_MAX     = 250;
 	private const NONCE_ACTION     = 'iftp_fm_entries';
 	private const EXPORT_ACTION    = 'iftp_fm_export';
@@ -124,9 +125,28 @@ class PaymentEntriesPage {
 
 		$entries_css = 'assets/css/entries.css';
 		$entries_js  = 'assets/js/entries.js';
+		$restore_js  = 'assets/js/entries-restore.js';
 
 		wp_enqueue_style( 'iftp-fm-entries', IFTP_FM_URL . $entries_css, array(), (string) filemtime( IFTP_FM_PATH . $entries_css ) );
-		wp_enqueue_script( 'iftp-fm-entries', IFTP_FM_URL . $entries_js, array(), (string) filemtime( IFTP_FM_PATH . $entries_js ), true );
+		wp_enqueue_script( 'iftp-fm-entries', IFTP_FM_URL . $entries_js, array( Plugin::METHOD_LOGOS_HANDLE ), (string) filemtime( IFTP_FM_PATH . $entries_js ), true );
+
+		// Head, not footer — it may redirect to the saved view, and I don't want the default one flashing first.
+		wp_enqueue_script( 'iftp-fm-entries-restore', IFTP_FM_URL . $restore_js, array(), (string) filemtime( IFTP_FM_PATH . $restore_js ), false );
+
+		$view = $this->url_args( $this->current_filters() );
+
+		wp_localize_script(
+			'iftp-fm-entries-restore',
+			'iftpFmEntriesStore',
+			array(
+				// Per site and per user, so a shared browser doesn't mix admins' views.
+				'key'            => 'iftp_fm_entries:' . get_current_blog_id() . ':' . get_current_user_id(),
+				'pageSlug'       => self::PAGE_SLUG,
+				'defaultPerPage' => self::DEFAULT_PER_PAGE,
+				'perPage'        => $view['per_page'],
+				'view'           => array_diff_key( $view, array( 'per_page' => true ) ),
+			)
+		);
 
 		wp_localize_script(
 			'iftp-fm-entries',
@@ -1398,9 +1418,9 @@ class PaymentEntriesPage {
 			return;
 		}
 
-		$logo = $this->method_catalog()[ $pay_method ] ?? null;
+		$logos = $this->method_catalog()[ $pay_method ] ?? null;
 
-		if ( null === $logo ) {
+		if ( null === $logos ) {
 			?>
 			<span class="iftp-fm-method-pill iftp-fm-method-pill--plain"><?php echo esc_html( $pay_method ); ?></span>
 			<?php
@@ -1408,9 +1428,9 @@ class PaymentEntriesPage {
 			return;
 		}
 		?>
-		<span class="iftp-fm-method-pill<?php echo '' === $logo ? ' iftp-fm-method-pill--plain' : ''; ?>" data-entity="<?php echo esc_attr( $pay_method ); ?>">
-			<?php if ( '' !== $logo ) : ?>
-				<img class="iftp-fm-method-pill__logo" src="<?php echo esc_url( $logo ); ?>" alt="" loading="lazy" />
+		<span class="iftp-fm-method-pill<?php echo '' === $logos['logo'] ? ' iftp-fm-method-pill--plain' : ''; ?>" data-entity="<?php echo esc_attr( $pay_method ); ?>">
+			<?php if ( '' !== $logos['logo'] ) : ?>
+				<img class="iftp-fm-method-pill__logo" src="<?php echo esc_url( $logos['logo'] ); ?>"<?php echo '' !== $logos['logo_dark'] ? ' data-logo-dark="' . esc_url( $logos['logo_dark'] ) . '"' : ''; ?> alt="" loading="lazy" />
 			<?php endif; ?>
 			<?php echo esc_html( $pay_method ); ?>
 		</span>
@@ -1418,16 +1438,16 @@ class PaymentEntriesPage {
 	}
 
 	/**
-	 * Entity code (e.g. `MB`) => logo URL, for every connected method.
+	 * Entity code (e.g. `MB`) => light/dark logo URLs, for every connected method.
 	 *
-	 * @var array<string, string>|null
+	 * @var array<string, array{logo: string, logo_dark: string}>|null
 	 */
 	private ?array $method_catalog_cache = null;
 
 	/**
-	 * Builds the entity => logo catalog, memoized for the request.
+	 * Builds the entity => logos catalog, memoized for the request.
 	 *
-	 * @return array<string, string>
+	 * @return array<string, array{logo: string, logo_dark: string}>
 	 */
 	private function method_catalog(): array {
 		if ( null !== $this->method_catalog_cache ) {
@@ -1443,7 +1463,10 @@ class PaymentEntriesPage {
 				continue;
 			}
 
-			$catalog[ $entity ] = (string) ( $method['logo'] ?? '' );
+			$catalog[ $entity ] = array(
+				'logo'      => (string) ( $method['logo'] ?? '' ),
+				'logo_dark' => (string) ( $method['logo_dark'] ?? '' ),
+			);
 		}
 
 		$this->method_catalog_cache = $catalog;

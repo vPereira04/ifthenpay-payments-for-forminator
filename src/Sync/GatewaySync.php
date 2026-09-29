@@ -132,7 +132,7 @@ class GatewaySync {
 		}
 
 		foreach ( $this->settings->get_methods() as $method ) {
-			if ( ! array_key_exists( 'logo', $method ) || ! array_key_exists( 'visible', $method ) || '' === ( $method['alias'] ?? '' ) ) {
+			if ( ! array_key_exists( 'logo', $method ) || ! array_key_exists( 'logo_dark', $method ) || ! array_key_exists( 'visible', $method ) || '' === ( $method['alias'] ?? '' ) ) {
 				return true;
 			}
 		}
@@ -147,8 +147,11 @@ class GatewaySync {
 	 * are available to consumers like the payment-entries icon lookup even
 	 * though the settings table only lists the visible ones.
 	 *
+	 * `logo_dark` is ifthenpay's variant for dark backgrounds — empty when a
+	 * method doesn't ship one, so consumers fall back to `logo`.
+	 *
 	 * @param array<string, mixed> $gateway_row The Gateway Key row to resolve accounts from.
-	 * @return array<int, array{entity: string, alias: string, logo: string, enabled: bool, account: string, position: int, visible: bool}>
+	 * @return array<int, array{entity: string, alias: string, logo: string, logo_dark: string, enabled: bool, account: string, position: int, visible: bool}>
 	 */
 	private function build_methods( array $gateway_row ): array {
 		$catalog  = $this->client->get_available_methods();
@@ -162,13 +165,14 @@ class GatewaySync {
 			$visible = ! empty( $entry['IsVisible'] );
 
 			$methods[] = array(
-				'entity'   => $entity,
-				'alias'    => $alias,
-				'logo'     => (string) ( $entry['SmallImageUrl'] ?? $entry['ImageUrl'] ?? '' ),
-				'account'  => $account,
-				'enabled'  => $visible && '' !== $account && ! empty( $existing[ $entity ]['enabled'] ),
-				'position' => (int) ( $entry['Position'] ?? 0 ),
-				'visible'  => $visible,
+				'entity'    => $entity,
+				'alias'     => $alias,
+				'logo'      => (string) ( $entry['SmallImageUrl'] ?? $entry['ImageUrl'] ?? '' ),
+				'logo_dark' => (string) ( $entry['SmallImageUrlDark'] ?? '' ),
+				'account'   => $account,
+				'enabled'   => $visible && '' !== $account && ! empty( $existing[ $entity ]['enabled'] ),
+				'position'  => (int) ( $entry['Position'] ?? 0 ),
+				'visible'   => $visible,
 			);
 		}
 

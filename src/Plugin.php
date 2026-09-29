@@ -32,6 +32,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Plugin {
 
 	/**
+	 * Script handle for the shared dark-background method logo swap.
+	 */
+	public const METHOD_LOGOS_HANDLE = 'iftp-fm-method-logos';
+
+	/**
 	 * The singleton instance.
 	 *
 	 * @var self|null
@@ -77,7 +82,18 @@ class Plugin {
 		( new WebhookController() )->register();
 		( new WebhookRegistrar() )->register();
 
+		add_action( 'init', array( $this, 'register_shared_assets' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'maybe_enqueue_frontend_assets' ) );
+	}
+
+	/**
+	 * Registers the dark-background method logo swap once, so the frontend
+	 * field and every admin screen showing a logo just list it as a dependency.
+	 */
+	public function register_shared_assets(): void {
+		$logos_js = 'assets/js/method-logos.js';
+
+		wp_register_script( self::METHOD_LOGOS_HANDLE, IFTP_FM_URL . $logos_js, array(), (string) filemtime( IFTP_FM_PATH . $logos_js ), true );
 	}
 
 	/**
@@ -100,7 +116,7 @@ class Plugin {
 	 */
 	public function maybe_enqueue_frontend_assets(): void {
 		wp_enqueue_style( 'iftp-fm-frontend', IFTP_FM_URL . 'assets/css/frontend.css', array(), IFTP_FM_VERSION );
-		wp_enqueue_script( 'iftp-fm-frontend', IFTP_FM_URL . 'assets/js/frontend.js', array( 'jquery' ), IFTP_FM_VERSION, true );
+		wp_enqueue_script( 'iftp-fm-frontend', IFTP_FM_URL . 'assets/js/frontend.js', array( 'jquery', self::METHOD_LOGOS_HANDLE ), IFTP_FM_VERSION, true );
 
 		$settings = new SettingsRepository();
 		$context  = $this->resolve_return_context();

@@ -246,7 +246,7 @@ class FieldSettingsModal {
 									<?php esc_html_e( 'Enable conditional logic', 'ifthenpay-payments-for-forminator' ); ?>
 								</label>
 
-								<div id="iftp-fm-field-conditional-body" class="iftp-fm-hidden">
+								<fieldset id="iftp-fm-field-conditional-body" class="iftp-fm-conditional-body" disabled>
 									<div class="iftp-fm-conditional-summary">
 										<div class="sui-side-tabs iftp-fm-toggle-tabs">
 											<div class="sui-tabs-menu">
@@ -281,7 +281,7 @@ class FieldSettingsModal {
 									<button type="button" class="sui-button sui-button-ghost" id="iftp-fm-field-condition-add">
 										<?php esc_html_e( '+ Add condition', 'ifthenpay-payments-for-forminator' ); ?>
 									</button>
-								</div>
+								</fieldset>
 							</div>
 						</div>
 					</div>

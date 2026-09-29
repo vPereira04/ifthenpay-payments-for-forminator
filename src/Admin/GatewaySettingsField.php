@@ -81,11 +81,12 @@ class GatewaySettingsField {
 	/**
 	 * Renders a single method row.
 	 *
-	 * @param array{entity: string, alias: string, logo?: string, enabled: bool, account: string, position: int, visible?: bool} $method         The catalog method row.
+	 * @param array{entity: string, alias: string, logo?: string, logo_dark?: string, enabled: bool, account: string, position: int, visible?: bool} $method         The catalog method row.
 	 * @param string                                                                                                             $default_method The currently configured default method entity.
 	 */
 	private function render_row( array $method, string $default_method ): void {
 		$logo        = $method['logo'] ?? '';
+		$logo_dark   = $method['logo_dark'] ?? '';
 		$provisioned = '' !== $method['account'];
 		// Only the bare account code is shown — the Method column already
 		// names the entity. Classic Multibanco (numeric Entidade|Subentidade)
@@ -134,7 +135,7 @@ class GatewaySettingsField {
 			<td class="iftp-fm-col-method">
 				<span class="iftp-fm-logo-slot">
 					<?php if ( '' !== $logo ) : ?>
-						<img src="<?php echo esc_url( $logo ); ?>" alt="" loading="lazy" />
+						<img src="<?php echo esc_url( $logo ); ?>"<?php echo '' !== $logo_dark ? ' data-logo-dark="' . esc_url( $logo_dark ) . '"' : ''; ?> alt="" loading="lazy" />
 					<?php else : ?>
 						<?php echo esc_html( $method['entity'] ); ?>
 					<?php endif; ?>

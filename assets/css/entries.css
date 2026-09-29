@@ -1382,7 +1382,6 @@
 .iftp-fm-entries .iftp-fm-entry-row > td {
 	padding: 14px var(--iftp-fm-space-4);
 	vertical-align: middle;
-	border-bottom: 1px solid var(--iftp-fm-border-subtle);
 	color: var(--iftp-fm-text);
 	font-size: var(--iftp-fm-fs-base);
 }

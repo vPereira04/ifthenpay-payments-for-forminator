@@ -258,8 +258,13 @@
 		document.getElementById( 'iftp-fm-field-conditional-enabled' ).checked = conditions.length > 0;
 	}
 
+	/**
+	 * The rows stay visible but locked until the checkbox is ticked — Apply
+	 * ignores them while it's off, so I don't let anyone fill them in then.
+	 * The body is a `<fieldset>`, so this also covers rows added later.
+	 */
 	function toggleConditionalBody( enabled ) {
-		document.getElementById( 'iftp-fm-field-conditional-body' ).classList.toggle( 'iftp-fm-hidden', ! enabled );
+		document.getElementById( 'iftp-fm-field-conditional-body' ).disabled = ! enabled;
 	}
 
 	/**
@@ -442,7 +447,8 @@
 			var focusable = Array.prototype.filter.call(
 				wrap.querySelectorAll( 'button, input, select, textarea, a[href], [tabindex="0"]' ),
 				function ( el ) {
-					return ! el.disabled && null !== el.offsetParent;
+					// `:disabled`, not `.disabled` — the latter misses controls locked by a disabled fieldset.
+					return ! el.matches( ':disabled' ) && null !== el.offsetParent;
 				}
 			);
 

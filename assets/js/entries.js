@@ -1184,16 +1184,48 @@
 		var firstField = panel.querySelector( '#iftp-fm-form-filter' );
 		var dateFrom = panel.querySelector( '#iftp-fm-date-from' );
 		var dateTo = panel.querySelector( '#iftp-fm-date-to' );
+		var PANEL_ITEM = 'undefined' !== typeof iftpFmEntriesStore && iftpFmEntriesStore.key ? iftpFmEntriesStore.key + ':panel' : '';
 
 		function setOpen( open ) {
 			panel.hidden = ! open;
 			toggle.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
 		}
 
+		// Remembered for the tab's session; Escape counts as closing it too.
+		function persistOpen( open ) {
+			if ( ! PANEL_ITEM ) {
+				return;
+			}
+
+			try {
+				if ( open ) {
+					sessionStorage.setItem( PANEL_ITEM, '1' );
+				} else {
+					sessionStorage.removeItem( PANEL_ITEM );
+				}
+			} catch ( e ) {
+				// No storage, so it just starts closed next time.
+			}
+		}
+
+		function wasOpen() {
+			try {
+				return !! PANEL_ITEM && '1' === sessionStorage.getItem( PANEL_ITEM );
+			} catch ( e ) {
+				return false;
+			}
+		}
+
+		// No focus move here: the admin didn't ask for it on this load.
+		if ( wasOpen() ) {
+			setOpen( true );
+		}
+
 		toggle.addEventListener( 'click', function () {
 			var open = panel.hidden;
 
 			setOpen( open );
+			persistOpen( open );
 
 			// It sits after Columns and Export in tab order, so I take the admin straight to it.
 			if ( open && firstField ) {
@@ -1204,6 +1236,7 @@
 		panel.addEventListener( 'keydown', function ( event ) {
 			if ( 'Escape' === event.key && ! panel.hidden ) {
 				setOpen( false );
+				persistOpen( false );
 				toggle.focus();
 			}
 		} );

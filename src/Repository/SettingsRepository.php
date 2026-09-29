@@ -161,7 +161,7 @@ class SettingsRepository {
 	/**
 	 * The full payment methods catalog for the current Gateway Key.
 	 *
-	 * @return array<int, array{entity: string, alias: string, logo?: string, enabled: bool, account: string, position: int, visible?: bool}>
+	 * @return array<int, array{entity: string, alias: string, logo?: string, logo_dark?: string, enabled: bool, account: string, position: int, visible?: bool}>
 	 */
 	public function get_methods(): array {
 		$methods = get_option( self::OPTION_METHODS, array() );

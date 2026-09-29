@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Ifthenpay\Forminator\Admin;
 
+use Ifthenpay\Forminator\Plugin;
 use Ifthenpay\Forminator\Repository\SettingsRepository;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -73,7 +74,7 @@ class ConnectSettings {
 		$admin_js  = 'assets/js/admin.js';
 
 		wp_enqueue_style( 'iftp-fm-admin', IFTP_FM_URL . $admin_css, array(), (string) filemtime( IFTP_FM_PATH . $admin_css ) );
-		wp_enqueue_script( 'iftp-fm-admin', IFTP_FM_URL . $admin_js, array( 'jquery' ), (string) filemtime( IFTP_FM_PATH . $admin_js ), true );
+		wp_enqueue_script( 'iftp-fm-admin', IFTP_FM_URL . $admin_js, array( 'jquery', Plugin::METHOD_LOGOS_HANDLE ), (string) filemtime( IFTP_FM_PATH . $admin_js ), true );
 
 		wp_localize_script(
 			'iftp-fm-admin',
@@ -91,7 +92,7 @@ class ConnectSettings {
 				'i18n'        => array(
 					'connect'           => __( 'Connect', 'ifthenpay-payments-for-forminator' ),
 					'connecting'        => __( 'Connecting…', 'ifthenpay-payments-for-forminator' ),
-					'invalidKey'        => __( 'Enter your Backoffice Key in the format 0000-0000-0000-0000.', 'ifthenpay-payments-for-forminator' ),
+					'invalidKey'        => __( 'Wrong Backoffice Format..', 'ifthenpay-payments-for-forminator' ),
 					'disconnectConfirm' => __( 'Disconnect your ifthenpay Backoffice Key? This will disable the ifthenpay field on every form.', 'ifthenpay-payments-for-forminator' ),
 					'requesting'        => __( 'Requesting…', 'ifthenpay-payments-for-forminator' ),
 					'requested'         => __( 'Requested', 'ifthenpay-payments-for-forminator' ),
@@ -205,7 +206,7 @@ endif;
 								type="text"
 								id="iftp-fm-backoffice-key"
 								class="sui-form-control"
-								placeholder="0000-0000-0000-0000"
+								placeholder="Insert your backoffice key here.."
 								autocomplete="off"
 								spellcheck="false"
 								aria-describedby="iftp-fm-backoffice-key-help iftp-fm-connect-modal-message"

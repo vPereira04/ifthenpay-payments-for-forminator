@@ -900,7 +900,29 @@
 	display: none;
 }
 
-/* Conditional logic builder (Advanced tab). */
+/* Conditional logic builder (Visibility tab). */
+
+#iftp-fm-field-modal-wrap .iftp-fm-conditional-body {
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	transition: opacity .2s ease;
+}
+
+/* Locked until "Enable conditional logic" is ticked. */
+#iftp-fm-field-modal-wrap .iftp-fm-conditional-body:disabled {
+	opacity: 0.5;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-conditional-body:disabled .sui-tab-item,
+#iftp-fm-field-modal-wrap .iftp-fm-conditional-body:disabled .iftp-fm-condition-remove {
+	cursor: not-allowed;
+}
+
+#iftp-fm-field-modal-wrap .iftp-fm-conditional-body:disabled .sui-tab-item:not(.active):hover {
+	background-color: #f8f8f8;
+}
 
 #iftp-fm-field-modal-wrap .iftp-fm-conditional-summary {
 	display: flex;

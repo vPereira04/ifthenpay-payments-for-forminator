@@ -217,10 +217,13 @@ class IfthenpayField extends Forminator_Field {
 		$methods_html = '';
 		if ( $show_methods ) {
 			foreach ( $methods as $method ) {
+				// frontend.js swaps to this when the field sits on a dark background.
+				$logo_dark     = (string) ( $method['logo_dark'] ?? '' );
 				$methods_html .= sprintf(
-					'<img class="iftp-fm-field-method-icon" src="%s" alt="%s" loading="lazy" />',
+					'<img class="iftp-fm-field-method-icon" src="%s" alt="%s"%s loading="lazy" />',
 					esc_url( $method['logo'] ),
-					esc_attr( $method['alias'] ?? '' )
+					esc_attr( $method['alias'] ?? '' ),
+					'' !== $logo_dark ? ' data-logo-dark="' . esc_url( $logo_dark ) . '"' : ''
 				);
 			}
 		}
