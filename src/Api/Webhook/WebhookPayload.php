@@ -14,13 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Parses the raw `$_GET` params ifthenpay's webhook calls in with, so the
- * controller and validator both work off one typed shape instead of poking
- * at superglobals themselves.
- *
- * No status/outcome field: ifthenpay only ever calls this webhook back on a
- * successful payment (see `WebhookController::url()`'s docblock), so a
- * request reaching here is a paid notice by definition once it validates.
+ * The ifthenpay webhook's `$_GET` params, parsed into one typed shape.
+ * No status field: ifthenpay only calls the webhook for paid payments.
  */
 class WebhookPayload {
 
@@ -82,7 +77,7 @@ class WebhookPayload {
 	 * @param string $ref The transaction reference, from `WebhookController::REF_VAR`.
 	 */
 	public static function from_request( string $ref ): self {
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- server-to-server webhook, verified via anti-phishing key instead (see WebhookValidator).
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- server-to-server webhook; WebhookValidator checks the anti-phishing key instead.
 		return new self(
 			$ref,
 			sanitize_text_field( wp_unslash( $_GET['apk'] ?? '' ) ),

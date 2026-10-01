@@ -24,12 +24,16 @@ if ( class_exists( \Ifthenpay\Forminator\Repository\SettingsRepository::class ) 
 global $wpdb;
 
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.DirectDatabaseQuery.NoCaching -- one-time DDL cleanup on uninstall; custom plugin table with no WP Core API, caching is meaningless here.
-$wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'iftp_fm_transactions' );
+$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $wpdb->prefix . 'iftp_fm_transactions' ) );
 
 delete_option( 'iftp_fm_db_version' );
+delete_transient( 'iftp_fm_callback_resync_lock' );
+delete_transient( 'iftp_fm_backfill_lock' );
+wp_clear_scheduled_hook( 'iftp_fm_expire_payments' );
 delete_option( 'iftp_fm_customer_backfill_done' );
 delete_option( 'iftp_fm_customer_backfill_cursor' );
 
 // Per-user Payment Entries column choices, for every user.
 delete_metadata( 'user', 0, 'iftp_fm_entries_hidden_cols', '', true );
 delete_metadata( 'user', 0, 'iftp_fm_entries_col_order', '', true );
+delete_metadata( 'user', 0, 'iftp_fm_entries_per_page', '', true );

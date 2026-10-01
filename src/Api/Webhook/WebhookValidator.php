@@ -33,7 +33,7 @@ class WebhookValidator {
 	/**
 	 * Sets up the validator.
 	 *
-	 * @param SettingsRepository|null $settings Settings storage; a fresh instance is used when omitted.
+	 * @param SettingsRepository|null $settings Settings storage.
 	 */
 	public function __construct( ?SettingsRepository $settings = null ) {
 		$this->settings = $settings ?? new SettingsRepository();
@@ -54,18 +54,10 @@ class WebhookValidator {
 		}
 
 		$expected = $this->settings->get_anti_phishing_key( $gateway_key );
-		$received = $payload->apk();
 
-		// No random key yet means the callback is still registered with the old
-		// base64(gateway key) scheme, so I accept that until the next re-registration.
-		if ( '' === $expected ) {
-			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- legacy anti-phishing scheme for callbacks registered before random keys, not used for obfuscation.
-			$expected = base64_encode( $gateway_key );
-			// A '+' in the base64 key arrives as a space if ifthenpay didn't urlencode it.
-			$received = str_replace( ' ', '+', $received );
-		}
-
-		if ( ! hash_equals( $expected, $received ) ) {
+		// No stored key means nothing to verify against, so I refuse rather than guess.
+		// WebhookRegistrar::maybe_resync() registers a fresh key on the next admin visit.
+		if ( '' === $expected || ! hash_equals( $expected, $payload->apk() ) ) {
 			return false;
 		}
 

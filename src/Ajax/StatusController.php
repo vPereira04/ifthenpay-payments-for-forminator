@@ -18,17 +18,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Backs the frontend status popup's polling loop (`assets/js/frontend.js`).
- * Every call re-reads `TransactionStore` first — the webhook is what
- * actually resolves the payment; this only reports what's already known,
- * plus an optional one-shot live check against ifthenpay's own transaction-
- * status API when a `transaction_id` is available (see
- * `deferInitialPopupForQuickCheck` in the frontend script) so a payment that
- * finished before the popup even opened doesn't sit there as "pending".
+ * Backs the frontend status popup's polling. The webhook resolves the payment;
+ * this reports the stored status, plus a throttled live check when there's a
+ * `transaction_id`, so a payment that finished before the popup opened doesn't
+ * sit there as "pending".
  */
 class StatusController {
 
 	public const ACTION = 'iftp_fm_status';
+
+	// The popup polls every 3-10s; I ask ifthenpay at most once per window per transaction.
+	private const LIVE_CHECK_TTL = 30;
 
 	/**
 	 * Transactions storage.
@@ -47,8 +47,8 @@ class StatusController {
 	/**
 	 * Sets up the handler.
 	 *
-	 * @param TransactionStore|null $transactions Transactions storage; a fresh instance is used when omitted.
-	 * @param IfthenpayClient|null  $client       Ifthenpay API client; a fresh instance is used when omitted.
+	 * @param TransactionStore|null $transactions Transactions storage.
+	 * @param IfthenpayClient|null  $client       Ifthenpay API client.
 	 */
 	public function __construct( ?TransactionStore $transactions = null, ?IfthenpayClient $client = null ) {
 		$this->transactions = $transactions ?? new TransactionStore();
@@ -64,7 +64,7 @@ class StatusController {
 	}
 
 	/**
-	 * Reports the stored status for a reference, with an optional one-shot live check.
+	 * Reports the stored status for a reference, with an optional throttled live check.
 	 */
 	public function check(): void {
 		if ( ! check_ajax_referer( self::ACTION, 'nonce', false ) ) {
@@ -80,9 +80,8 @@ class StatusController {
 			wp_send_json_error( array( 'message' => __( 'Unknown payment reference.', 'ifthenpay-payments-for-forminator' ) ) );
 		}
 
-		// Worth keeping even if the payment never confirms — the webhook may
-		// have already resolved the status without ever seeing a transaction
-		// id, so this is otherwise the only chance to capture it.
+		// I keep it even if the payment never confirms: the webhook may resolve the
+		// row without ever seeing a transaction id, so this is the only chance to capture it.
 		if ( '' !== $transaction_id && '' === (string) ( $record['transaction_id'] ?? '' ) ) {
 			$this->transactions->record_transaction_id( $ref, $transaction_id );
 			$record['transaction_id'] = $transaction_id;
@@ -90,17 +89,12 @@ class StatusController {
 
 		$status = (string) $record['status'];
 
-		// One-shot live check so the popup can flip to "paid" before the
-		// webhook lands. I only report it, never store it: the transaction
-		// id comes from the browser and nothing ties it to this ref, so
-		// someone could pass another (cheaper) paid transaction's id. Only
-		// the webhook marks a row paid, and it also creates the entry.
-		if ( TransactionStore::STATUS_PENDING === $status && '' !== $transaction_id ) {
-			$live = $this->client->get_transaction_status( $transaction_id );
-
-			if ( 'paid' === strtolower( (string) ( $live['Status'] ?? '' ) ) ) {
-				$status = TransactionStore::STATUS_PAID;
-			}
+		// Live check so the popup can flip to "paid" before the webhook lands. I only
+		// report it, never store it: the browser-supplied id isn't tied to this ref, so
+		// someone could pass another (cheaper) paid transaction's id. Only the webhook
+		// marks a row paid, and it also creates the entry.
+		if ( TransactionStore::STATUS_PENDING === $status && '' !== $transaction_id && 'paid' === $this->live_status( $transaction_id ) ) {
+			$status = TransactionStore::STATUS_PAID;
 		}
 
 		wp_send_json_success(
@@ -109,5 +103,26 @@ class StatusController {
 				'message' => Plugin::status_message( $status ),
 			)
 		);
+	}
+
+	/**
+	 * The status ifthenpay reports for a transaction, lowercased, cached for LIVE_CHECK_TTL.
+	 *
+	 * @param string $transaction_id The ifthenpay transaction id.
+	 */
+	private function live_status( string $transaction_id ): string {
+		$cache_key = 'iftp_fm_live_' . md5( $transaction_id );
+		$cached    = get_transient( $cache_key );
+
+		if ( is_string( $cached ) ) {
+			return $cached;
+		}
+
+		$live   = $this->client->get_transaction_status( $transaction_id );
+		$status = strtolower( (string) ( $live['Status'] ?? '' ) );
+
+		set_transient( $cache_key, $status, self::LIVE_CHECK_TTL );
+
+		return $status;
 	}
 }

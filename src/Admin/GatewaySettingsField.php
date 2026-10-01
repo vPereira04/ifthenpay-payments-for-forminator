@@ -16,12 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Renders the methods table: one row per catalog method, an "Enabled"
- * checkbox, a star-toggle "Default Method" radio, and a "Request Activation"
- * button for anything not yet provisioned.
- *
- * A radio group is used for the default method, never a select or checkbox
- * group — see the WPREA "Default Method Selector" contract.
+ * Renders the payment methods table (enabled, default star, activation request).
  */
 class GatewaySettingsField {
 
@@ -35,27 +30,36 @@ class GatewaySettingsField {
 	/**
 	 * Sets up the field.
 	 *
-	 * @param SettingsRepository|null $settings Settings storage; a fresh instance is used when omitted.
+	 * @param SettingsRepository|null $settings Settings storage.
 	 */
 	public function __construct( ?SettingsRepository $settings = null ) {
 		$this->settings = $settings ?? new SettingsRepository();
 	}
 
 	/**
-	 * Renders the full methods table markup.
+	 * The methods table markup, for the AJAX responses that swap it in.
 	 */
 	public function render(): string {
-		// Hidden (API `IsVisible: false`) methods stay in storage for their
-		// icon/alias but aren't offered here — ifthenpay isn't currently
-		// exposing them, so there's nothing to toggle.
+		ob_start();
+		$this->output();
+
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Prints the full methods table.
+	 */
+	public function output(): void {
+		// I keep IsVisible:false methods in storage for their icon/alias, but ifthenpay isn't offering them.
 		$methods        = array_filter( $this->settings->get_methods(), static fn ( $method ) => $method['visible'] ?? true );
 		$default_method = $this->settings->get_default_method();
 
 		if ( array() === $methods ) {
-			return '<p class="iftp-fm-empty">' . esc_html__( 'Connect your Backoffice Key to load the available payment methods.', 'ifthenpay-payments-for-forminator' ) . '</p>';
+			?>
+			<p class="iftp-fm-empty"><?php esc_html_e( 'Connect your Backoffice Key to load the available payment methods.', 'ifthenpay-payments-for-forminator' ); ?></p>
+			<?php
+			return;
 		}
-
-		ob_start();
 		?>
 		<table class="iftp-fm-methods-table sui-table">
 			<thead>
@@ -74,23 +78,19 @@ class GatewaySettingsField {
 			</tbody>
 		</table>
 		<?php
-
-		return (string) ob_get_clean();
 	}
 
 	/**
 	 * Renders a single method row.
 	 *
 	 * @param array{entity: string, alias: string, logo?: string, logo_dark?: string, enabled: bool, account: string, position: int, visible?: bool} $method         The catalog method row.
-	 * @param string                                                                                                             $default_method The currently configured default method entity.
+	 * @param string                                                                                                                                 $default_method The currently configured default method entity.
 	 */
 	private function render_row( array $method, string $default_method ): void {
 		$logo        = $method['logo'] ?? '';
 		$logo_dark   = $method['logo_dark'] ?? '';
 		$provisioned = '' !== $method['account'];
-		// Only the bare account code is shown — the Method column already
-		// names the entity. Classic Multibanco (numeric Entidade|Subentidade)
-		// keeps both parts; dynamic Multibanco ("MB|EDT-…") drops the prefix.
+		// Classic Multibanco (numeric Entidade|Subentidade) keeps both parts; others show just the account code.
 		$account_parts   = explode( '|', $method['account'] );
 		$show_full       = 'MB' === $method['entity'] && ctype_digit( trim( $account_parts[0] ) );
 		$account_display = ! $provisioned ? '' : (

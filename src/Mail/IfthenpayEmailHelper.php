@@ -15,8 +15,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Sends the "Request Activation" email for a not-yet-provisioned method.
- * This shape is shared across every ifthenpay integration — only the data
- * plugged in changes per integration.
  */
 final class IfthenpayEmailHelper {
 
@@ -40,8 +38,7 @@ final class IfthenpayEmailHelper {
 
 		$subject = sprintf( '[dev_ifthenpay] [%s]: Ativacao de Servico', $entity );
 
-		// Raw values here — the template below escapes each one on output,
-		// so escaping here too showed "&amp;" instead of "&" in the email.
+		// Raw values: the template escapes on output, so escaping here too would show "&amp;".
 		$items = array(
 			'Chave de acesso ao backoffice:' => (string) ( $data['backoffice_key'] ?? '' ),
 			'Gateway Key:'                   => (string) ( $data['gateway_key'] ?? '' ),

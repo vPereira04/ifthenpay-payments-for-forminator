@@ -14,32 +14,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Forminator's form builder is a compiled React app (build/form-scripts.js).
- * The component that renders a field's settings modal (every tab: Labels,
- * Settings, Advanced, ...) is picked from a hardcoded, build-time object
- * literal keyed by field type slug (`email`, `paypal`, `stripe`, ...) — the
- * same component backs every tab, not just "Settings" — with no entry, and no
- * generic/fallback entry, for third-party field types registered via the
- * `forminator_fields` filter. Clicking our field on the canvas would hand
- * that lookup `undefined`, which every tab route then tries to render as a
- * React component, so the modal fails rather than showing anything useful.
- * There's no PHP-side extension point either — `Forminator_Field`'s abstract
- * base class exposes nothing for the builder canvas, only for frontend markup
- * and processing. We must never patch Forminator core to add one.
+ * Our own settings popup for the ifthenpay field on the builder canvas.
  *
- * So instead of Forminator's native modal, this renders our *own* popup
- * (styled with Forminator's own SUI classes for a native look) and
- * `assets/js/field-settings.js` intercepts a click on our field's canvas
- * block — `.fui-builder-field-block[data-field="ifthenpay"] .fui-field--info`,
- * confirmed against the built bundle — before Forminator's own (broken)
- * click handler opens its modal, the same capture-phase interception
- * `assets/js/frontend.js` already uses to get ahead of Forminator's own
- * submit handler. The popup reads/writes the same `amount_type`/`amount`/
- * `variable`/`checkout_label` field properties through `Ajax\Controller`'s
- * `iftp_fm_get_field_settings`/`iftp_fm_save_field_settings` actions
- * (`Forminator\FieldSettingsStore`) — the same persistence path the
- * builder's own "Save" button uses internally, so nothing about how the
- * field renders on the frontend changes.
+ * Forminator's React builder picks the field-settings modal from a hardcoded map of core
+ * field types, so a third-party field breaks it and there's no hook to add one. I render
+ * this popup instead and field-settings.js intercepts the canvas click (capture phase)
+ * before Forminator's handler runs; it saves through the same field properties.
  */
 class FieldSettingsModal {
 
@@ -47,9 +27,7 @@ class FieldSettingsModal {
 	private const BUILDER_HOOK = 'forminator_page_forminator-cform-wizard';
 
 	/**
-	 * Whether the current admin request is on the builder screen, with
-	 * capability to configure it — set by `enqueue_assets()`, read by
-	 * `render_modal()`, so both stay in lockstep without re-deriving it twice.
+	 * Whether we're on the builder screen with the right capability, set by enqueue_assets().
 	 *
 	 * @var bool
 	 */
@@ -87,7 +65,7 @@ class FieldSettingsModal {
 			array(
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( self::NONCE_ACTION ),
-				// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only form id from the current builder screen's own query string, not a state change.
+				// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only form id from the builder URL, no state change.
 				'formId'  => absint( wp_unslash( $_GET['id'] ?? 0 ) ),
 				'i18n'    => array(
 					'title'              => __( 'Ifthenpay Payment Settings', 'ifthenpay-payments-for-forminator' ),
@@ -115,12 +93,7 @@ class FieldSettingsModal {
 	}
 
 	/**
-	 * Renders the (initially hidden) popup markup once, into wp-admin's
-	 * footer — three tabs, mirroring native Forminator field-settings
-	 * modals: "Settings" (the field's own amount/checkout-label config),
-	 * "Advanced" (label/description/description-placement/CSS class), and
-	 * "Visibility" (conditional logic) — native fields keep conditional
-	 * logic on its own tab too, rather than folding it into Advanced.
+	 * Renders the hidden popup markup into the admin footer.
 	 */
 	public function render_modal(): void {
 		if ( ! $this->should_render ) {
@@ -137,7 +110,6 @@ class FieldSettingsModal {
 							<span
 								id="iftp-fm-field-modal-tag"
 								class="sui-tag sui-tooltip sui-tooltip-constrained sui-tooltip-bottom"
-								style="margin-top: -2px; --tooltip-width: 170px;"
 								data-tooltip="<?php echo esc_attr__( "Use this merge tag to dynamically include this field's value in email notification, success messages, and other text elements.", 'ifthenpay-payments-for-forminator' ); ?>"
 							></span>
 						</h3>

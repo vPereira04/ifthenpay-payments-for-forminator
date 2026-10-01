@@ -22,11 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Router for the settings screen's admin AJAX calls — connecting/
- * disconnecting the Backoffice Key, switching the Gateway Key, saving the
- * Gateway Configuration screen, requesting method activation, and loading/
- * saving one field's settings from the builder-canvas popup (see
- * `Admin\FieldSettingsModal`).
+ * Admin AJAX for the settings screens and the builder's field popup.
  */
 class Controller {
 
@@ -77,12 +73,12 @@ class Controller {
 	/**
 	 * Sets up the router.
 	 *
-	 * @param SettingsRepository|null   $settings       Settings storage; a fresh instance is used when omitted.
-	 * @param IfthenpayClient|null      $client         Ifthenpay API client; a fresh instance is used when omitted.
-	 * @param GatewaySettingsField|null $methods_field  Methods table renderer; a fresh instance is used when omitted.
-	 * @param GatewaySync|null          $sync           Gateway catalog sync; a fresh instance is used when omitted.
-	 * @param FieldSettingsStore|null   $field_settings Per-field settings storage; a fresh instance is used when omitted.
-	 * @param WebhookRegistrar|null     $webhooks       Webhook callback registration; a fresh instance is used when omitted.
+	 * @param SettingsRepository|null   $settings       Settings storage.
+	 * @param IfthenpayClient|null      $client         Ifthenpay API client.
+	 * @param GatewaySettingsField|null $methods_field  Methods table renderer.
+	 * @param GatewaySync|null          $sync           Gateway catalog sync.
+	 * @param FieldSettingsStore|null   $field_settings Per-field settings storage.
+	 * @param WebhookRegistrar|null     $webhooks       Webhook callback registration.
 	 */
 	public function __construct(
 		?SettingsRepository $settings = null,
@@ -119,8 +115,7 @@ class Controller {
 	public function connect_backoffice(): void {
 		$this->guard();
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$backoffice_key = sanitize_text_field( wp_unslash( $_POST['backoffice_key'] ?? '' ) );
+		$backoffice_key = $this->post_text( 'backoffice_key' );
 
 		if ( ! preg_match( '/^\d{4}-\d{4}-\d{4}-\d{4}$/', $backoffice_key ) ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid Backoffice Key format.', 'ifthenpay-payments-for-forminator' ) ) );
@@ -162,8 +157,7 @@ class Controller {
 	public function select_gateway_key(): void {
 		$this->guard();
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$gateway_key = sanitize_text_field( wp_unslash( $_POST['gateway_key'] ?? '' ) );
+		$gateway_key = $this->post_text( 'gateway_key' );
 
 		if ( ! $this->sync->switch_gateway_key( $gateway_key ) ) {
 			wp_send_json_error( array( 'message' => __( 'Unknown Gateway Key.', 'ifthenpay-payments-for-forminator' ) ) );
@@ -180,23 +174,15 @@ class Controller {
 	public function save_settings(): void {
 		$this->guard();
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$gateway_key = sanitize_text_field( wp_unslash( $_POST['gateway_key'] ?? '' ) );
+		$gateway_key = $this->post_text( 'gateway_key' );
 
 		if ( '' !== $gateway_key && $gateway_key !== $this->settings->get_gateway_key() ) {
 			$this->sync->switch_gateway_key( $gateway_key );
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$enabled_entities = array_map( 'sanitize_text_field', wp_unslash( (array) ( $_POST['enabled_methods'] ?? array() ) ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$default_method = sanitize_text_field( wp_unslash( $_POST['default_method'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$description = sanitize_text_field( wp_unslash( $_POST['description'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$expiry_days = absint( wp_unslash( $_POST['expiry_days'] ?? 3 ) );
-
-		$methods = $this->settings->get_methods();
+		$enabled_entities = $this->post_list( 'enabled_methods' );
+		$default_method   = $this->post_text( 'default_method' );
+		$methods          = $this->settings->get_methods();
 
 		foreach ( $methods as &$method ) {
 			$method['enabled'] = in_array( $method['entity'], $enabled_entities, true ) && '' !== $method['account'];
@@ -209,8 +195,8 @@ class Controller {
 
 		$this->settings->set_methods( $methods );
 		$this->settings->set_default_method( $default_method );
-		$this->settings->set_description( $description );
-		$this->settings->set_expiry_days( $expiry_days );
+		$this->settings->set_description( $this->post_text( 'description' ) );
+		$this->settings->set_expiry_days( absint( $this->post_text( 'expiry_days', '3' ) ) );
 
 		$this->save_confirmation_fields();
 
@@ -220,34 +206,17 @@ class Controller {
 	}
 
 	/**
-	 * Messages are sanitized with wp_kses_post() rather than
-	 * sanitize_textarea_field() — the saved value is rendered as HTML in the
-	 * frontend popup. Titles are plain text (sanitize_text_field()) since
-	 * they're rendered as a heading, not HTML.
+	 * Saves the Confirmation Type panel. The popup shows these as plain text, so I store them that way.
 	 */
 	private function save_confirmation_fields(): void {
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked by the caller (save_settings()) via guard()'s check_ajax_referer() call.
-		$paid_type = sanitize_text_field( wp_unslash( $_POST['paid_type'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked by the caller (save_settings()) via guard()'s check_ajax_referer() call.
-		$paid_page_id = absint( wp_unslash( $_POST['paid_page_id'] ?? 0 ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked by the caller (save_settings()) via guard()'s check_ajax_referer() call.
-		$paid_url = esc_url_raw( wp_unslash( $_POST['paid_url'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked by the caller (save_settings()) via guard()'s check_ajax_referer() call.
-		$show_entry_data = ! empty( $_POST['show_entry_data'] );
+		$this->settings->set_paid_confirmation_type( $this->post_text( 'paid_type' ) );
+		$this->settings->set_paid_confirmation_page_id( absint( $this->post_text( 'paid_page_id' ) ) );
+		$this->settings->set_paid_confirmation_url( esc_url_raw( $this->post_text( 'paid_url' ) ) );
+		$this->settings->set_show_entry_data( '' !== $this->post_text( 'show_entry_data' ) );
 
-		$this->settings->set_paid_confirmation_type( $paid_type );
-		$this->settings->set_paid_confirmation_page_id( $paid_page_id );
-		$this->settings->set_paid_confirmation_url( $paid_url );
-		$this->settings->set_show_entry_data( $show_entry_data );
-
-		foreach ( array( 'paid', 'pending', 'failed', 'cancelled' ) as $status ) {
-			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked by the caller (save_settings()) via guard()'s check_ajax_referer() call.
-			$title = sanitize_text_field( wp_unslash( $_POST[ $status . '_title' ] ?? '' ) );
-			$this->settings->set_confirmation_title( $status, $title );
-
-			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked by the caller (save_settings()) via guard()'s check_ajax_referer() call.
-			$message = wp_kses_post( wp_unslash( $_POST[ $status . '_message' ] ?? '' ) );
-			$this->settings->set_confirmation_message( $status, $message );
+		foreach ( SettingsRepository::CONFIRMATION_STATUSES as $status ) {
+			$this->settings->set_confirmation_title( $status, $this->post_text( $status . '_title' ) );
+			$this->settings->set_confirmation_message( $status, $this->post_textarea( $status . '_message' ) );
 		}
 	}
 
@@ -257,8 +226,7 @@ class Controller {
 	public function request_activation(): void {
 		$this->guard();
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$entity      = strtoupper( sanitize_text_field( wp_unslash( $_POST['entity'] ?? '' ) ) );
+		$entity      = strtoupper( $this->post_text( 'entity' ) );
 		$gateway_key = $this->settings->get_gateway_key();
 
 		if ( '' === $entity || '' === $gateway_key ) {
@@ -281,7 +249,7 @@ class Controller {
 				'site_name'          => get_bloginfo( 'name' ),
 				'wp_version'         => get_bloginfo( 'version' ),
 				'forminator_version' => defined( 'FORMINATOR_VERSION' ) ? FORMINATOR_VERSION : '',
-				'plugin_version'     => defined( 'IFTP_FM_VERSION' ) ? IFTP_FM_VERSION : '',
+				'plugin_version'     => IFTP_FM_VERSION,
 			)
 		);
 
@@ -295,19 +263,13 @@ class Controller {
 	}
 
 	/**
-	 * Loads one ifthenpay field's settings for the builder-canvas popup —
-	 * its own amount/label config, plus the other fields on its form as
-	 * variable-amount candidates.
+	 * Loads one ifthenpay field's settings for the builder popup, plus the form's
+	 * other fields as variable-amount candidates.
 	 */
 	public function get_field_settings(): void {
 		$this->guard();
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$form_id = absint( wp_unslash( $_POST['form_id'] ?? 0 ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$field_slug = sanitize_text_field( wp_unslash( $_POST['field_slug'] ?? '' ) );
-
-		$settings = $this->field_settings->get( $form_id, $field_slug );
+		$settings = $this->field_settings->get( absint( $this->post_text( 'form_id' ) ), $this->post_text( 'field_slug' ) );
 
 		if ( null === $settings ) {
 			wp_send_json_error( array( 'message' => __( 'Save the form once first, then configure this field.', 'ifthenpay-payments-for-forminator' ) ) );
@@ -317,42 +279,30 @@ class Controller {
 	}
 
 	/**
-	 * Saves one ifthenpay field's settings from the builder-canvas popup.
+	 * Saves one ifthenpay field's settings from the builder popup.
 	 */
 	public function save_field_settings(): void {
 		$this->guard();
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$form_id = absint( wp_unslash( $_POST['form_id'] ?? 0 ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$field_slug = sanitize_text_field( wp_unslash( $_POST['field_slug'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$amount_type = sanitize_text_field( wp_unslash( $_POST['amount_type'] ?? 'fixed' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$amount = sanitize_text_field( wp_unslash( $_POST['amount'] ?? '0' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$variable = sanitize_text_field( wp_unslash( $_POST['variable'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$checkout_label = sanitize_text_field( wp_unslash( $_POST['checkout_label'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$field_label = sanitize_text_field( wp_unslash( $_POST['field_label'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$description = sanitize_textarea_field( wp_unslash( $_POST['description'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$description_placement = sanitize_text_field( wp_unslash( $_POST['description_placement'] ?? 'below' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$css_class = sanitize_text_field( wp_unslash( $_POST['css_class'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$hide_icon = '1' === sanitize_text_field( wp_unslash( $_POST['hide_icon'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$hide_methods = '1' === sanitize_text_field( wp_unslash( $_POST['hide_methods'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$condition_action = sanitize_text_field( wp_unslash( $_POST['condition_action'] ?? 'show' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already checked above via guard()'s check_ajax_referer() call.
-		$condition_rule = sanitize_text_field( wp_unslash( $_POST['condition_rule'] ?? 'all' ) );
-		$conditions     = $this->parse_conditions();
-
-		$saved = $this->field_settings->save( $form_id, $field_slug, $amount_type, $amount, $variable, $checkout_label, $field_label, $description, $description_placement, $css_class, $hide_icon, $hide_methods, $condition_action, $condition_rule, $conditions );
+		$saved = $this->field_settings->save(
+			absint( $this->post_text( 'form_id' ) ),
+			$this->post_text( 'field_slug' ),
+			array(
+				'amount_type'           => $this->post_text( 'amount_type', 'fixed' ),
+				'amount'                => $this->post_text( 'amount', '0' ),
+				'variable'              => $this->post_text( 'variable' ),
+				'checkout_label'        => $this->post_text( 'checkout_label' ),
+				'field_label'           => $this->post_text( 'field_label' ),
+				'description'           => $this->post_textarea( 'description' ),
+				'description_placement' => $this->post_text( 'description_placement', 'below' ),
+				'css_class'             => $this->post_text( 'css_class' ),
+				'hide_icon'             => '1' === $this->post_text( 'hide_icon' ),
+				'hide_methods'          => '1' === $this->post_text( 'hide_methods' ),
+				'condition_action'      => $this->post_text( 'condition_action', 'show' ),
+				'condition_rule'        => $this->post_text( 'condition_rule', 'all' ),
+				'conditions'            => $this->post_conditions(),
+			)
+		);
 
 		if ( ! $saved ) {
 			wp_send_json_error( array( 'message' => __( 'Could not save the field settings. Please try again.', 'ifthenpay-payments-for-forminator' ) ) );
@@ -362,17 +312,14 @@ class Controller {
 	}
 
 	/**
-	 * Reads the conditional-logic rows the popup posts as `conditions[<i>][element_id|rule|value]`
-	 * — PHP parses that bracket notation into a nested array on its own, the
-	 * same convention `assets/js/frontend.js` already uses for `fields[...]`.
-	 * `FieldSettingsStore::save()` does the real validation (operator
-	 * vocabulary, dropping incomplete rows); this only untaints the raw shape.
+	 * The popup's `conditions[<i>][element_id|rule|value]` rows, shape-cleaned only.
+	 * FieldSettingsStore validates the operators and drops incomplete rows.
 	 *
 	 * @return array<int, array{element_id: string, rule: string, value: string}>
 	 */
-	private function parse_conditions(): array {
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- nonce already checked above via guard()'s check_ajax_referer() call; each row's values are sanitized individually in the loop below.
-		$raw        = wp_unslash( (array) ( $_POST['conditions'] ?? array() ) );
+	private function post_conditions(): array {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- guard() verified the nonce; each value is sanitized below.
+		$raw        = isset( $_POST['conditions'] ) && is_array( $_POST['conditions'] ) ? wp_unslash( $_POST['conditions'] ) : array();
 		$conditions = array();
 
 		foreach ( $raw as $condition ) {
@@ -381,9 +328,9 @@ class Controller {
 			}
 
 			$conditions[] = array(
-				'element_id' => sanitize_text_field( $condition['element_id'] ?? '' ),
-				'rule'       => sanitize_text_field( $condition['rule'] ?? '' ),
-				'value'      => sanitize_text_field( $condition['value'] ?? '' ),
+				'element_id' => sanitize_text_field( is_string( $condition['element_id'] ?? null ) ? $condition['element_id'] : '' ),
+				'rule'       => sanitize_text_field( is_string( $condition['rule'] ?? null ) ? $condition['rule'] : '' ),
+				'value'      => sanitize_text_field( is_string( $condition['value'] ?? null ) ? $condition['value'] : '' ),
 			);
 		}
 
@@ -391,8 +338,47 @@ class Controller {
 	}
 
 	/**
-	 * Verifies the request nonce and the settings-page capability. Every public
-	 * handler above calls this first.
+	 * A single-line POST value.
+	 *
+	 * @param string $key      The POST key.
+	 * @param string $fallback Returned when the key is missing or not a string.
+	 */
+	private function post_text( string $key, string $fallback = '' ): string {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- every handler runs guard() first.
+		return isset( $_POST[ $key ] ) && is_string( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : $fallback;
+	}
+
+	/**
+	 * A multi-line POST value, line breaks kept.
+	 *
+	 * @param string $key The POST key.
+	 */
+	private function post_textarea( string $key ): string {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- every handler runs guard() first.
+		return isset( $_POST[ $key ] ) && is_string( $_POST[ $key ] ) ? sanitize_textarea_field( wp_unslash( $_POST[ $key ] ) ) : '';
+	}
+
+	/**
+	 * A POST array of single-line strings.
+	 *
+	 * @param string $key The POST key.
+	 * @return array<int, string>
+	 */
+	private function post_list( string $key ): array {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- every handler runs guard() first.
+		if ( ! isset( $_POST[ $key ] ) || ! is_array( $_POST[ $key ] ) ) {
+			return array();
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- every handler runs guard() first.
+		$values = array_map( 'sanitize_text_field', wp_unslash( $_POST[ $key ] ) );
+
+		// sanitize_text_field() turns nested arrays into '', so this drops them too.
+		return array_values( array_filter( $values, static fn( string $value ): bool => '' !== $value ) );
+	}
+
+	/**
+	 * Verifies the nonce and the Forminator admin capability.
 	 */
 	private function guard(): void {
 		check_ajax_referer( self::NONCE_ACTION, 'nonce' );

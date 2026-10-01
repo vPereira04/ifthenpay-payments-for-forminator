@@ -17,22 +17,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Step 1 of Victor's two-step admin UX: a "Connect to Ifthenpay" row on
- * Forminator's own native Payments tab (`section=payments`).
+ * A "Connect to Ifthenpay" row on Forminator's native Payments tab.
  *
- * Forminator's Payments tab (`admin/views/settings/tab-payments.php`) is a
- * core file I never touch, and it has no PHP hook inside its `.sui-box-body`
- * — Stripe's and PayPal's rows are hardcoded there, directly above the
- * `.sui-box-footer` "Save Settings" button. `forminator_settings_content`
- * only fires *after* that whole box, as a trailing sibling, so anything
- * rendered here lands in its own box below "Save Settings" — not alongside
- * Stripe/PayPal — unless it's moved.
- *
- * So `render()` outputs the row markup into a hidden holder, and
- * `assets/js/admin.js` relocates it into the native box (inserted before its
- * `.sui-box-footer`) on page load — the only way to sit inside that box
- * without patching Forminator core. The connect modal doesn't need moving;
- * it's `display:none` until opened, so its position in the DOM is irrelevant.
+ * The tab has no hook inside its box (Stripe/PayPal are hardcoded), so I render the row
+ * into a hidden holder and admin.js moves it in, above the "Save Settings" footer.
  */
 class ConnectSettings {
 
@@ -46,7 +34,7 @@ class ConnectSettings {
 	/**
 	 * Sets up the box.
 	 *
-	 * @param SettingsRepository|null $settings Settings storage; a fresh instance is used when omitted.
+	 * @param SettingsRepository|null $settings Settings storage.
 	 */
 	public function __construct( ?SettingsRepository $settings = null ) {
 		$this->settings = $settings ?? new SettingsRepository();
@@ -112,9 +100,16 @@ class ConnectSettings {
 			return;
 		}
 
-		$connected = $this->settings->is_connected();
+		$connected     = $this->settings->is_connected();
+		$configure_url = add_query_arg(
+			array(
+				'page'    => 'forminator-settings',
+				'section' => 'GatewayConfiguration',
+			),
+			admin_url( 'admin.php' )
+		);
 		?>
-		<div id="iftp-fm-connect-source" style="display: none;">
+		<div id="iftp-fm-connect-source" hidden>
 			<div id="sui-box-ifthenpay" class="sui-box-settings-row">
 				<div class="sui-box-settings-col-1">
 					<span class="sui-settings-label"><?php esc_html_e( 'ifthenpay', 'ifthenpay-payments-for-forminator' ); ?></span>
@@ -126,20 +121,8 @@ class ConnectSettings {
 						<span class="sui-description">
 							<?php esc_html_e( 'Connected.', 'ifthenpay-payments-for-forminator' ); ?>
 						</span>
-						<div class="sui-form-field" style="margin-top: 10px;">
-							<a class="sui-button sui-button-blue" href="
-							<?php
-							echo esc_url(
-								add_query_arg(
-									array(
-										'page'    => 'forminator-settings',
-										'section' => 'GatewayConfiguration',
-									),
-									admin_url( 'admin.php' )
-								)
-							);
-							?>
-																		">
+						<div class="sui-form-field iftp-fm-connect-actions">
+							<a class="sui-button sui-button-blue" href="<?php echo esc_url( $configure_url ); ?>">
 								<?php esc_html_e( 'Configure Gateway', 'ifthenpay-payments-for-forminator' ); ?>
 							</a>
 							<button type="button" class="sui-button sui-button-ghost" id="iftp-fm-disconnect">
@@ -148,7 +131,7 @@ class ConnectSettings {
 						</div>
 					<?php else : ?>
 						<span class="sui-description"><?php esc_html_e( 'Connect your ifthenpay Backoffice Key to enable the ifthenpay payment field.', 'ifthenpay-payments-for-forminator' ); ?></span>
-						<div class="sui-form-field" style="margin-top: 10px;">
+						<div class="sui-form-field iftp-fm-connect-actions">
 							<button
 								type="button"
 								class="sui-button"
@@ -171,25 +154,10 @@ endif;
 	}
 
 	/**
-	 * Modal markup, matching the real structure SUI's generic `data-modal-open`
-	 * opener requires — verified against Forminator core's own reference use of
-	 * that same mechanism (`admin/views/settings/hub-connector/popup.php`):
-	 * `SUI.Dialog()` does `document.getElementById( <id> )` and then requires
-	 * `role="dialog"` on *that exact element* (not an ancestor), so the id has
-	 * to sit on the `.sui-modal-content` node, not on the outer `.sui-modal`
-	 * wrapper.
+	 * Renders the connect modal.
 	 *
-	 * Hidden-by-default/shown-when-active is enforced by our own
-	 * `#iftp-fm-connect-modal-wrap` rule in assets/css/admin.css, not
-	 * Forminator's `.sui-<version> .sui-modal` CSS — that rule only matches
-	 * inside a body class Forminator adds via `admin_body_class`, which this
-	 * plugin can't rely on holding across Forminator versions/contexts. Our
-	 * rule toggles on the same `sui-active` class `SUI.Dialog` already adds
-	 * to this wrapper, so it works regardless of whether the native scope
-	 * also applies.
-	 *
-	 * `data-modal-close` on the Cancel button is picked up by the same generic
-	 * SUI wiring, no JS of mine needed for that half.
+	 * SUI.Dialog() needs role="dialog" on the element with the id, so the id sits on
+	 * .sui-modal-content; show/hide comes from my own CSS rule on `sui-active`.
 	 */
 	private function render_connect_modal(): void {
 		?>
@@ -206,7 +174,7 @@ endif;
 								type="text"
 								id="iftp-fm-backoffice-key"
 								class="sui-form-control"
-								placeholder="Insert your backoffice key here.."
+								placeholder="<?php esc_attr_e( 'Insert your backoffice key here..', 'ifthenpay-payments-for-forminator' ); ?>"
 								autocomplete="off"
 								spellcheck="false"
 								aria-describedby="iftp-fm-backoffice-key-help iftp-fm-connect-modal-message"
@@ -235,9 +203,7 @@ endif;
 	/**
 	 * Whether the current admin request is on our own settings screen.
 	 *
-	 * Forminator's tabs switch client-side without reloading, so I can't
-	 * tell which one is active from the query string — I just check we're
-	 * on the settings page at all and let it enqueue every time.
+	 * Tabs switch client-side, so I can't tell which one is active; I enqueue on the whole page.
 	 *
 	 * @param string $hook The current admin page hook suffix.
 	 */

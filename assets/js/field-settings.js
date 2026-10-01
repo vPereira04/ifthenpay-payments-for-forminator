@@ -1,12 +1,5 @@
-/**
- * Builder-canvas popup for the ifthenpay field's settings. Forminator's own
- * field-settings modal can't render for our field (see
- * `Admin\FieldSettingsModal`'s docblock for why), so this intercepts a click
- * on the field's canvas block — before Forminator's own (broken) click
- * handler opens its modal — and shows our own popup instead, the same
- * capture-phase trick `assets/js/frontend.js` uses to get ahead of
- * Forminator's own submit handler.
- */
+// Forminator's own field-settings modal can't render for our field, so I catch the click on its
+// canvas block and open our popup instead.
 ( function () {
 	'use strict';
 
@@ -19,14 +12,9 @@
 	var returnFocusTo = null;
 	var otherFields = [];
 	var conditionRowId = 0;
+	var loadRequest = 0;
 
-	/**
-	 * Capture-phase listener on `document` — fires before Forminator's own
-	 * bubble-phase `onClick` (React's synthetic events are also bubble-phase,
-	 * same reasoning as frontend.js's submit interception), so stopping
-	 * propagation here keeps Forminator's own (broken, for this field type)
-	 * modal from ever opening.
-	 */
+	// Capture phase, so I run before Forminator's bubble-phase React onClick and can stop its broken modal.
 	document.addEventListener(
 		'click',
 		function ( e ) {
@@ -51,19 +39,8 @@
 		true
 	);
 
-	/**
-	 * Neither the left field-picker panel nor the canvas block header render
-	 * an icon for our field — both read `<type>.icon` off a client-side field
-	 * registry Forminator's builder bundle builds for itself (confirmed
-	 * against build/form-scripts.js: `<i className={e.icon}>` in the
-	 * `field-selectors` picker list and again in the canvas block's
-	 * `.fui-field--icon`), not off `IfthenpayField::$icon`, so a third-party
-	 * type's `<i>` renders with no class at all. Injecting the class here is
-	 * the only extension point available, same reasoning as the
-	 * settings-modal interception above. A MutationObserver, not a one-time
-	 * scan, because the builder re-renders both spots as React state changes
-	 * (adding/removing other fields, reload after Apply, ...).
-	 */
+	// Forminator's builder takes field icons from its own client-side registry, so ours renders a bare <i>.
+	// I set the class myself and keep watching, because React re-renders both spots.
 	var FIELD_ICON_CLASS = 'sui-icon forminator-icon-ifthenpay';
 
 	function applyFieldIcon() {
@@ -83,15 +60,8 @@
 	applyFieldIcon();
 	new MutationObserver( applyFieldIcon ).observe( document.body, { childList: true, subtree: true } );
 
-	/**
-	 * "Show/Hide", "All/Any" and "Amount type" are plain radio groups styled
-	 * as Forminator's `sui-side-tabs` pill toggle rather than a `<select>` or
-	 * default radio list — these two helpers read/write them by `name`, and
-	 * `syncToggleTabsActive()` keeps each option's `.sui-tab-item` wrapper's
-	 * `active` class in step whenever a value is set programmatically (a
-	 * plain `.checked = true` doesn't touch that class the way a real click
-	 * does).
-	 */
+	// These radio groups are styled as SUI pill tabs. Setting .checked from code does not move the
+	// wrapper's .active class the way a real click does, so I sync it by hand.
 	function getRadioValue( name ) {
 		var checked = document.querySelector( 'input[name="' + name + '"]:checked' );
 
@@ -134,14 +104,18 @@
 		currentFieldSlug = fieldSlug;
 		returnFocusTo = document.activeElement;
 		setMessage( '' );
-		resetTabs();
+		selectTab( 'settings' );
 		wrap.classList.add( 'iftp-fm-active' );
 		document.getElementById( 'iftp-fm-field-modal-close' ).focus();
 
-		// Dimmed until this field's settings arrive, so the previous field's
-		// values never flash up as if they were this one's.
+		// Dimmed, with Apply locked, until this field's settings arrive: otherwise the previous field's
+		// values could show up here, or be saved onto this field.
 		var body = wrap.querySelector( '.sui-box-body' );
+		var saveButton = document.getElementById( 'iftp-fm-field-modal-save' );
+		var request = ++loadRequest;
+
 		body.setAttribute( 'aria-busy', 'true' );
+		saveButton.disabled = true;
 
 		var tag = document.getElementById( 'iftp-fm-field-modal-tag' );
 
@@ -150,28 +124,30 @@
 		}
 
 		post( 'iftp_fm_get_field_settings', { field_slug: fieldSlug } )
-			.finally( function () {
-				body.removeAttribute( 'aria-busy' );
-			} )
 			.then( function ( response ) {
+				// A slower reply for a field opened before this one.
+				if ( request !== loadRequest ) {
+					return;
+				}
+
 				if ( ! response.success ) {
 					setMessage( ( response.data && response.data.message ) || iftpFmFieldSettings.i18n.unsaved );
 					return;
 				}
 
 				populateForm( response.data );
+				saveButton.disabled = false;
 			} )
 			.catch( function () {
-				setMessage( iftpFmFieldSettings.i18n.error );
+				if ( request === loadRequest ) {
+					setMessage( iftpFmFieldSettings.i18n.error );
+				}
+			} )
+			.finally( function () {
+				if ( request === loadRequest ) {
+					body.removeAttribute( 'aria-busy' );
+				}
 			} );
-	}
-
-	/**
-	 * Always reopens on the "Settings" tab, regardless of where the
-	 * previous field's popup was left.
-	 */
-	function resetTabs() {
-		selectTab( 'settings' );
 	}
 
 	function selectTab( name ) {
@@ -179,7 +155,6 @@
 			var isActive = name === tab.getAttribute( 'data-tab' );
 			tab.classList.toggle( 'iftp-fm-field-tab--active', isActive );
 			tab.setAttribute( 'aria-selected', isActive ? 'true' : 'false' );
-			// Roving tabindex — only the active tab is a Tab stop.
 			tab.setAttribute( 'tabindex', isActive ? '0' : '-1' );
 		} );
 
@@ -258,23 +233,13 @@
 		document.getElementById( 'iftp-fm-field-conditional-enabled' ).checked = conditions.length > 0;
 	}
 
-	/**
-	 * The rows stay visible but locked until the checkbox is ticked — Apply
-	 * ignores them while it's off, so I don't let anyone fill them in then.
-	 * The body is a `<fieldset>`, so this also covers rows added later.
-	 */
+	// Apply ignores the rows while this is off, so I lock them. The body is a <fieldset>, so rows added later are covered too.
 	function toggleConditionalBody( enabled ) {
 		document.getElementById( 'iftp-fm-field-conditional-body' ).disabled = ! enabled;
 	}
 
-	/**
-	 * Appends one condition row — a field/operator/value triple, saved as
-	 * `conditions[<row index>][element_id|rule|value]` in the same shape
-	 * Forminator's own conditional-logic engine (`front.condition.js`)
-	 * evaluates for any native field.
-	 *
-	 * @param {Object} [condition] Existing row values, when populating from a saved field.
-	 */
+	// One field/operator/value row, saved as conditions[i][element_id|rule|value]: the shape Forminator's
+	// own front.condition.js evaluates.
 	function addConditionRow( condition ) {
 		condition = condition || {};
 
@@ -332,10 +297,6 @@
 		document.getElementById( 'iftp-fm-field-conditions-list' ).appendChild( row );
 	}
 
-	/**
-	 * The conditions list as `{element_id, rule, value}` objects, read
-	 * straight off the condition rows currently in the DOM.
-	 */
 	function collectConditions() {
 		var rows = document.querySelectorAll( '#iftp-fm-field-conditions-list .iftp-fm-condition-row' );
 		var conditions = [];
@@ -357,11 +318,6 @@
 		return conditions;
 	}
 
-	/**
-	 * Only one of "Fixed amount" / "Amount field" is ever relevant at a
-	 * time — the other stays hidden, same as Forminator's own PayPal/Stripe
-	 * field settings toggle between their own mutually exclusive options.
-	 */
 	function toggleAmountRows( isVariable ) {
 		document.getElementById( 'iftp-fm-field-amount-row' ).classList.toggle( 'iftp-fm-hidden', isVariable );
 		document.getElementById( 'iftp-fm-field-variable-row' ).classList.toggle( 'iftp-fm-hidden', ! isVariable );
@@ -416,7 +372,6 @@
 				selectTab( tab.getAttribute( 'data-tab' ) );
 			} );
 
-			// WAI-ARIA tabs pattern: arrows/Home/End move between tabs.
 			tab.addEventListener( 'keydown', function ( e ) {
 				var next = null;
 
@@ -477,9 +432,7 @@
 		} );
 
 		var saveButton = document.getElementById( 'iftp-fm-field-modal-save' );
-		// Targets the inner label span, not `.sui-loading-text` itself — that
-		// span also holds the check icon, and `.textContent =` below would
-		// wipe it out (Text setter on a parent replaces all its children).
+		// The inner label, not .sui-loading-text: that also holds the check icon, which textContent would wipe.
 		var saveButtonLabel = document.getElementById( 'iftp-fm-field-modal-save-label' );
 
 		saveButton.addEventListener( 'click', function () {
@@ -526,14 +479,8 @@
 						return;
 					}
 
-					// We just wrote straight to the DB, bypassing Forminator's
-					// React builder state entirely (see FieldSettingsModal's
-					// docblock — there's no extension point to update it in
-					// place). That state still holds the pre-Apply values, and
-					// clicking Forminator's own Save/Publish next would
-					// serialize it back over what we just saved. Reloading
-					// forces the builder to re-fetch the form and pick up what
-					// we actually persisted, before that can happen.
+					// I saved straight to the DB behind the builder's React state. Reloading stops Forminator's next
+					// Save/Publish from writing its stale copy back over it.
 					setMessage( iftpFmFieldSettings.i18n.saved );
 					window.location.reload();
 				} )

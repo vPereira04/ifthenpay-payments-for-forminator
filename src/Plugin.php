@@ -18,8 +18,10 @@ use Ifthenpay\Forminator\Ajax\PaymentController;
 use Ifthenpay\Forminator\Ajax\StatusController;
 use Ifthenpay\Forminator\Api\Webhook\WebhookController;
 use Ifthenpay\Forminator\Api\Webhook\WebhookRegistrar;
+use Ifthenpay\Forminator\Cron\ExpiredPaymentsCron;
 use Ifthenpay\Forminator\Fields\IfthenpayField;
 use Ifthenpay\Forminator\Forminator\TransactionStore;
+use Ifthenpay\Forminator\Privacy\PersonalData;
 use Ifthenpay\Forminator\Repository\SettingsRepository;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -27,13 +29,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Plugin bootstrap — wires every piece together once, on `plugins_loaded`.
+ * Wires every piece together once, on `plugins_loaded`.
+ *
+ * @phpstan-import-type Transaction from TransactionStore
  */
 class Plugin {
 
-	/**
-	 * Script handle for the shared dark-background method logo swap.
-	 */
 	public const METHOD_LOGOS_HANDLE = 'iftp-fm-method-logos';
 
 	/**
@@ -61,14 +62,11 @@ class Plugin {
 	}
 
 	/**
-	 * Wires up every hook and registers every AJAX/admin/frontend piece.
+	 * Registers every hook, AJAX action and admin screen.
 	 */
 	public function boot(): void {
-		// Safety net for a site that already had the plugin active before
-		// this table existed — register_activation_hook() alone only fires
-		// on a fresh install/reactivation.
+		// Activation creates the table too; this catches schema upgrades on update.
 		TransactionStore::maybe_create_table();
-		add_action( 'admin_init', array( new TransactionStore(), 'maybe_backfill_customers' ) );
 
 		add_filter( 'forminator_fields', array( $this, 'register_field' ) );
 
@@ -81,14 +79,16 @@ class Plugin {
 		( new StatusController() )->register();
 		( new WebhookController() )->register();
 		( new WebhookRegistrar() )->register();
+		( new ExpiredPaymentsCron() )->register();
+		( new PersonalData() )->register();
 
 		add_action( 'init', array( $this, 'register_shared_assets' ) );
-		add_action( 'wp_enqueue_scripts', array( $this, 'maybe_enqueue_frontend_assets' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'maybe_enqueue_for_return' ) );
+		add_action( 'forminator_custom_forms_enqueue_scripts', array( $this, 'maybe_enqueue_for_form' ) );
 	}
 
 	/**
-	 * Registers the dark-background method logo swap once, so the frontend
-	 * field and every admin screen showing a logo just list it as a dependency.
+	 * Registers the dark-background logo swap that the frontend and admin scripts depend on.
 	 */
 	public function register_shared_assets(): void {
 		$logos_js = 'assets/js/method-logos.js';
@@ -109,12 +109,35 @@ class Plugin {
 	}
 
 	/**
-	 * Only enqueued on a page that could plausibly show our field (any
-	 * singular content, since Forminator forms are usually embedded via
-	 * shortcode/block rather than a dedicated page type) — the script itself
-	 * is a no-op if it finds no `.forminator-ifthenpay-input` on the page.
+	 * Loads the popup on ifthenpay's return redirect, which can land on a page without the form (e.g. the home page).
 	 */
-	public function maybe_enqueue_frontend_assets(): void {
+	public function maybe_enqueue_for_return(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- only picks whether to load assets; resolve_return_context() checks the signature.
+		if ( isset( $_GET['iftp_fm_pay'] ) ) {
+			$this->enqueue_frontend_assets();
+		}
+	}
+
+	/**
+	 * Loads with any form that has our field. Forminator fires this while rendering the shortcode, AJAX-loaded
+	 * forms included (it renders a placeholder then), so the footer still prints what I enqueue here.
+	 *
+	 * @param object $render_obj Forminator's form renderer.
+	 */
+	public function maybe_enqueue_for_form( $render_obj ): void {
+		if ( is_object( $render_obj ) && method_exists( $render_obj, 'has_field_type' ) && $render_obj->has_field_type( 'ifthenpay' ) ) {
+			$this->enqueue_frontend_assets();
+		}
+	}
+
+	/**
+	 * Enqueues and localizes the frontend script once, however many forms ask for it.
+	 */
+	private function enqueue_frontend_assets(): void {
+		if ( wp_script_is( 'iftp-fm-frontend', 'enqueued' ) ) {
+			return;
+		}
+
 		wp_enqueue_style( 'iftp-fm-frontend', IFTP_FM_URL . 'assets/css/frontend.css', array(), IFTP_FM_VERSION );
 		wp_enqueue_script( 'iftp-fm-frontend', IFTP_FM_URL . 'assets/js/frontend.js', array( 'jquery', self::METHOD_LOGOS_HANDLE ), IFTP_FM_VERSION, true );
 
@@ -126,12 +149,12 @@ class Plugin {
 			'iftp-fm-frontend',
 			'iftpFmFrontend',
 			array(
-				'ajaxUrl'         => admin_url( 'admin-ajax.php' ),
-				'nonce'           => wp_create_nonce( PaymentController::NONCE_ACTION ),
-				'statusNonce'     => wp_create_nonce( 'iftp_fm_status' ),
-				'paidPageUrl'     => $settings->get_paid_page_url(),
-				'return'          => $context,
-				'i18n'            => array(
+				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+				'nonce'       => wp_create_nonce( PaymentController::NONCE_ACTION ),
+				'statusNonce' => wp_create_nonce( 'iftp_fm_status' ),
+				'paidPageUrl' => $settings->get_paid_page_url(),
+				'return'      => $context,
+				'i18n'        => array(
 					'redirecting' => __( 'Redirecting to secure payment…', 'ifthenpay-payments-for-forminator' ),
 					'error'       => __( 'Something went wrong starting your payment. Please try again.', 'ifthenpay-payments-for-forminator' ),
 					'confirming'  => __( 'Confirming your payment…', 'ifthenpay-payments-for-forminator' ),
@@ -140,36 +163,36 @@ class Plugin {
 					'openPage'    => __( 'Continue', 'ifthenpay-payments-for-forminator' ),
 					'newTab'      => __( '(opens in a new tab)', 'ifthenpay-payments-for-forminator' ),
 				),
-				'titles'          => array(
+				'titles'      => array(
 					'paid'      => $this->status_title( 'paid' ),
 					'pending'   => $this->status_title( 'pending' ),
 					'failed'    => $this->status_title( 'failed' ),
 					'cancelled' => $this->status_title( 'cancelled' ),
 				),
-				'messages'        => array(
+				'messages'    => array(
 					'paid'      => $this->status_message( 'paid' ),
 					'pending'   => $this->status_message( 'pending' ),
 					'failed'    => $this->status_message( 'failed' ),
 					'cancelled' => $this->status_message( 'cancelled' ),
 				),
-				'paidFields'      => self::paid_fields( $record ),
+				'paidFields'  => self::paid_fields( $record ),
 			)
 		);
 	}
 
 	/**
-	 * Reads the `iftp_fm_pay`/`ref`/`transaction_id` return-URL params and
-	 * resolves them against the stored transaction, or null if this isn't a return visit.
+	 * Resolves ifthenpay's return redirect against the stored transaction, or null when this isn't one.
 	 *
 	 * @return array{ref: string, status: string, transactionId: string}|null
 	 */
 	private function resolve_return_context(): ?array {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only return-URL params from ifthenpay's own redirect, resolved against the stored transaction below.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- ifthenpay's redirect can't carry a nonce; the signature below authenticates it instead.
 		$query_status = sanitize_text_field( wp_unslash( $_GET['iftp_fm_pay'] ?? '' ) );
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only return-URL params from ifthenpay's own redirect, resolved against the stored transaction below.
-		$ref = sanitize_text_field( wp_unslash( $_GET['ref'] ?? '' ) );
+		$ref          = sanitize_text_field( wp_unslash( $_GET['ref'] ?? '' ) );
+		$signature    = sanitize_text_field( wp_unslash( $_GET[ PaymentController::RETURN_SIG ] ?? '' ) );
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
-		if ( '' === $query_status || '' === $ref ) {
+		if ( '' === $query_status || '' === $ref || ! hash_equals( PaymentController::return_signature( $ref, $query_status ), $signature ) ) {
 			return null;
 		}
 
@@ -180,12 +203,10 @@ class Plugin {
 			return null;
 		}
 
-		$status = (string) $record['status'];
+		$status = $record['status'];
 
-		// ifthenpay only ever sends a webhook for a paid payment, so this
-		// redirect is the only signal I get for a decline/cancel — I persist
-		// it, otherwise the row (and the status poll) stays "pending" forever.
-		// mark_paid() still overrides it if the payment is confirmed later.
+		// ifthenpay only calls the webhook for paid payments, so this redirect is
+		// my only signal for a decline or cancel. A later webhook still wins.
 		if ( TransactionStore::STATUS_PENDING === $status ) {
 			if ( 'error' === $query_status ) {
 				$transactions->mark_failed( $ref );
@@ -199,7 +220,7 @@ class Plugin {
 		return array(
 			'ref'           => $ref,
 			'status'        => $status,
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only return-URL param from ifthenpay's own redirect.
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- signed return URL, verified above.
 			'transactionId' => 'success' === $query_status ? sanitize_text_field( wp_unslash( $_GET['transaction_id'] ?? '' ) ) : '',
 		);
 	}
@@ -227,12 +248,9 @@ class Plugin {
 	}
 
 	/**
-	 * The paid transaction's submitted field values, for the popup's
-	 * "Submitted Fields" table — empty unless the "Show submitted field
-	 * values in the paid popup" setting is on and the record has a
-	 * field snapshot to show.
+	 * The submitted values for the paid popup, when that setting is on.
 	 *
-	 * @param array<string, mixed>|null $record The transaction row, when known.
+	 * @param Transaction|null $record The transaction row, when known.
 	 * @return array<int, array{label: string, value: string}>
 	 */
 	private static function paid_fields( ?array $record ): array {

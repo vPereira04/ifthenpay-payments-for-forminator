@@ -1,11 +1,6 @@
 /* global iftpFmEntriesStore */
-/**
- * Payment Entries — remembers the admin's working view (sessionStorage) and
- * entries-per-page (localStorage), and puts them back when the screen is
- * opened bare from the menu, a bookmark or an external link.
- *
- * Runs in <head>, so a restore redirect happens before the default view paints.
- */
+// Puts back the admin's saved view (sessionStorage) when Payment Entries opens bare; per-page is saved server-side.
+// Runs in <head>, so the redirect happens before the default view paints.
 ( function () {
 	'use strict';
 
@@ -15,11 +10,93 @@
 
 	var store = iftpFmEntriesStore;
 	var VIEW_KEYS = [ 's', 'status', 'form_id', 'date_from', 'date_to', 'pay_method', 'amount_min', 'amount_max', 'orderby', 'order', 'paged' ];
-	var PER_PAGE_RE = /^\d{1,3}$/;
 	var VIEW_ITEM = store.key + ':view';
-	var PER_PAGE_ITEM = store.key + ':per_page';
 	var RESTORING_ITEM = store.key + ':restoring';
-	var defaultPerPage = String( store.defaultPerPage );
+	var INTRO_ITEM = store.key + ':intro_seen';
+	var NAV_LOADING_ITEM = 'iftpFmEntriesNavLoading'; // set by entries.js on the click that led here
+	var root = document.documentElement;
+	var introSeen = null !== read( 'sessionStorage', INTRO_ITEM );
+	var continued = null !== read( 'sessionStorage', NAV_LOADING_ITEM );
+	var startedAt = Date.now();
+	var painted = false;
+
+	// The logo mark spins from first paint until the footer scripts have run; its reveal plays once per tab.
+	root.classList.add( 'iftp-fm-page-loading' );
+	write( 'sessionStorage', NAV_LOADING_ITEM, null );
+
+	// The first frame runs this just before it paints, so from then on the loading state has been seen.
+	window.requestAnimationFrame( function () {
+		painted = true;
+	} );
+
+	if ( introSeen ) {
+		root.classList.add( 'iftp-fm-intro-seen' );
+	}
+
+	// Arrived via a click: the previous page was already spinning, so this one carries on rather than restarting.
+	if ( continued ) {
+		root.classList.add( 'iftp-fm-page-continue' );
+	} else {
+		root.classList.add( 'iftp-fm-page-skeleton' );
+	}
+
+	// Calls done once the empty-state spinner finishes its lap and eases to rest, so the morph back into
+	// the logo starts from stillness. Returns the timer (0 if done already ran); entries.js uses it too.
+	function afterSpinLap( scope, done ) {
+		var orbit = scope.querySelector( '.iftp-fm-empty-state__icon .iftp-fm-mark__orbit' );
+		var spin = orbit && 'function' === typeof orbit.getAnimations
+			? orbit.getAnimations().filter( function ( animation ) {
+				return 'iftp-fm-orbit-spin' === animation.animationName;
+			} )[ 0 ]
+			: null;
+		var timing = spin ? spin.effect.getComputedTiming() : null;
+
+		if ( ! timing ) {
+			done();
+			return 0;
+		}
+
+		var wait = null === timing.progress ? timing.delay - spin.currentTime : ( 1 - timing.progress ) * timing.duration;
+
+		return window.setTimeout( done, Math.max( 0, wait ) );
+	}
+
+	window.iftpFmAfterSpinLap = afterSpinLap;
+
+	document.addEventListener( 'DOMContentLoaded', function () {
+		var wrap = document.querySelector( '.iftp-fm-entries' );
+		// Ready before the spinner ever showed (the 150ms --iftp-fm-mark-delay), so nothing to turn back from.
+		var quick = ! continued && Date.now() - startedAt < 150;
+
+		function ready() {
+			root.classList.remove( 'iftp-fm-page-loading', 'iftp-fm-page-skeleton' );
+			root.classList.add( 'iftp-fm-page-ready' );
+
+			// The skeleton screen made it to the screen: fade the content in over it.
+			if ( painted && ! continued ) {
+				root.classList.add( 'iftp-fm-page-unveil' );
+				// Only this reveal fades in, not rows an AJAX action swaps in later.
+				window.setTimeout( function () {
+					root.classList.remove( 'iftp-fm-page-unveil' );
+				}, 600 );
+			}
+		}
+
+		if ( wrap && quick ) {
+			wrap.setAttribute( 'data-iftp-settle', 'none' );
+		}
+
+		// A page that's only redirecting to the saved view never showed its reveal.
+		if ( ! introSeen && null === read( 'sessionStorage', RESTORING_ITEM ) && document.querySelector( '.iftp-fm-entries .iftp-fm-empty-state__icon' ) ) {
+			write( 'sessionStorage', INTRO_ITEM, '1' );
+		}
+
+		if ( quick ) {
+			ready();
+		} else {
+			afterSpinLap( document, ready );
+		}
+	} );
 
 	// Storage can be missing or throw (private mode, blocked, quota); I just carry on without it.
 	function read( area, item ) {
@@ -61,12 +138,6 @@
 		return view;
 	}
 
-	function cleanPerPage( value ) {
-		value = 'number' === typeof value ? String( value ) : value;
-
-		return 'string' === typeof value && PER_PAGE_RE.test( value ) && value !== defaultPerPage ? value : null;
-	}
-
 	function savedView() {
 		try {
 			return cleanView( JSON.parse( read( 'sessionStorage', VIEW_ITEM ) || 'null' ) );
@@ -89,11 +160,9 @@
 
 	if ( ! isBare() ) {
 		var view = cleanView( store.view );
-		var perPage = cleanPerPage( store.perPage );
 
 		write( 'sessionStorage', RESTORING_ITEM, null );
 		write( 'sessionStorage', VIEW_ITEM, Object.keys( view ).length ? JSON.stringify( view ) : null );
-		write( 'localStorage', PER_PAGE_ITEM, perPage );
 		return;
 	}
 
@@ -104,14 +173,9 @@
 	}
 
 	var saved = savedView();
-	var savedPerPage = cleanPerPage( read( 'localStorage', PER_PAGE_ITEM ) );
 	var params = new URLSearchParams();
 
 	VIEW_KEYS.forEach( function ( key ) {
-		if ( 'paged' === key && savedPerPage ) {
-			params.set( 'per_page', savedPerPage ); // same spot filtered_url() puts it
-		}
-
 		if ( Object.prototype.hasOwnProperty.call( saved, key ) ) {
 			params.set( key, saved[ key ] );
 		}

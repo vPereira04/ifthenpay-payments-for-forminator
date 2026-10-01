@@ -19,8 +19,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 class IfthenpayPayload {
 
 	/**
-	 * `account` already comes as the full `ENTITY|ACCOUNT` segment from
-	 * ifthenpay — I use it as-is, never rebuild it from `entity`.
+	 * Joins the enabled methods' accounts. Each `account` is already a full
+	 * `ENTITY|ACCOUNT` segment from ifthenpay, so I use it as-is.
 	 *
 	 * @param array<int, array{entity: string, account: string}> $enabled_methods The site's enabled payment methods.
 	 */
@@ -59,6 +59,7 @@ class IfthenpayPayload {
 	 * @param string                                             $cancel_url                Redirect URL on cancel.
 	 * @param string                                             $lang                      The ifthenpay `lang` code.
 	 * @param string                                             $selected_method_position  The catalog Position of the pre-selected method, or '' for none.
+	 * @param int                                                $expiry_days               Days the link stays payable, or 0 for ifthenpay's default.
 	 * @return array<string, mixed>
 	 */
 	public static function build_payment_payload(
@@ -70,7 +71,8 @@ class IfthenpayPayload {
 		string $error_url,
 		string $cancel_url,
 		string $lang = 'en',
-		string $selected_method_position = ''
+		string $selected_method_position = '',
+		int $expiry_days = 0
 	): array {
 		$payload = array(
 			'id'          => $id,
@@ -86,6 +88,10 @@ class IfthenpayPayload {
 
 		if ( '' !== $selected_method_position ) {
 			$payload['selected_method'] = $selected_method_position;
+		}
+
+		if ( $expiry_days > 0 ) {
+			$payload['expiredate'] = wp_date( 'Ymd', time() + $expiry_days * DAY_IN_SECONDS );
 		}
 
 		return $payload;

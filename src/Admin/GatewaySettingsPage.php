@@ -17,16 +17,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Step 2 of Victor's two-step admin UX: a dedicated `section=GatewayConfiguration`
- * screen, only reachable once the Backoffice Key is connected (`ConnectSettings`).
- *
- * Gateway Key, methods table (with the star default-method toggle), payer-
- * facing description, expiry days, and Confirmation Type all live here and
- * save together over one AJAX call (`Ajax\Controller::save_settings`).
+ * The Gateway Configuration settings tab, shown once the Backoffice Key is connected.
  */
 class GatewaySettingsPage {
 
-	private const SECTION_SLUG = 'GatewayConfiguration';
+	private const SECTION_SLUG  = 'GatewayConfiguration';
+	private const BACKFILL_LOCK = 'iftp_fm_backfill_lock';
 
 	/**
 	 * Settings storage.
@@ -52,9 +48,9 @@ class GatewaySettingsPage {
 	/**
 	 * Sets up the page.
 	 *
-	 * @param SettingsRepository|null   $settings      Settings storage; a fresh instance is used when omitted.
-	 * @param GatewaySettingsField|null $methods_field Methods table renderer; a fresh instance is used when omitted.
-	 * @param GatewaySync|null          $sync          Gateway catalog sync; a fresh instance is used when omitted.
+	 * @param SettingsRepository|null   $settings      Settings storage.
+	 * @param GatewaySettingsField|null $methods_field Methods table renderer.
+	 * @param GatewaySync|null          $sync          Gateway catalog sync.
 	 */
 	public function __construct(
 		?SettingsRepository $settings = null,
@@ -81,9 +77,6 @@ class GatewaySettingsPage {
 	 * @return array<string, string>
 	 */
 	public function add_section( array $sections ): array {
-		// Locked behind a real connection — there's nothing to configure on
-		// this screen until step 1 (ConnectSettings) is done, and showing an
-		// empty/broken tab would be worse than not listing it at all.
 		if ( ! $this->settings->is_connected() ) {
 			return $sections;
 		}
@@ -101,14 +94,16 @@ class GatewaySettingsPage {
 			return;
 		}
 
-		if ( $this->sync->needs_backfill() ) {
+		// The lock keeps a failing API from being called on every render until the backfill lands.
+		if ( $this->sync->needs_backfill() && false === get_transient( self::BACKFILL_LOCK ) ) {
+			set_transient( self::BACKFILL_LOCK, 1, 15 * MINUTE_IN_SECONDS );
 			$this->sync->sync();
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only display toggle from the current admin screen's own query string, not a state change.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only display toggle from the URL, no state change.
 		$section = sanitize_text_field( wp_unslash( $_GET['section'] ?? 'dashboard' ) );
 		?>
-		<div class="sui-box" data-nav="<?php echo esc_attr( self::SECTION_SLUG ); ?>" style="<?php echo esc_attr( self::SECTION_SLUG !== $section ? 'display: none;' : '' ); ?>">
+		<div class="sui-box" data-nav="<?php echo esc_attr( self::SECTION_SLUG ); ?>"<?php echo self::SECTION_SLUG !== $section ? ' hidden' : ''; ?>>
 			<div class="sui-box-header">
 				<h2 class="sui-box-title"><?php esc_html_e( 'Ifthenpay Gateway', 'ifthenpay-payments-for-forminator' ); ?></h2>
 			</div>
@@ -138,7 +133,7 @@ class GatewaySettingsPage {
 						</div>
 						<div class="sui-box-settings-col-2">
 							<div id="iftp-fm-methods-table-wrapper">
-								<?php echo $this->methods_field->render(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- pre-escaped fragment ?>
+								<?php $this->methods_field->output(); ?>
 							</div>
 						</div>
 					</div>

@@ -17,10 +17,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Registers the webhook callback URL with ifthenpay, and re-registers it
- * whenever the URL drifts from the one ifthenpay last accepted — a
- * permalink structure change or a domain migration both change
- * `WebhookController::url()`, and ifthenpay keeps calling the old one.
+ * Registers the webhook URL with ifthenpay, and re-registers it when the URL
+ * drifts (permalink change, domain migration), since ifthenpay keeps calling the old one.
  */
 class WebhookRegistrar {
 
@@ -46,8 +44,8 @@ class WebhookRegistrar {
 	/**
 	 * Sets up the registrar.
 	 *
-	 * @param SettingsRepository|null $settings Settings storage; a fresh instance is used when omitted.
-	 * @param IfthenpayClient|null    $client   Ifthenpay API client; a fresh instance is used when omitted.
+	 * @param SettingsRepository|null $settings Settings storage.
+	 * @param IfthenpayClient|null    $client   Ifthenpay API client.
 	 */
 	public function __construct( ?SettingsRepository $settings = null, ?IfthenpayClient $client = null ) {
 		$this->settings = $settings ?? new SettingsRepository();
@@ -64,8 +62,7 @@ class WebhookRegistrar {
 	/**
 	 * Registers (or re-registers) the webhook callback for the given Gateway Key.
 	 *
-	 * I reuse the Gateway Key's existing anti-phishing key — rotating it on
-	 * every save would break callbacks for payments already in flight.
+	 * I reuse the existing anti-phishing key; rotating it would break callbacks for payments in flight.
 	 *
 	 * @param string $gateway_key The Gateway Key to register the webhook for.
 	 */
@@ -96,8 +93,8 @@ class WebhookRegistrar {
 	}
 
 	/**
-	 * Re-registers the callback when the current URL no longer matches the
-	 * one ifthenpay accepted. Only a string compare on the happy path.
+	 * Re-registers the callback when the URL no longer matches the one ifthenpay
+	 * accepted. Just a hash compare on the happy path.
 	 */
 	public function maybe_resync(): void {
 		// The settings AJAX handlers register on their own, so I skip them here.
@@ -107,7 +104,15 @@ class WebhookRegistrar {
 
 		$gateway_key = $this->settings->get_gateway_key();
 
-		if ( '' === $gateway_key || self::hash( $gateway_key ) === $this->settings->get_callback_hash() ) {
+		if ( '' === $gateway_key ) {
+			return;
+		}
+
+		// A missing anti-phishing key also needs a resync, or the validator rejects every callback.
+		$in_sync = self::hash( $gateway_key ) === $this->settings->get_callback_hash()
+			&& '' !== $this->settings->get_anti_phishing_key( $gateway_key );
+
+		if ( $in_sync ) {
 			return;
 		}
 

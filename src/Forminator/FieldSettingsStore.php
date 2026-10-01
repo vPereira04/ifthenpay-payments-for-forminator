@@ -17,41 +17,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Reads/writes the `amount_type`/`amount`/`variable`/`checkout_label`
- * properties `Fields\IfthenpayField::markup()` renders, straight through
- * Forminator's own `Forminator_Form_Model`/`Forminator_Form_Field_Model` API
- * — the same persistence path the builder's own "Save" button uses
- * internally. Used by `Ajax\Controller`'s builder-popup endpoints; see
- * `Admin\FieldSettingsModal`'s docblock for why a popup is the only option.
+ * Reads and writes the ifthenpay field's settings through Forminator's form model, like the builder's Save.
  */
 class FieldSettingsStore {
 
-	/**
-	 * Field types that never carry a submitted value, so they're pointless
-	 * as a "variable" amount source and are left out of that dropdown.
-	 */
 	private const NON_VALUE_FIELD_TYPES = array( 'html', 'page-break', 'section', 'submit', 'group', 'ifthenpay' );
 
 	/**
-	 * Operators `front.condition.js` (Forminator core, non-date fields)
-	 * understands — anything else is dropped rather than saved, since a
-	 * client-side operator string with no matching `case` there silently
-	 * evaluates to `false` forever.
+	 * The operators front.condition.js understands. I drop anything else on save, since it would never match.
 	 */
 	private const CONDITION_OPERATORS = array( 'is', 'is_not', 'is_great', 'is_less', 'contains', 'does_not_contain', 'starts', 'ends' );
 
 	/**
-	 * The current settings for one ifthenpay field, plus the other fields on
-	 * its form available as a variable-amount source — or null when the
-	 * form/field doesn't exist (e.g. the form was never saved after the
-	 * field was dragged onto the canvas).
+	 * Form models already loaded this request, by form id.
+	 *
+	 * @var array<int, Forminator_Form_Model|null>
+	 */
+	private static array $models = array();
+
+	/**
+	 * One ifthenpay field's settings plus the form's other fields, or null if the form/field isn't saved yet.
 	 *
 	 * @param int    $form_id    The form the field belongs to.
 	 * @param string $field_slug The field's slug (its `element_id`).
 	 * @return array{amount_type: string, amount: string, variable: string, checkout_label: string, field_label: string, description: string, description_placement: string, css_class: string, hide_icon: string, hide_methods: string, condition_action: string, condition_rule: string, conditions: array<int, array{element_id: string, rule: string, value: string}>, other_fields: array<int, array{slug: string, label: string}>}|null
 	 */
 	public function get( int $form_id, string $field_slug ): ?array {
-		$model = $this->load_model( $form_id );
+		$model = self::load_model( $form_id );
 
 		if ( null === $model ) {
 			return null;
@@ -84,40 +76,12 @@ class FieldSettingsStore {
 	/**
 	 * Persists one field's settings. Returns false when the form/field can't be found.
 	 *
-	 * @param int                                                                $form_id               The form the field belongs to.
-	 * @param string                                                             $field_slug            The field's slug (its `element_id`).
-	 * @param string                                                             $amount_type           One of 'fixed'/'variable'.
-	 * @param string                                                             $amount                The fixed amount.
-	 * @param string                                                             $variable              The referenced field's slug, when amount_type is 'variable'.
-	 * @param string                                                             $checkout_label        The checkout button label.
-	 * @param string                                                             $field_label           The field's admin-facing label, shown above the checkout button.
-	 * @param string                                                             $description           The field's admin-facing description, shown below the label.
-	 * @param string                                                             $description_placement One of 'above'/'below' — where description renders relative to field_label.
-	 * @param string                                                             $css_class             Extra class name(s) for the field's wrapper.
-	 * @param bool                                                               $hide_icon             Whether to omit the ifthenpay glyph from the field's visual box.
-	 * @param bool                                                               $hide_methods          Whether to omit the payment method icons from the field's visual box.
-	 * @param string                                                             $condition_action      One of 'show'/'hide' — what happens when the conditions below match.
-	 * @param string                                                             $condition_rule        One of 'all'/'any' — whether every condition or just one must match.
-	 * @param array<int, array{element_id: string, rule: string, value: string}> $conditions The conditional-logic rules, same shape Forminator's own fields use.
+	 * @param int                  $form_id    The form the field belongs to.
+	 * @param string               $field_slug The field's slug (its `element_id`).
+	 * @param array<string, mixed> $settings   Raw popup values.
 	 */
-	public function save(
-		int $form_id,
-		string $field_slug,
-		string $amount_type,
-		string $amount,
-		string $variable,
-		string $checkout_label,
-		string $field_label,
-		string $description,
-		string $description_placement,
-		string $css_class,
-		bool $hide_icon,
-		bool $hide_methods,
-		string $condition_action,
-		string $condition_rule,
-		array $conditions
-	): bool {
-		$model = $this->load_model( $form_id );
+	public function save( int $form_id, string $field_slug, array $settings ): bool {
+		$model = self::load_model( $form_id );
 
 		if ( null === $model ) {
 			return false;
@@ -129,41 +93,43 @@ class FieldSettingsStore {
 			return false;
 		}
 
+		$text        = static fn( string $key, string $fallback = '' ): string => is_scalar( $settings[ $key ] ?? null ) ? (string) $settings[ $key ] : $fallback;
+		$amount_type = $text( 'amount_type', 'fixed' );
+		$label       = $text( 'checkout_label' );
+		$conditions  = $this->valid_conditions( is_array( $settings['conditions'] ?? null ) ? $settings['conditions'] : array() );
+		$action      = $text( 'condition_action', 'show' );
+		$rule        = $text( 'condition_rule', 'all' );
+
 		$field->__set( 'amount_type', in_array( $amount_type, array( 'fixed', 'variable' ), true ) ? $amount_type : 'fixed' );
-		$field->__set( 'amount', number_format( (float) $amount, 2, '.', '' ) );
-		$field->__set( 'variable', $variable );
-		$field->__set( 'checkout_label', '' !== $checkout_label ? $checkout_label : __( 'Pay now', 'ifthenpay-payments-for-forminator' ) );
-		$field->__set( 'field_label', $field_label );
-		$field->__set( 'description', $description );
-		$field->__set( 'description_placement', $this->valid_description_placement( $description_placement ) );
-		$field->__set( 'css_class', $css_class );
-		$field->__set( 'hide_icon', $hide_icon ? '1' : '' );
-		$field->__set( 'hide_methods', $hide_methods ? '1' : '' );
+		$field->__set( 'amount', number_format( (float) $text( 'amount', '0' ), 2, '.', '' ) );
+		$field->__set( 'variable', $text( 'variable' ) );
+		$field->__set( 'checkout_label', '' !== $label ? $label : __( 'Pay now', 'ifthenpay-payments-for-forminator' ) );
+		$field->__set( 'field_label', $text( 'field_label' ) );
+		$field->__set( 'description', $text( 'description' ) );
+		$field->__set( 'description_placement', $this->valid_description_placement( $text( 'description_placement' ) ) );
+		$field->__set( 'css_class', $text( 'css_class' ) );
+		$field->__set( 'hide_icon', ! empty( $settings['hide_icon'] ) ? '1' : '' );
+		$field->__set( 'hide_methods', ! empty( $settings['hide_methods'] ) ? '1' : '' );
+		$field->__set( 'condition_action', array() !== $conditions && in_array( $action, array( 'show', 'hide' ), true ) ? $action : 'show' );
+		$field->__set( 'condition_rule', array() !== $conditions && in_array( $rule, array( 'all', 'any' ), true ) ? $rule : 'all' );
+		$field->__set( 'conditions', $conditions );
 
-		$valid_conditions = $this->valid_conditions( $conditions );
-
-		$field->__set( 'condition_action', array() !== $valid_conditions && in_array( $condition_action, array( 'show', 'hide' ), true ) ? $condition_action : 'show' );
-		$field->__set( 'condition_rule', array() !== $valid_conditions && in_array( $condition_rule, array( 'all', 'any' ), true ) ? $condition_rule : 'all' );
-		$field->__set( 'conditions', $valid_conditions );
-
-		// Same model instance the mutated $field object belongs to —
-		// re-loading a fresh one here would save the pre-mutation data instead.
+		// Has to be this same model instance — a fresh load would save the old values.
 		$model->save();
 
 		return true;
 	}
 
 	/**
-	 * The amount config the payment is charged from, read server-side so the
-	 * browser can't pick its own price — or null when the form has no such
-	 * ifthenpay field. An empty slug falls back to the form's first ifthenpay field.
+	 * The amount config a payment is charged from, read server-side so the browser can't set a fixed price.
+	 * An empty slug means the first ifthenpay field.
 	 *
 	 * @param int    $form_id    The form the payment belongs to.
 	 * @param string $field_slug The ifthenpay field's slug (its `element_id`), or ''.
 	 * @return array{amount_type: string, amount: float, variable: string}|null
 	 */
 	public function payment_config( int $form_id, string $field_slug ): ?array {
-		$model = $this->load_model( $form_id );
+		$model = self::load_model( $form_id );
 
 		if ( null === $model ) {
 			return null;
@@ -189,7 +155,7 @@ class FieldSettingsStore {
 	 * @return string[]
 	 */
 	public function ifthenpay_field_slugs( int $form_id ): array {
-		$model = $this->load_model( $form_id );
+		$model = self::load_model( $form_id );
 
 		if ( null === $model ) {
 			return array();
@@ -204,6 +170,18 @@ class FieldSettingsStore {
 		}
 
 		return $slugs;
+	}
+
+	/**
+	 * The element_ids of every field on a form that can carry a submitted value.
+	 *
+	 * @param int $form_id The form to look in.
+	 * @return string[]
+	 */
+	public function value_field_slugs( int $form_id ): array {
+		$model = self::load_model( $form_id );
+
+		return null === $model ? array() : array_column( $this->other_fields( $model ), 'slug' );
 	}
 
 	/**
@@ -222,8 +200,7 @@ class FieldSettingsStore {
 	}
 
 	/**
-	 * Falls back to 'below' for anything other than the two placements
-	 * `IfthenpayField::markup()` understands.
+	 * 'above' or 'below', falling back to 'below'.
 	 *
 	 * @param string $value Raw placement value.
 	 */
@@ -232,9 +209,7 @@ class FieldSettingsStore {
 	}
 
 	/**
-	 * Drops any condition missing an element_id/operator, or carrying an
-	 * operator `front.condition.js` doesn't implement — see
-	 * CONDITION_OPERATORS.
+	 * Drops conditions with no element_id or an unknown operator.
 	 *
 	 * @param array<int, array{element_id: string, rule: string, value: string}> $conditions Raw conditions from the request.
 	 * @return array<int, array{element_id: string, rule: string, value: string}>
@@ -261,8 +236,7 @@ class FieldSettingsStore {
 	}
 
 	/**
-	 * Reads the field's raw `conditions` property, in the same
-	 * `{element_id, rule, value}` shape `valid_conditions()` writes.
+	 * The field's stored conditions.
 	 *
 	 * @param Forminator_Form_Field_Model $field The field to read from.
 	 * @return array<int, array{element_id: string, rule: string, value: string}>
@@ -278,8 +252,7 @@ class FieldSettingsStore {
 	}
 
 	/**
-	 * The other fields on a form, excluding payment-irrelevant types, as a
-	 * `{slug, label}` list for the "Amount field" dropdown.
+	 * The form's value-carrying fields as `{slug, label}`, for the "Amount field" dropdown.
 	 *
 	 * @param Forminator_Form_Model $model The form to read fields from.
 	 * @return array<int, array{slug: string, label: string}>
@@ -304,30 +277,28 @@ class FieldSettingsStore {
 	}
 
 	/**
-	 * Loads a form model, or null when it doesn't exist (e.g. the form was
-	 * never saved after the field was dragged onto the canvas).
+	 * Loads a form model once per request, or null when it doesn't exist.
+	 * A payment request reads the same form for its fields, amount and variable price, so I share one copy.
 	 *
 	 * @param int $form_id The form to load.
 	 */
-	private function load_model( int $form_id ): ?Forminator_Form_Model {
+	public static function load_model( int $form_id ): ?Forminator_Form_Model {
 		if ( $form_id <= 0 ) {
 			return null;
 		}
 
-		$model = Forminator_Form_Model::model()->load( $form_id );
+		if ( ! array_key_exists( $form_id, self::$models ) ) {
+			$model = Forminator_Form_Model::model()->load( $form_id );
 
-		return $model instanceof Forminator_Form_Model ? $model : null;
+			self::$models[ $form_id ] = $model instanceof Forminator_Form_Model ? $model : null;
+		}
+
+		return self::$models[ $form_id ];
 	}
 
 	/**
-	 * Finds one of a loaded model's fields by slug.
-	 *
-	 * I don't trust `Forminator_Base_Form_Model::get_field()`'s own
-	 * slug-keyed lookup here — a model loaded via `::load()` appends fields
-	 * with a numeric index, not by slug (see `add_field()`'s
-	 * `$this->fields[] = $field`), so `get_field($slug)` silently misses.
-	 * Matching by slug myself instead. Only ifthenpay fields match, so the
-	 * popup endpoints can't be pointed at some other field on the form.
+	 * Finds an ifthenpay field by slug, so the popup can't edit any other field.
+	 * I match by hand: a `::load()` model indexes fields numerically, so `get_field( $slug )` misses.
 	 *
 	 * @param Forminator_Form_Model $model      The loaded form model.
 	 * @param string                $field_slug The field slug to find.

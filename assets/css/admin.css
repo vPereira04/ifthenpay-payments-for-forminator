@@ -1,7 +1,4 @@
-/* ---- Icon font ----
-   Powers the builder field-list icon (`IfthenpayField::$icon`, set to
-   "sui-icon forminator-icon-ifthenpay") — that class has no glyph of its own
-   otherwise, since it isn't one of Forminator's built-in field icons. */
+/* The builder's field icon class isn't a built-in Forminator icon, so it gets its glyph from here. */
 @font-face {
 	font-family: ifthenpay-icons;
 	src: url('../fonts/ifthenpay-icons.woff2') format('woff2'),
@@ -13,29 +10,18 @@
 }
 
 .forminator-icon-ifthenpay::before {
-	font-family: ifthenpay-icons !important;
-	font-weight: 100 !important;
 	content: "\e002";
 }
 
-/* Forminator and SUI each ship their own `!important` icon-font catch-all
-   that also matches this class — one scoped to `.forminator-ui`, one to
-   SUI's own version-scoped wrap (e.g. `.sui-2-12-27`) — both at (0,2,1)
-   specificity. I repeat our class three times to beat either outright,
-   rather than chasing whichever wrapper happens to be around it (the SUI
-   version class changes every Forminator update anyway). */
+/* Forminator's and SUI's !important icon-font catch-alls also match this, both at (0,2,1).
+   Tripling the class beats either without chasing the version-scoped SUI wrapper. */
 .forminator-icon-ifthenpay.forminator-icon-ifthenpay.forminator-icon-ifthenpay::before {
 	font-family: ifthenpay-icons !important;
 	font-weight: 100 !important;
 }
 
-/* Connect-to-Ifthenpay modal: hidden by default, shown as a fixed overlay
-   once SUI's own Dialog JS adds "sui-active" to this wrapper on open. Not
-   relying on Forminator's own `.sui-<version> .sui-modal` rule for this —
-   that's scoped to a body class Forminator adds dynamically, which doesn't
-   reliably apply here, and without it the modal renders as plain in-page
-   content instead of a hidden popup. */
-
+/* Hidden until SUI's dialog JS adds .sui-active. I don't lean on Forminator's .sui-<version> .sui-modal
+   rule: its body class isn't reliably there, and without it the modal renders inline. */
 #iftp-fm-connect-modal-wrap {
 	display: none;
 }
@@ -111,8 +97,7 @@
 	color: #a23b3b;
 }
 
-/* Methods table scrolls on its own instead of pushing the settings page
-   wider than the screen. aria-busy is set while a Gateway Key switch loads. */
+/* Scrolls on its own rather than widening the settings page. */
 #iftp-fm-methods-table-wrapper {
 	overflow-x: auto;
 	transition: opacity .2s ease;
@@ -123,13 +108,8 @@
 	pointer-events: none;
 }
 
-/* Methods table. Cell padding/layout is written out in full here rather than
-   left to sui-table's own rules — those are scoped to a Forminator body
-   class (`.sui-<version> .sui-wrap .sui-table`) that, like the modal above,
-   doesn't reliably apply, and without it every cell renders with no padding
-   at all — which is what was collapsing the checkbox/star columns into the
-   method icon and running the "Enabled"/"Default" header labels together. */
-
+/* Cell layout is written out in full: sui-table's rules hang off a Forminator body class that isn't
+   reliably present, and without them the cells collapse into each other. */
 .iftp-fm-methods-table {
 	width: 100%;
 	table-layout: auto;
@@ -142,15 +122,13 @@
 	vertical-align: middle;
 }
 
-.iftp-fm-col-control{
-  padding-left: 15px !important;
+/* Beats SUI's .sui-2-12-x .sui-wrap .sui-table tbody > tr > td:first-child (0,4,3) without chasing its version class. */
+.sui-wrap .iftp-fm-methods-table.sui-table .iftp-fm-col-control.iftp-fm-col-control {
+	padding-left: 15px;
 }
 
 .iftp-fm-methods-table .iftp-fm-col-control {
-	/* A concrete width, not `1%` — if Forminator's own `table-layout: fixed`
-	   rule for `.sui-table` does end up applying (see note above), `1%`
-	   collapses this column to near-zero instead of shrinking to fit, which
-	   is what ran the "Enabled"/"Default" header text together. */
+	/* A fixed width, not 1%: if SUI's table-layout: fixed applies, 1% collapses the column. */
 	width: 56px;
 	white-space: nowrap;
 	text-align: center;
@@ -224,8 +202,6 @@
 	gap: 10px;
 }
 
-/* Default Method star toggle. */
-
 .iftp-fm-star {
 	display: inline-block;
 	cursor: pointer;
@@ -296,19 +272,8 @@
 	color: #a23b3b;
 }
 
-/* Ifthenpay field settings popup (builder canvas). Fully self-contained —
-   the builder screen doesn't reliably render Forminator's own `.sui-*`
-   visuals for markup we inject ourselves, so every rule below is real
-   styling rather than a dependency on Forminator's shared-ui stylesheet
-   actually applying on this screen. Values are copied from that stylesheet
-   on purpose though (`build/css/shared-ui.min.css` in the Forminator plugin
-   itself — box/header/footer/input/button colors, spacing, shadows), so
-   this popup reads as one of Forminator's own rather than a reskin.
-   Toggled by our own field-settings.js, not Forminator's native SUI Dialog
-   JS. Every selector is scoped under the #id wrapper so it wins over
-   Forminator's own `.sui-<version> .sui-box`-style rules regardless of load
-   order. */
-
+/* Builder field popup. SUI's styles don't reliably reach markup I inject here, so it's styled outright
+   with values copied from Forminator's shared-ui.min.css, all scoped under the #id to win regardless of load order. */
 #iftp-fm-field-modal-wrap {
 	display: none;
 }
@@ -361,12 +326,7 @@
 	color: #17a8e3;
 }
 
-/* Merge-tag pill (`{ifthenpay-1}`, set from the field's own canvas slug by
-   field-settings.js on open) + its tooltip — real Forminator classes
-   (`sui-tag`, `sui-tooltip*`), copied values from `shared-ui.min.css`, but
-   defined fresh here rather than relied on: that stylesheet's versions are
-   scoped under `.sui-2-12-27 .sui-wrap`, an ancestor this modal doesn't sit
-   inside (see the file-level docblock), so they never actually match. */
+/* sui-tag/sui-tooltip, redefined: SUI's own rules sit under .sui-2-12-27 .sui-wrap, which this modal isn't inside. */
 #iftp-fm-field-modal-wrap .sui-tag {
 	display: inline-block;
 	min-height: 26px;
@@ -385,6 +345,12 @@
 
 #iftp-fm-field-modal-wrap .sui-tooltip {
 	position: relative;
+}
+
+/* Scoped under the wrap so it beats the .sui-tag margin reset above. */
+#iftp-fm-field-modal-wrap #iftp-fm-field-modal-tag {
+	margin-top: -2px;
+	--tooltip-width: 170px;
 }
 
 #iftp-fm-field-modal-wrap .sui-tooltip::before,
@@ -569,20 +535,8 @@
 	outline: none;
 }
 
-/* Deliberately NOT named `sui-select` — Forminator's own shared-ui.min.js
-   runs `$(".sui-select").each(...)` on every page load and auto-upgrades
-   any match into a select2 widget (dropdownParent resolved against a
-   `.sui-2-12-27` ancestor elsewhere in the builder DOM, not this modal).
-   Since this modal's markup is present (just hidden) from page load, reusing
-   that class name got these selects silently hijacked into broken,
-   double-rendered select2 widgets. Own class name opts us out entirely.
-
-   `appearance: none` + our own chevron, same approach Forminator's real SUI
-   selects use (see `select:not(.sui-select)` in the plugin's own
-   build/css/shared-ui.min.css) — without it the browser draws its own native
-   dropdown arrow, which isn't reserved any box space here and renders
-   inconsistently (overlapping/misaligned) across browsers instead of sitting
-   centered on the right like every other native field's dropdown. */
+/* Not .sui-select: SUI's JS turns every .sui-select on the page into a select2, which breaks inside this modal.
+   appearance: none plus my own chevron, as SUI does for native selects, so the arrow doesn't misalign. */
 #iftp-fm-field-modal-wrap .iftp-fm-select {
 	display: block;
 	width: 100%;
@@ -605,18 +559,7 @@
 	display: none;
 }
 
-/* "Amount type", "Show/Hide" and "All/Any" — a real 2-option radio group
-   (native `change` events, no JS required for the mutual-exclusivity part),
-   visually styled as Forminator's `sui-side-tabs` pill toggle instead of a
-   plain radio list or a `<select>` for those, matching the reference design.
-   `.active` here is plain presentational state kept in sync by
-   `syncToggleTabsActive()` in field-settings.js — not read/relied on by
-   Forminator's own `SUI.sideTabs` (a real jQuery auto-init on this same
-   structure elsewhere in the builder): that one's scoped to
-   `.sui-2-12-27 .sui-side-tabs label.sui-tab-item input`, so it likely also
-   fires on ours (same page-load timing as the `sui-select`/select2 issue
-   above), but its side effects stay confined to `.closest(".sui-side-tabs")`
-   — harmless here — and this modal never depends on it running. */
+/* Radio groups styled as SUI side-tabs. .active is presentational only, kept in sync by field-settings.js. */
 #iftp-fm-field-modal-wrap .sui-side-tabs .sui-tabs-menu {
 	display: inline-flex;
 	margin: 0;
@@ -662,12 +605,6 @@
 	clip: rect(0, 0, 0, 0);
 }
 
-/* "Hide the ifthenpay icon" / "Hide the payment methods icons" — two
-   independent booleans, so (unlike the pill group above) Forminator's own
-   `sui-toggle` switch is the right real-component match, not `sui-tabs-menu`.
-   Values from `shared-ui.min.css`, self-authored per this file's usual
-   reasoning (this modal sits outside the `.sui-2-12-27 .sui-wrap` ancestor
-   those rules are scoped under). */
 #iftp-fm-field-modal-wrap .iftp-fm-toggle-list {
 	display: flex;
 	flex-direction: column;
@@ -786,19 +723,8 @@
 	display: none;
 }
 
-/* Deliberately NOT named `sui-icon-close`/`sui-icon-check` — Forminator adds
-   `sui-2-12-27` as an admin **body** class (`get_sui_body_class()` in
-   `admin/abstracts/class-admin-page.php`, wired through the `admin_body_class`
-   filter), and `shared-ui.min.css` ships a catch-all
-   `.sui-2-12-27 [class*=sui-icon-]:before,:after{font-family:"wpmudev-plugin-
-   icons" !important; ...}` — an attribute-*contains* selector, so it matches
-   any class with "sui-icon-" in it anywhere in the body, this modal included.
-   That font has no glyph for the plain Unicode check/cross characters we'd
-   put in `content`, so with the real classnames these rendered blank — same
-   root cause as the `sui-select`/select2 landmine noted further up, just for
-   the icon font instead of select2. Own classnames sidestep it entirely.
-   Drawn as CSS shapes rather than a Unicode glyph so they come out crisp and
-   bold ("bulky") at this size regardless of font rendering. */
+/* Not sui-icon-*: SUI's body-scoped [class*=sui-icon-] rule forces its icon font, which has no glyph
+   for these. Drawn as CSS shapes so they stay crisp and bold. */
 #iftp-fm-field-modal-wrap .iftp-fm-icon-close {
 	position: relative;
 	display: inline-block;
@@ -860,11 +786,7 @@
 	margin-bottom: 16px;
 }
 
-/* Settings/Advanced/Visibility tabs, matching real Forminator field-settings
-   modals' `.sui-tabs-flushed .sui-tab-item` look (uppercase, neutral dark
-   active state — real SUI tabs use #333, not the blue accent, for the
-   active tab) rather than our own earlier approximation. */
-
+/* Matches Forminator's flushed field-settings tabs: the active tab is dark (#333), not the blue accent. */
 #iftp-fm-field-modal-wrap .iftp-fm-field-tabs {
 	display: flex;
 	padding: 0 30px;
@@ -899,8 +821,6 @@
 #iftp-fm-field-modal-wrap .iftp-fm-field-tab-panel[hidden] {
 	display: none;
 }
-
-/* Conditional logic builder (Visibility tab). */
 
 #iftp-fm-field-modal-wrap .iftp-fm-conditional-body {
 	min-width: 0;
@@ -984,8 +904,15 @@
 	margin-top: 4px;
 }
 
-/* Confirmation Type tabs — Paid/Pending/Failed/Cancelled each own a panel;
-   only the active one is shown. */
+/* ID-scoped so SUI's .sui-wrap label/field margins don't win. */
+#sui-box-ifthenpay .iftp-fm-connect-actions,
+#iftp-fm-settings-form .iftp-fm-label-spaced {
+	margin-top: 10px;
+}
+
+#iftp-fm-settings-form .iftp-fm-checkbox-spaced {
+	margin-top: 6px;
+}
 
 .iftp-fm-confirmation-tabs {
 	display: flex;

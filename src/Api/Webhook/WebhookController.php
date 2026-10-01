@@ -14,7 +14,6 @@ use Ifthenpay\Forminator\Forminator\TransactionStore;
 use Forminator_CForm_Front_Action;
 use Forminator_CForm_Front_Mail;
 use Forminator_Form_Entry_Model;
-use Forminator_Form_Model;
 use Forminator_Front_Action;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -22,28 +21,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * The only path that ever creates the real Forminator entry for an ifthenpay
- * payment — see `Fields\IfthenpayField` and `Ajax\PaymentController` for why
- * entry creation is deferred this far. Uses `Forminator_Form_Entry_Model`
- * directly (a stable public API), replaying the field snapshot captured when
- * the payment started.
+ * The only path that creates the real Forminator entry for an ifthenpay payment.
+ * I replay the field snapshot taken when the payment started through
+ * `Forminator_Form_Entry_Model`, a stable public API.
  */
 class WebhookController {
 
 	/**
-	 * The rewrite endpoint's path segment: ifthenpay calls back into
-	 * `/{SLUG}/{ref}/?apk=...&val=...&mtd=...&req=...`.
+	 * Ifthenpay calls back into `/{SLUG}/{ref}/?apk=...&val=...&mtd=...&req=...`.
 	 */
 	public const SLUG = 'iftp_fm_callback';
 
 	/**
-	 * The query var flagging a request as hitting this endpoint.
+	 * Flags a request as hitting this endpoint.
 	 */
 	public const QUERY_VAR = 'iftp_fm_ep';
 
-	/**
-	 * The query var the rewrite rule captures the ref into.
-	 */
 	public const REF_VAR = 'iftp_fm_ref';
 
 	/**
@@ -70,9 +63,9 @@ class WebhookController {
 	/**
 	 * Sets up the controller.
 	 *
-	 * @param TransactionStore|null   $transactions   Transactions storage; a fresh instance is used when omitted.
-	 * @param WebhookValidator|null   $validator      Anti-phishing + amount validator; a fresh instance is used when omitted.
-	 * @param FieldSettingsStore|null $field_settings Per-field settings storage; a fresh instance is used when omitted.
+	 * @param TransactionStore|null   $transactions   Transactions storage.
+	 * @param WebhookValidator|null   $validator      Anti-phishing + amount validator.
+	 * @param FieldSettingsStore|null $field_settings Per-field settings storage.
 	 */
 	public function __construct( ?TransactionStore $transactions = null, ?WebhookValidator $validator = null, ?FieldSettingsStore $field_settings = null ) {
 		$this->transactions   = $transactions ?? new TransactionStore();
@@ -114,10 +107,8 @@ class WebhookController {
 	}
 
 	/**
-	 * Registers the rewrite rule and flushes it into `rewrite_rules` right
-	 * away — called on activation, since the rule otherwise only takes
-	 * effect after the next flush (a visit to Permalinks, or another
-	 * plugin's own flush) and the endpoint would 404 until then.
+	 * Registers and flushes the rewrite rule. Run on activation, or the endpoint
+	 * 404s until something else flushes the rules.
 	 */
 	public static function flush(): void {
 		self::add_rewrite_rule();
@@ -125,11 +116,10 @@ class WebhookController {
 	}
 
 	/**
-	 * The callback URL template registered with ifthenpay for this gateway
-	 * key. `[ORDER_ID]`/`[ANTI_PHISHING_KEY]`/`[AMOUNT]`/`[PAYMENT_METHOD]`/
-	 * `[REQUEST_ID]` are ifthenpay API placeholder tokens it substitutes with
-	 * the real values on each call — no status placeholder, since ifthenpay
-	 * only ever calls this back on a successful payment.
+	 * The callback URL template registered with ifthenpay. It fills in the
+	 * `[ORDER_ID]`/`[ANTI_PHISHING_KEY]`/`[AMOUNT]`/`[PAYMENT_METHOD]`/`[REQUEST_ID]`
+	 * placeholders on each call. No status placeholder: ifthenpay only calls the
+	 * webhook for paid payments.
 	 */
 	public static function url(): string {
 		$params = 'apk=[ANTI_PHISHING_KEY]&val=[AMOUNT]&mtd=[PAYMENT_METHOD]&req=[REQUEST_ID]';
@@ -175,9 +165,8 @@ class WebhookController {
 	}
 
 	/**
-	 * Plain-text response, not `wp_die()` — this runs on a normal
-	 * `template_redirect`, not `admin-ajax.php`, so `wp_die()` would render
-	 * its full HTML die screen instead of the plain body ifthenpay expects.
+	 * Sends a plain-text response and exits. Not `wp_die()`: outside admin-ajax it
+	 * renders a full HTML screen instead of the plain body ifthenpay expects.
 	 *
 	 * @param int    $status The HTTP status code to send.
 	 * @param string $body   The plain-text response body.
@@ -209,11 +198,9 @@ class WebhookController {
 	}
 
 	/**
-	 * Sends the form's own email notifications for the new entry. Forminator
-	 * only sends these from its AJAX submit handler, which an ifthenpay
-	 * payment never goes through, so I replay the same state setup its
-	 * "Resend Notification Email" action uses
-	 * (`Forminator_CForm_User_Data::resend_notification_email()`).
+	 * Sends the form's own email notifications for the new entry. Forminator only
+	 * sends them from its AJAX submit, which a webhook never goes through, so I
+	 * replay the setup of `Forminator_CForm_User_Data::resend_notification_email()`.
 	 *
 	 * @param int $entry_id The Forminator entry just created.
 	 */
@@ -226,9 +213,9 @@ class WebhookController {
 		try {
 			// A fresh model, so meta_data holds what set_fields() just wrote.
 			$entry = new Forminator_Form_Entry_Model( $entry_id );
-			$form  = Forminator_Form_Model::model()->load( (int) $entry->form_id );
+			$form  = FieldSettingsStore::load_model( (int) $entry->form_id );
 
-			if ( false === $form ) {
+			if ( null === $form ) {
 				return;
 			}
 
@@ -240,23 +227,17 @@ class WebhookController {
 
 			( new Forminator_CForm_Front_Mail() )->process_mail( $form, $entry );
 		} catch ( \Throwable $e ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- intentional production error log for admin troubleshooting of failed notification emails.
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- I log failed notification emails on purpose, for admin troubleshooting.
 			error_log( 'ifthenpay Payments for Forminator: notification email failed for entry ' . $entry_id . ' - ' . $e->getMessage() );
 		}
 	}
 
 	/**
-	 * Replays the field snapshot captured by `Ajax\PaymentController` into a
-	 * real Forminator entry, now that payment is confirmed. Also writes the
-	 * ifthenpay status/amount/method onto the entry's own meta, so it's
-	 * visible from Forminator's native per-form Entries screen too, not only
-	 * `Admin\PaymentEntriesPage`.
+	 * Replays the payment's field snapshot into a real Forminator entry, plus
+	 * ifthenpay status/amount/method meta so Forminator's own Entries screen shows it.
 	 *
-	 * Meta `name` here has to be each field's element_id, not its label —
-	 * that's what admin-page-entries.php's `build_field_mapper()` keys its
-	 * columns by (`$mapper['meta_key'] = $field->slug`). The snapshot is
-	 * already element_id-keyed for exactly this reason (see
-	 * `Ajax\PaymentController::create_payment()`'s docblock).
+	 * Meta names must be element_ids, not labels: Forminator's `build_field_mapper()`
+	 * keys the Entries columns by field slug.
 	 *
 	 * @param array<string, mixed> $record  The stored transaction row.
 	 * @param WebhookPayload       $payload The parsed webhook payload.

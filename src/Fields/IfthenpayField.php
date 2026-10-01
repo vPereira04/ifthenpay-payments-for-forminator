@@ -17,27 +17,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * The ifthenpay field, registered into Forminator's builder next to
- * PayPal/Stripe via `add_filter('forminator_fields', ...)` (`Plugin::boot()`).
+ * The ifthenpay field in Forminator's builder.
  *
- * Unlike PayPal/Stripe, which capture payment inline via a JS SDK before the
- * normal AJAX submit runs, ifthenpay Pay by Link is a redirect-to-hosted-page
- * flow — so this class only renders the builder UI and a frontend marker.
- * The actual payment start (assets/js/frontend.js), pending-transaction
- * storage, and entry creation all happen outside Forminator's own field
- * processing pipeline — see `Ajax\PaymentController` and
- * `Api\Webhook\WebhookController`. `process_to_entry_data()` below exists to
- * satisfy the abstract contract and is only ever exercised on the replayed,
- * already-paid submission the webhook builds — never on a live/unpaid one.
- *
- * `amount_type`/`amount`/`variable`/`checkout_label` below (see defaults())
- * can't be configured from the builder's own field-settings modal — that
- * modal's React component is picked from a hardcoded map with no entry for
- * unregistered field types, so clicking this field on the canvas would open
- * a broken panel. They're configured instead from our own popup,
- * `Admin\FieldSettingsModal`, which intercepts that same click and reads/
- * writes them through the same Forminator_Form_Model this class itself reads
- * from at render time — see that class's docblock for the full explanation.
+ * Pay by Link redirects to a hosted page, so this only renders a frontend marker; payment
+ * start and entry creation happen outside Forminator's field pipeline (PaymentController/webhook).
  */
 class IfthenpayField extends Forminator_Field {
 
@@ -120,17 +103,9 @@ class IfthenpayField extends Forminator_Field {
 	}
 
 	/**
-	 * Hidden marker input, mirroring `Forminator_PayPal::markup()`'s shape —
-	 * `assets/js/frontend.js` looks for `data-payment-type="ifthenpay"` to
-	 * find this field on the form and intercept submission. Wrapped in a
-	 * `.forminator-field` container (with the field's own `field_label`/
-	 * `description`/`css_class`, when set) so it sits in the same
-	 * `.forminator-row > .forminator-col > .forminator-field` structure every
-	 * other field renders into — that's what lets Forminator's own
-	 * conditional-logic engine (`front.condition.js`) find and toggle it via
-	 * `condition_action`/`condition_rule`/`conditions`, the same generic
-	 * per-field properties any native field uses, with no extra wiring needed
-	 * on our side beyond persisting them (see `FieldSettingsStore`).
+	 * Renders the hidden marker input frontend.js uses to intercept submission.
+	 *
+	 * I wrap it in a normal .forminator-field so Forminator's conditional logic can toggle it.
 	 *
 	 * @param array<string, mixed> $field     Field.
 	 * @param mixed                $views_obj Forminator_Render_Form object.
@@ -151,8 +126,7 @@ class IfthenpayField extends Forminator_Field {
 		$hide_methods          = self::get_property( 'hide_methods', $field, false, 'bool' );
 		$visual_html           = $this->methods_visual_markup( $hide_icon, $hide_methods );
 
-		// No esc_attr() here — create_input() escapes every attribute itself,
-		// so escaping twice turned "&" into a literal "&amp;" on the button.
+		// No esc_attr() here: create_input() escapes attributes itself, and double-escaping shows "&amp;".
 		$attr = array(
 			'type'              => 'hidden',
 			'name'              => $element_name,
@@ -181,17 +155,9 @@ class IfthenpayField extends Forminator_Field {
 	}
 
 	/**
-	 * The field's on-page presence: this field has no real inputs of its own
-	 * (see the class docblock), so without this it would render as an empty
-	 * label with nothing for the payer to look at. Built on Forminator's own
-	 * `.forminator-input` box class — the same one native fields wrap a
-	 * prefix/suffix in (see `Forminator_Calculation::markup()`) — so it picks
-	 * up whatever border/background/radius the active form style already
-	 * uses, rather than a hand-rolled box that'd drift from it.
+	 * Renders the ifthenpay icon and method logos box.
 	 *
-	 * `$hide_icon`/`$hide_methods` independently omit their own span. When
-	 * neither would leave anything to show, the box is left out entirely —
-	 * the field still works, this only feeds `markup()`'s `$visual_html`.
+	 * I use Forminator's .forminator-input class so it picks up the form style's box look.
 	 *
 	 * @param bool $hide_icon    Whether to omit the ifthenpay glyph.
 	 * @param bool $hide_methods Whether to omit the payment method icons.
@@ -235,15 +201,19 @@ class IfthenpayField extends Forminator_Field {
 	}
 
 	/**
-	 * No inline validation — see validate()'s body comment.
+	 * Refuses Forminator's own submit while this field is visible.
+	 *
+	 * Paid entries only ever come from the webhook, and frontend.js always takes
+	 * over the submit when the field shows, so a normal submit reaching here is
+	 * someone skipping the payment. Forminator doesn't call this for hidden fields.
 	 *
 	 * @param array<string, mixed>        $field Field.
 	 * @param array<string, mixed>|string $data  Data.
 	 */
 	public function validate( $field, $data ): void {
-		// No inline validation — the amount/method choice is validated
-		// server-side in `Ajax\PaymentController::create_payment()`, the
-		// only place a real charge attempt can originate from.
+		$id = (string) self::get_property( 'element_id', $field );
+
+		$this->validation_message[ $id ] = __( 'Please complete the payment to submit this form.', 'ifthenpay-payments-for-forminator' );
 	}
 
 	/**
@@ -272,9 +242,9 @@ class IfthenpayField extends Forminator_Field {
 	}
 
 	/**
-	 * Only ever runs against the replayed, webhook-confirmed submission —
-	 * see the class docblock. `Ajax\PaymentController`/`WebhookController`
-	 * already know the real amount/status by the time this would run.
+	 * Entry data for the field.
+	 *
+	 * Only runs on the replayed submission after the webhook confirmed payment, so it's always PAID.
 	 *
 	 * @param array<string, mixed> $field Field.
 	 * @return array<string, string>

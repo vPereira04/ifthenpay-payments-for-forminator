@@ -1,13 +1,5 @@
-/**
- * Swaps ifthenpay method logos to their dark variant (`data-logo-dark`)
- * whenever the background they actually render on is dark — whatever theme,
- * dark-mode plugin or admin colour scheme is painting it. I read the painted
- * background instead of `prefers-color-scheme` or any plugin's class names,
- * since neither is something I can rely on.
- *
- * Shared by the frontend field, the ifthenpay Entries table and the Gateway
- * settings table — anything rendering `img[data-logo-dark]` gets it for free.
- */
+// Swaps method logos to their `data-logo-dark` variant wherever the background they actually paint on is dark.
+// I read the painted colour, not prefers-color-scheme or a dark-mode plugin's classes, since neither is reliable.
 ( function () {
 	'use strict';
 
@@ -40,10 +32,7 @@
 		window.requestAnimationFrame( apply );
 	}
 
-	/**
-	 * Composites every translucent background between the logo and the first
-	 * opaque one (or the default white canvas), then checks perceived brightness.
-	 */
+	// Composites translucent backgrounds up to the first opaque one (or white), then checks brightness.
 	function isDarkBackground( el ) {
 		var layers = [];
 
@@ -72,10 +61,7 @@
 		return ( 0.299 * rgb[ 0 ] + 0.587 * rgb[ 1 ] + 0.114 * rgb[ 2 ] ) / 255 < 0.5;
 	}
 
-	/**
-	 * Computed colours are usually `rgb()`/`rgba()`, but browsers keep
-	 * `oklch()`/`color()` as authored — those I let a 1px canvas resolve.
-	 */
+	// Computed oklch()/color() values stay as authored, so I let a 1px canvas resolve anything that isn't rgb().
 	function toRgba( value ) {
 		if ( ! value ) {
 			return null;

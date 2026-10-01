@@ -1,11 +1,5 @@
-/**
- * Frontend behaviour for the ifthenpay field: intercepts submission on any
- * form carrying it (before Forminator's own AJAX submit runs), starts the
- * ifthenpay payment, and — on return — shows the confirmation popup with
- * fast pending→paid resolution (quick check, two-speed poll, visibility
- * re-check). A page/URL "Paid" confirmation is linked from the popup and
- * opens in a new tab, so the submitted data stays on screen here.
- */
+// Takes over submission of any form with the ifthenpay field and starts the payment; on return, shows
+// the status popup until it resolves. A page/URL "Paid" confirmation opens in a new tab, so the form stays put.
 ( function () {
 	'use strict';
 
@@ -13,15 +7,9 @@
 		return;
 	}
 
-	/**
-	 * Query args either we or ifthenpay's own redirect stamp onto the return
-	 * URL — must match PaymentController::STALE_RETURN_ARGS. Stripped from
-	 * the address bar the instant we land on a return visit, before anything
-	 * else runs, so a payment started from this same page load never resends
-	 * them as its own `return_url` (that's what stacks Amount/ID with values
-	 * from earlier payments once ifthenpay appends its own copy again).
-	 */
-	var STALE_RETURN_ARGS = [ 'iftp_fm_pay', 'ref', 'transaction_id', 'id', 'amount', 'requestId', 'sk', 'brand', 'pan', 'error' ];
+	// Must match PaymentController::STALE_RETURN_ARGS. I strip these on landing, so a payment started from this
+	// page doesn't send them back in its return_url, where they'd stack with ifthenpay's own copy.
+	var STALE_RETURN_ARGS = [ 'iftp_fm_pay', 'ref', 'iftp_fm_sig', 'transaction_id', 'id', 'amount', 'requestId', 'sk', 'brand', 'pan', 'error' ];
 
 	( function cleanReturnUrl() {
 		if ( ! window.history || ! window.history.replaceState ) {
@@ -43,13 +31,7 @@
 		}
 	} )();
 
-	/**
-	 * Capture-phase listener on `document` — this runs before any bubble-
-	 * phase delegated handler Forminator itself binds (jQuery's `.on()` is
-	 * always bubble-phase), which is what makes it possible to reliably
-	 * block Forminator's own AJAX submit for a form that has this field,
-	 * without depending on script load order between the two plugins.
-	 */
+	// Capture phase runs before Forminator's bubble-phase jQuery submit handler, whatever the script order.
 	document.addEventListener(
 		'submit',
 		function ( e ) {
@@ -73,13 +55,7 @@
 		true
 	);
 
-	/**
-	 * Relabels each form's own submit button with the field's
-	 * "Checkout button label" setting — this field has no visible button of
-	 * its own (see the class docblock), it repurposes the form's existing
-	 * submit button, so `data-label` (stamped by `IfthenpayField::markup()`)
-	 * has to be applied here rather than left for the field to render itself.
-	 */
+	// The field has no button of its own, so I put its checkout label on the form's submit button.
 	function applyCheckoutLabels() {
 		document.querySelectorAll( '.forminator-ifthenpay-input[data-label]' ).forEach( function ( marker ) {
 			var label = marker.getAttribute( 'data-label' );
@@ -115,8 +91,8 @@
 		body.set( 'nonce', iftpFmFrontend.nonce );
 		body.set( 'form_id', String( resolveFormId( form ) ) );
 		body.set( 'field_slug', marker.name || '' );
-		body.set( 'amount', String( amount ) );
 		body.set( 'return_url', window.location.href.split( '#' )[ 0 ] );
+		body.set( 'form_data', JSON.stringify( collectFormData( form ) ) );
 
 		var fields = collectFields( form, marker );
 		Object.keys( fields ).forEach( function ( elementId ) {
@@ -143,13 +119,7 @@
 			} );
 	}
 
-	/**
-	 * Inline error under the field, in Forminator's own error style —
-	 * instead of a blocking alert(). An empty message clears it.
-	 *
-	 * @param {Element} marker  The field's hidden marker input.
-	 * @param {string}  message The error to show, or ''.
-	 */
+	// Inline, in Forminator's error style, rather than alert(). An empty message clears it.
 	function showFieldError( marker, message ) {
 		var field = marker.closest( '.forminator-ifthenpay-field' ) || marker.parentNode;
 		var el = field.querySelector( '.iftp-fm-field-error' );
@@ -172,30 +142,16 @@
 
 		el.textContent = message;
 		field.classList.add( 'forminator-has_error' );
-		field.scrollIntoView( { block: 'center', behavior: 'smooth' } );
+		field.scrollIntoView( { block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' } );
 	}
 
-	/**
-	 * Forminator's conditional-logic engine (front.condition.js) hides a field
-	 * by adding `forminator-hidden` (a `display: none !important` class) to
-	 * its ancestor `.forminator-row`/`.forminator-col`, not by removing the
-	 * marker from the DOM — so without this check, a field ifthenpay is
-	 * currently hiding via a condition would still intercept submission and
-	 * charge the payer for a field the form itself is presenting as absent.
-	 * `.closest()` covers whichever ancestor front.condition.js marked,
-	 * without needing to know which one specifically.
-	 *
-	 * @param {Element} marker The field's hidden marker input.
-	 */
+	// Conditional logic hides a field with .forminator-hidden on an ancestor, not by removing it, and a
+	// field the form presents as absent mustn't charge anyone.
 	function isConditionallyHidden( marker ) {
 		return null !== marker.closest( '.forminator-hidden' );
 	}
 
-	/**
-	 * Forminator always carries a hidden `form_id` input, but I fall back to
-	 * parsing the wrapper's `forminator-module-{id}` id pattern too, in case
-	 * a future Forminator version renames that field.
-	 */
+	// Forminator always renders form_id, but I fall back to the wrapper id in case a future version renames it.
 	function resolveFormId( form ) {
 		var input = form.querySelector( 'input[name="form_id"]' );
 
@@ -216,10 +172,7 @@
 			return parseFloat( marker.getAttribute( 'data-amount' ) || '0' );
 		}
 
-		// Variable amount — best-effort lookup of a same-form field whose
-		// name contains the referenced element id (calculation/currency
-		// fields render their own visible input under that name).
-		// Radios share one name, so the checked one is the real value.
+		// Variable: the input named after the referenced field. Radios share one name, so I take the checked one.
 		var variable = marker.getAttribute( 'data-variable' );
 		var input = variable
 			? form.querySelector( '[name="' + variable + '"]:checked' ) || form.querySelector( '[name="' + variable + '"]:not([type="radio"])' )
@@ -228,26 +181,36 @@
 		return input ? parseFloat( input.value || '0' ) : 0;
 	}
 
-	/**
-	 * Best-effort element-id => {label, value} snapshot of the submitted
-	 * (non-payment) fields, used to replay a real Forminator entry once
-	 * payment is confirmed. Keyed by `input.name` — that's each field's real
-	 * element_id, the same value Forminator's own fields use for their `name`
-	 * attribute and the same value its native Entries screen looks entry meta
-	 * up by (`$mapper['meta_key'] = $field->slug` in
-	 * admin-page-entries.php::build_field_mapper()). Keying this by the
-	 * visible label instead — as an earlier version of this did — silently
-	 * broke every column on that screen, since nothing there is ever looked
-	 * up by label. The label is still carried along for display purposes
-	 * (e.g. the confirmation popup's "Show Entry Data").
-	 */
+	// The raw form, shaped like Forminator's own submit ("checkbox-1[]" becomes an array), so the server
+	// can work out a variable amount itself instead of trusting the one I computed here.
+	function collectFormData( form ) {
+		var data = {};
+
+		new FormData( form ).forEach( function ( value, name ) {
+			if ( 'string' !== typeof value ) {
+				return;
+			}
+
+			if ( /\[\]$/.test( name ) ) {
+				var key = name.slice( 0, -2 );
+				data[ key ] = ( data[ key ] || [] ).concat( value );
+				return;
+			}
+
+			data[ name ] = value;
+		} );
+
+		return data;
+	}
+
+	// element_id => {label, value} for the non-payment fields, replayed as a real entry once paid. Keyed by
+	// input name, since Forminator's Entries screen looks meta up by element_id; the label is only for display.
 	function collectFields( form, marker ) {
 		var fields = {};
 		var inputs = form.querySelectorAll( 'input, select, textarea' );
 
 		inputs.forEach( function ( input ) {
-			// Forminator's own "Hidden" fields (hidden-N) are real form data;
-			// every other hidden input is its internal plumbing (nonce, form_id…).
+			// Forminator's "Hidden" fields (hidden-N) are real data; other hidden inputs are plumbing (nonce, form_id…).
 			var isHiddenField = 'hidden' === input.type && /^hidden-\d+$/.test( input.name );
 
 			if ( input === marker || ( 'hidden' === input.type && ! isHiddenField ) || 'submit' === input.type || ! input.name ) {
@@ -258,9 +221,7 @@
 				return;
 			}
 
-			// Checkbox groups/multi-selects are named "checkbox-1[]" — PHP can't
-			// parse that inside fields[...][...], so I strip the brackets and
-			// join every checked value instead of keeping only the last one.
+			// PHP can't parse "checkbox-1[]" inside fields[...][...], so I strip the brackets and join every checked value.
 			var name = input.name.replace( /\[\]$/, '' );
 			var values = input.multiple
 				? Array.prototype.filter.call( input.options, function ( option ) {
@@ -283,6 +244,10 @@
 		} );
 
 		return fields;
+	}
+
+	function reducedMotion() {
+		return !! window.matchMedia && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
 	}
 
 	function showSpinner( label ) {
@@ -312,13 +277,10 @@
 		}
 	}
 
-	// ---------------------------------------------------------------------
-	// Confirmation popup — fast pending→paid resolution.
-	// ---------------------------------------------------------------------
-
 	var context = iftpFmFrontend.return;
 	var paidPageTried = false;
 	var paidPageBlocked = false;
+	var shownStatus = '';
 
 	if ( context ) {
 		maybeWatchForPaidStatus( context );
@@ -339,9 +301,7 @@
 			return;
 		}
 
-		// Already stored as failed/cancelled by the return page itself
-		// (Plugin::resolve_return_context()), so I show it straight away — but
-		// keep watching, in case a late webhook still confirms it as paid.
+		// The return page already stored failed/cancelled, so I show it now but keep watching for a late webhook.
 		if ( 'failed' === ctx.status || 'cancelled' === ctx.status ) {
 			watchForPaidStatus( ctx );
 		}
@@ -353,12 +313,8 @@
 		} );
 	}
 
-	/**
-	 * Two-speed poll: a fast burst right after the popup appears (most
-	 * returns resolve here), then a slower steady cadence for the long tail
-	 * — Multibanco/Payshop references can resolve hours later. A single flat
-	 * interval from the start is the exact mistake this replaces.
-	 */
+	// A fast burst first, since most returns resolve there, then a slow cadence for the long tail:
+	// Multibanco/Payshop references can resolve hours later.
 	function watchForPaidStatus( ctx ) {
 		var fastAttempts = 10;
 		var fastIntervalMs = 3000;
@@ -406,9 +362,7 @@
 			document.removeEventListener( 'visibilitychange', onVisible );
 		}
 
-		// Browsers throttle/suspend setTimeout in a hidden tab — the customer
-		// switching to their banking app and back must re-check immediately
-		// rather than wait out whatever's left of a throttled interval.
+		// Hidden tabs throttle timers, so I re-check the moment the payer comes back from their banking app.
 		function onVisible() {
 			if ( 'visible' === document.visibilityState && timer ) {
 				clearTimeout( timer );
@@ -448,7 +402,9 @@
 				'<span class="iftp-fm-popup-icon" aria-hidden="true"></span>' +
 				'<h2 class="iftp-fm-popup-title" id="iftp-fm-popup-title"></h2>' +
 				'<p class="iftp-fm-popup-message" id="iftp-fm-popup-message" aria-live="polite"></p>' +
+				'<div class="iftp-fm-popup-details"><div class="iftp-fm-popup-details-inner">' +
 				'<table class="iftp-fm-popup-fields"><tbody></tbody></table>' +
+				'</div></div>' +
 				'<div class="iftp-fm-popup-actions">' +
 				'<a class="iftp-fm-popup-continue" target="_blank" rel="noopener"><span class="iftp-fm-popup-continue-label"></span><span class="iftp-fm-sr-only"></span></a>' +
 				'<button type="button" class="iftp-fm-popup-close"></button>' +
@@ -468,7 +424,7 @@
 				popup.querySelector( '.iftp-fm-popup-close' ).focus();
 			} );
 
-			// Backdrop click and Escape close it too.
+			// Backdrop click and Escape close it too; a later status change brings it back.
 			popup.addEventListener( 'click', function ( e ) {
 				if ( e.target === popup ) {
 					hidePopup();
@@ -518,10 +474,22 @@
 			return;
 		}
 
+		var changed = status !== shownStatus;
+		shownStatus = status;
+
+		// Polling carries on after the payer closes the popup, so a new status (a late "Paid") brings it back.
+		if ( changed && 'none' === popup.style.display ) {
+			popup.style.display = 'flex';
+			popup.querySelector( '.iftp-fm-popup-close' ).focus();
+		}
+
 		popup.className = 'iftp-fm-popup-overlay iftp-fm-popup-overlay--' + status;
 		popup.querySelector( '.iftp-fm-popup-title' ).textContent = ( iftpFmFrontend.titles || {} )[ status ] || '';
 		popup.querySelector( '.iftp-fm-popup-message' ).textContent = ( iftpFmFrontend.messages || {} )[ status ] || '';
-		renderPopupFields( popup, 'paid' === status ? iftpFmFrontend.paidFields || [] : [] );
+		// Only on a change, so a repeat poll doesn't replay the reveal.
+		if ( changed ) {
+			renderPopupFields( popup, 'paid' === status ? iftpFmFrontend.paidFields || [] : [] );
+		}
 
 		if ( 'paid' === status ) {
 			openPaidPage();
@@ -531,10 +499,7 @@
 		renderPopupContinue( popup, 'paid' === status && paidPageBlocked ? iftpFmFrontend.paidPageUrl : '' );
 	}
 
-	/**
-	 * The fallback for a blocked openPaidPage() — a real click is the one
-	 * thing a pop-up blocker always lets through.
-	 */
+	// Fallback for a blocked openPaidPage(): a real click always gets past a pop-up blocker.
 	function renderPopupContinue( popup, url ) {
 		var link = popup.querySelector( '.iftp-fm-popup-continue' );
 
@@ -551,11 +516,7 @@
 		}
 	}
 
-	/**
-	 * Opens the page/URL "Paid" confirmation in a new tab by itself, once.
-	 * window.open() hands back null when a pop-up blocker stops it, which
-	 * is how I know to show Continue instead.
-	 */
+	// Opens the page/URL "Paid" confirmation in a new tab, once. A null from window.open() means it was blocked.
 	function openPaidPage() {
 		if ( paidPageTried || ! iftpFmFrontend.paidPageUrl ) {
 			return;
@@ -563,8 +524,7 @@
 
 		paidPageTried = true;
 
-		// No 'noopener' feature here — with it window.open() always returns
-		// null, so I cut the opener off by hand instead.
+		// No 'noopener' feature: with it window.open() always returns null, so I cut the opener off by hand.
 		var tab = window.open( iftpFmFrontend.paidPageUrl, '_blank' );
 
 		if ( tab ) {
@@ -574,18 +534,15 @@
 		paidPageBlocked = ! tab;
 	}
 
-	/**
-	 * Fills the popup's "Submitted Fields" table — built with DOM APIs (not
-	 * innerHTML) since labels/values are payer-submitted form data.
-	 */
+	// DOM APIs, not innerHTML: labels and values are payer-submitted.
 	function renderPopupFields( popup, fields ) {
-		var table = popup.querySelector( '.iftp-fm-popup-fields' );
-		var tbody = table.querySelector( 'tbody' );
+		var details = popup.querySelector( '.iftp-fm-popup-details' );
+		var tbody = details.querySelector( 'tbody' );
 
 		tbody.innerHTML = '';
-		table.style.display = fields.length ? 'table' : 'none';
+		details.classList.remove( 'iftp-fm-popup-details--open' );
 
-		fields.forEach( function ( field ) {
+		fields.forEach( function ( field, index ) {
 			var row = document.createElement( 'tr' );
 			var th = document.createElement( 'th' );
 			var td = document.createElement( 'td' );
@@ -593,9 +550,18 @@
 			th.textContent = field.label;
 			td.textContent = field.value;
 
+			// Rows land one after another, capped so a long form doesn't keep the payer waiting.
+			row.style.animationDelay = ( 200 + Math.min( index, 8 ) * 50 ) + 'ms';
+
 			row.appendChild( th );
 			row.appendChild( td );
 			tbody.appendChild( row );
 		} );
+
+		if ( fields.length ) {
+			// Reading offsetHeight commits the collapsed state first, so adding the class animates the expand.
+			void details.offsetHeight;
+			details.classList.add( 'iftp-fm-popup-details--open' );
+		}
 	}
 } )();

@@ -14,14 +14,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Ifthenpay's Pay by Link has no backoffice of its own to hold payment
- * records — unlike PayPal/Stripe, there's nowhere else this data lives — so,
- * like the Contact Form 7 and Ninja Forms ifthenpay integrations before this
- * one, I keep a real custom table for it rather than piggyback on Forminator
- * entries. It has to exist *before* the entry does too: the customer is sent
- * to ifthenpay's hosted page before Forminator ever saves anything, so this
- * table is what remembers the submitted field values in the meantime, and
- * `WebhookController` is what turns a paid row into a real Forminator entry.
+ * Every ifthenpay payment attempt. The payer leaves for ifthenpay before Forminator saves anything,
+ * so I hold the submitted values here until the webhook turns a paid row into a real entry.
+ *
+ * @phpstan-type Transaction array{ref: string, form_id: int, entry_id: int, gateway_key: string, amount: float, pay_method: string, request_id: string, transaction_id: string, payment_url: string, customer_name: string, customer_email: string, status: string, field_snapshot: string, created_at: int, updated_at: int}
  */
 class TransactionStore {
 
@@ -40,34 +36,24 @@ class TransactionStore {
 	);
 
 	/**
-	 * The Method value every "+ New Payment" row gets — cash taken outside
-	 * checkout, no method picker, at Victor's request (mirrors Ninja Forms'
-	 * own ad hoc entries).
+	 * Stamped on "+ New payment" rows, which never go through ifthenpay.
 	 */
-	public const AD_HOC_METHOD = 'Ad Hoc';
+	public const MANUAL_GATEWAY_KEY = 'manual';
+	public const AD_HOC_METHOD      = 'Ad Hoc';
 
 	/**
-	 * Columns `query()`'s `orderby` is allowed to sort by — an allow-list,
-	 * since a column name can't go through `$wpdb->prepare()`.
+	 * Allow-list for `query()`'s orderby, since a column name can't go through prepare().
 	 */
-	private const SORTABLE_COLUMNS = array( 'ref', 'customer_name', 'amount', 'status', 'created_at' );
+	public const SORTABLE_COLUMNS = array( 'ref', 'customer_name', 'amount', 'status', 'created_at' );
 
 	private const DB_VERSION_OPTION = 'iftp_fm_db_version';
-	private const DB_VERSION        = 2;
+	private const DB_VERSION        = 3;
 
-	/**
-	 * Customer-column backfill for rows stored before schema v2: a done flag,
-	 * and the last ref handled so each admin request picks up where the
-	 * previous one stopped.
-	 */
-	private const BACKFILL_DONE_OPTION   = 'iftp_fm_customer_backfill_done';
-	private const BACKFILL_CURSOR_OPTION = 'iftp_fm_customer_backfill_cursor';
-	private const BACKFILL_BATCH         = 500;
-
-	/**
-	 * Width of customer_name/customer_email, in characters.
-	 */
+	private const BULK_WRITE_CHUNK    = 500;
 	private const CUSTOMER_MAX_LENGTH = 191;
+
+	// The list and CSV never show the submitted fields, so I leave the LONGTEXT snapshot out of their reads.
+	private const LIST_COLUMNS = 't.ref, t.form_id, t.entry_id, t.gateway_key, t.amount, t.pay_method, t.request_id, t.transaction_id, t.payment_url, t.customer_name, t.customer_email, t.status, t.created_at, t.updated_at';
 
 	private const CACHE_GROUP     = 'iftp_fm';
 	private const ENTRY_CACHE_TTL = 600;
@@ -83,9 +69,7 @@ class TransactionStore {
 	}
 
 	/**
-	 * Creates (or upgrades) the transactions table. Called on activation and
-	 * as a cheap no-op-once-current safety net on every boot, in case the
-	 * plugin was already active before this table existed.
+	 * Creates or upgrades the table; a no-op once the stored schema version is current.
 	 */
 	public static function maybe_create_table(): void {
 		if ( (int) get_option( self::DB_VERSION_OPTION, 0 ) === self::DB_VERSION ) {
@@ -114,13 +98,14 @@ class TransactionStore {
             customer_email VARCHAR(191) NOT NULL DEFAULT '',
             status VARCHAR(20) NOT NULL DEFAULT 'pending',
             field_snapshot LONGTEXT NULL,
-            is_test TINYINT(1) NOT NULL DEFAULT 0,
             created_at BIGINT UNSIGNED NOT NULL DEFAULT 0,
             updated_at BIGINT UNSIGNED NOT NULL DEFAULT 0,
             PRIMARY KEY  (ref),
             KEY status (status),
             KEY form_id (form_id),
             KEY created_at (created_at),
+            KEY status_created_at (status,created_at),
+            KEY form_id_created_at (form_id,created_at),
             KEY pay_method (pay_method),
             KEY customer_name (customer_name)
         ) {$charset_collate};"
@@ -136,85 +121,107 @@ class TransactionStore {
 	 * @param int                                                $form_id        The Forminator form id.
 	 * @param float                                              $amount         The payment amount.
 	 * @param string                                             $gateway_key    The Gateway Key used.
-	 * @param array<string, array{label: string, value: string}> $field_snapshot Element_id-keyed
-	 *                               submitted field values, replayed into a
-	 *                               real Forminator entry once the webhook
-	 *                               confirms payment.
+	 * @param array<string, array{label: string, value: string}> $field_snapshot Element_id-keyed submitted values.
 	 * @param string                                             $payment_url    The ifthenpay hosted payment page URL.
-	 * @param bool                                               $is_test        Whether this is a test-mode payment.
 	 */
-	public function store_pending(
-		string $ref,
-		int $form_id,
-		float $amount,
-		string $gateway_key,
-		array $field_snapshot,
-		string $payment_url = '',
-		bool $is_test = false
-	): bool {
-		global $wpdb;
-
-		$now      = time();
-		$customer = $this->storable_customer( $this->extract_customer( $field_snapshot ) );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table; no WP Core API available.
-		$result = $wpdb->insert(
-			self::table_name(),
+	public function store_pending( string $ref, int $form_id, float $amount, string $gateway_key, array $field_snapshot, string $payment_url = '' ): bool {
+		return $this->insert(
 			array(
 				'ref'            => $ref,
 				'form_id'        => $form_id,
 				'gateway_key'    => $gateway_key,
 				'amount'         => $amount,
 				'payment_url'    => $payment_url,
-				'customer_name'  => $customer['name'],
-				'customer_email' => $customer['email'],
 				'status'         => self::STATUS_PENDING,
-				'field_snapshot' => wp_json_encode( $field_snapshot ),
-				'is_test'        => $is_test ? 1 : 0,
-				'created_at'     => $now,
-				'updated_at'     => $now,
-			),
-			array( '%s', '%d', '%s', '%f', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d' )
+				'field_snapshot' => $field_snapshot,
+			)
+		);
+	}
+
+	/**
+	 * Records a payment taken outside checkout ("+ New payment"). Form 0 marks it as ad hoc.
+	 *
+	 * @param string $customer_name  The customer's name, or ''.
+	 * @param string $customer_email The customer's email, or ''.
+	 * @param float  $amount         The payment amount.
+	 * @param string $status         One of ALL_STATUSES.
+	 * @return string|null The generated ref, or null if the insert failed.
+	 */
+	public function create_manual( string $customer_name, string $customer_email, float $amount, string $status ): ?string {
+		$ref      = $this->unique_ref( 'MANUAL_', 8 );
+		$snapshot = array();
+
+		if ( '' !== $customer_name ) {
+			$snapshot['customer_name'] = array(
+				'label' => __( 'Customer name', 'ifthenpay-payments-for-forminator' ),
+				'value' => $customer_name,
+			);
+		}
+
+		if ( '' !== $customer_email ) {
+			$snapshot['customer_email'] = array(
+				'label' => __( 'Customer email', 'ifthenpay-payments-for-forminator' ),
+				'value' => $customer_email,
+			);
+		}
+
+		$inserted = $this->insert(
+			array(
+				'ref'            => $ref,
+				'form_id'        => 0,
+				'gateway_key'    => self::MANUAL_GATEWAY_KEY,
+				'amount'         => $amount,
+				'pay_method'     => self::AD_HOC_METHOD,
+				'status'         => $status,
+				'field_snapshot' => $snapshot,
+			)
 		);
 
-		$this->bump_last_changed();
+		return $inserted ? $ref : null;
+	}
 
-		return false !== $result;
+	/**
+	 * A reference no row uses yet.
+	 *
+	 * @param string $prefix Readable prefix, e.g. `FM_12_`.
+	 * @param int    $length Number of random characters after it.
+	 */
+	public function unique_ref( string $prefix, int $length ): string {
+		do {
+			$ref = $prefix . strtoupper( wp_generate_password( $length, false, false ) );
+		} while ( null !== $this->get( $ref ) );
+
+		return $ref;
 	}
 
 	/**
 	 * Reads a transaction row by reference.
 	 *
 	 * @param string $ref The transaction reference.
-	 * @return array<string, mixed>|null
+	 * @return Transaction|null
 	 */
 	public function get( string $ref ): ?array {
 		global $wpdb;
 
-		$cache_key = 'txn_' . $ref;
-		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
+		$cached = wp_cache_get( self::row_cache_key( $ref ), self::CACHE_GROUP, false, $found );
 
-		if ( false !== $cached ) {
-			return $cached;
+		if ( $found ) {
+			return is_array( $cached ) ? self::hydrate( $cached ) : null;
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table; no WP Core API available.
-		$row = $wpdb->get_row(
-			$wpdb->prepare( 'SELECT * FROM %i WHERE ref = %s', self::table_name(), $ref ),
-			ARRAY_A
-		);
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, cached right below.
+		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE ref = %s', self::table_name(), $ref ), ARRAY_A );
 
-		$record = is_array( $row ) ? $row : null;
+		$record = is_array( $row ) ? self::hydrate( $row ) : null;
 
-		wp_cache_set( $cache_key, $record, self::CACHE_GROUP, self::ENTRY_CACHE_TTL );
+		wp_cache_set( self::row_cache_key( $ref ), $record, self::CACHE_GROUP, self::ENTRY_CACHE_TTL );
 
 		return $record;
 	}
 
 	/**
-	 * Marks a transaction paid, returning true only for the call that
-	 * actually flipped it. It's one conditional UPDATE, so if the webhook
-	 * fires twice at once only one of them wins (and creates the entry).
+	 * Marks a transaction paid. One conditional UPDATE, so when the webhook
+	 * fires twice at once only one call gets true (and creates the entry).
 	 *
 	 * @param string $ref        The transaction reference.
 	 * @param string $pay_method The payment method used.
@@ -237,8 +244,7 @@ class TransactionStore {
 			)
 		);
 
-		wp_cache_delete( 'txn_' . $ref, self::CACHE_GROUP );
-		$this->bump_last_changed();
+		$this->forget( array( $ref ) );
 
 		return is_int( $affected ) && $affected > 0;
 	}
@@ -249,7 +255,7 @@ class TransactionStore {
 	 * @param string $ref The transaction reference.
 	 */
 	public function mark_failed( string $ref ): bool {
-		return $this->update_if_not_paid( $ref, self::STATUS_FAILED );
+		return $this->set_status_unless_paid( $ref, self::STATUS_FAILED );
 	}
 
 	/**
@@ -258,16 +264,31 @@ class TransactionStore {
 	 * @param string $ref The transaction reference.
 	 */
 	public function mark_cancelled( string $ref ): bool {
-		return $this->update_if_not_paid( $ref, self::STATUS_CANCELLED );
+		return $this->set_status_unless_paid( $ref, self::STATUS_CANCELLED );
 	}
 
 	/**
-	 * Marks a transaction expired, unless it's already paid.
+	 * Expires pending ifthenpay rows created before the cutoff.
+	 * A late webhook still wins: mark_paid() only skips paid rows.
 	 *
-	 * @param string $ref The transaction reference.
+	 * @param int $cutoff Unix timestamp; older pending rows expire.
+	 * @return int How many rows changed.
 	 */
-	public function mark_expired( string $ref ): bool {
-		return $this->update_if_not_paid( $ref, self::STATUS_EXPIRED );
+	public function expire_pending_before( int $cutoff ): int {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table; a cron sweep, caching it would be pointless.
+		$refs = $wpdb->get_col(
+			$wpdb->prepare(
+				'SELECT ref FROM %i WHERE status = %s AND gateway_key <> %s AND created_at < %d',
+				self::table_name(),
+				self::STATUS_PENDING,
+				self::MANUAL_GATEWAY_KEY,
+				$cutoff
+			)
+		);
+
+		return $this->set_status_many( array_map( 'strval', $refs ), self::STATUS_EXPIRED, self::STATUS_PENDING );
 	}
 
 	/**
@@ -281,6 +302,23 @@ class TransactionStore {
 	}
 
 	/**
+	 * Records a link created later ("Send payment email") plus its Gateway Key, which the webhook validates against.
+	 *
+	 * @param string $ref         The transaction reference.
+	 * @param string $payment_url The ifthenpay hosted payment page URL.
+	 * @param string $gateway_key The Gateway Key the link belongs to.
+	 */
+	public function record_payment_link( string $ref, string $payment_url, string $gateway_key ): bool {
+		return $this->update(
+			$ref,
+			array(
+				'payment_url' => $payment_url,
+				'gateway_key' => $gateway_key,
+			)
+		);
+	}
+
+	/**
 	 * Records the ifthenpay transaction id.
 	 *
 	 * @param string $ref            The transaction reference.
@@ -291,155 +329,126 @@ class TransactionStore {
 	}
 
 	/**
-	 * Admin override from the transactions list bulk-action bar — always
-	 * writes the requested status, unlike the mark_*() helpers above.
+	 * Admin bulk-action override; unlike mark_*(), it can move a row off "paid".
 	 *
-	 * @param string $ref    The transaction reference.
-	 * @param string $status One of ALL_STATUSES.
+	 * @param array<int, string> $refs   The transaction references.
+	 * @param string             $status One of ALL_STATUSES.
+	 * @return int How many rows actually changed status.
 	 */
-	public function admin_set_status( string $ref, string $status ): bool {
+	public function admin_set_status_many( array $refs, string $status ): int {
 		if ( ! in_array( $status, self::ALL_STATUSES, true ) ) {
-			return false;
+			return 0;
 		}
 
-		return $this->update( $ref, array( 'status' => $status ) );
+		return $this->set_status_many( $refs, $status );
 	}
 
 	/**
-	 * Writes a status unless the record is missing or already paid (terminal).
+	 * Deletes the given rows, one DELETE per chunk of refs. Paid rows are payment history, so they stay.
 	 *
-	 * @param string $ref    The transaction reference.
-	 * @param string $status One of ALL_STATUSES.
+	 * @param array<int, string> $refs The transaction references.
+	 * @return int How many rows were deleted.
 	 */
-	private function update_if_not_paid( string $ref, string $status ): bool {
-		$record = $this->get( $ref );
-
-		if ( null === $record || self::STATUS_PAID === $record['status'] ) {
-			return null !== $record;
-		}
-
-		return $this->update( $ref, array( 'status' => $status ) );
-	}
-
-	/**
-	 * Updates a transaction row and invalidates its cache entry.
-	 *
-	 * @param string               $ref    The transaction reference.
-	 * @param array<string, mixed> $fields The columns to update.
-	 */
-	private function update( string $ref, array $fields ): bool {
+	public function delete_unpaid( array $refs ): int {
 		global $wpdb;
 
-		$fields['updated_at'] = time();
+		$deleted = 0;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table; no WP Core API available.
-		$result = $wpdb->update( self::table_name(), $fields, array( 'ref' => $ref ) );
+		foreach ( array_chunk( self::clean_refs( $refs ), self::BULK_WRITE_CHUNK ) as $chunk ) {
+			$placeholders = implode( ', ', array_fill( 0, count( $chunk ), '%s' ) );
 
-		wp_cache_delete( 'txn_' . $ref, self::CACHE_GROUP );
-		$this->bump_last_changed();
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- custom plugin table, cache invalidated below; $placeholders is one %s per ref, plus the paid guard.
+			$affected = $wpdb->query( $wpdb->prepare( "DELETE FROM %i WHERE ref IN ({$placeholders}) AND status <> %s", array_merge( array( self::table_name() ), $chunk, array( self::STATUS_PAID ) ) ) );
 
-		return false !== $result;
-	}
+			if ( is_int( $affected ) ) {
+				$deleted += $affected;
+			}
 
-	/**
-	 * Deletes a transaction row and invalidates its cache entry.
-	 *
-	 * @param string $ref The transaction reference.
-	 */
-	public function delete( string $ref ): void {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table; no WP Core API available.
-		$wpdb->delete( self::table_name(), array( 'ref' => $ref ), array( '%s' ) );
-
-		wp_cache_delete( 'txn_' . $ref, self::CACHE_GROUP );
-		$this->bump_last_changed();
-	}
-
-	/**
-	 * From the Payment Entries screen's "+ New Payment" popup — records a
-	 * payment taken outside the normal checkout (over the phone, in
-	 * person). Unlike Ninja Forms' own `create_manual()`, this never needs
-	 * a real Forminator entry behind it: `form_id` 0 marks it as ad hoc
-	 * (see `PaymentEntriesPage::render_form_cell()`), and the customer's
-	 * name/email ride in `field_snapshot` the same way a real submission's
-	 * fields do, so `entry_data_pairs()` shows them in the details panel
-	 * without any extra plumbing.
-	 *
-	 * @param string $customer_name  The customer's name, or ''.
-	 * @param string $customer_email The customer's email, or ''.
-	 * @param float  $amount         The payment amount.
-	 * @param string $status         One of ALL_STATUSES.
-	 * @return string|null the generated ref, or null if the insert failed.
-	 */
-	public function create_manual( string $customer_name, string $customer_email, float $amount, string $status ): ?string {
-		global $wpdb;
-
-		$ref      = $this->generate_manual_ref();
-		$snapshot = array();
-
-		if ( '' !== $customer_name ) {
-			$snapshot['customer_name'] = array(
-				'label' => __( 'Customer name', 'ifthenpay-payments-for-forminator' ),
-				'value' => $customer_name,
-			);
+			$this->forget( $chunk );
 		}
 
-		if ( '' !== $customer_email ) {
-			$snapshot['customer_email'] = array(
-				'label' => __( 'Customer email', 'ifthenpay-payments-for-forminator' ),
-				'value' => $customer_email,
-			);
+		return $deleted;
+	}
+
+	/**
+	 * Loads the given rows into the object cache, one SELECT per chunk, so a loop of get() calls doesn't query per ref.
+	 *
+	 * @param array<int, string> $refs The transaction references.
+	 */
+	public function prime( array $refs ): void {
+		global $wpdb;
+
+		$refs   = self::clean_refs( $refs );
+		$cached = wp_cache_get_multiple( array_map( array( self::class, 'row_cache_key' ), $refs ), self::CACHE_GROUP );
+		$refs   = array_values( array_filter( $refs, static fn( string $ref ): bool => false === ( $cached[ self::row_cache_key( $ref ) ] ?? false ) ) );
+
+		foreach ( array_chunk( $refs, self::BULK_WRITE_CHUNK ) as $chunk ) {
+			$placeholders = implode( ', ', array_fill( 0, count( $chunk ), '%s' ) );
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- custom plugin table, cached right below; $placeholders is one %s per ref.
+			$rows  = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM %i WHERE ref IN ({$placeholders})", array_merge( array( self::table_name() ), $chunk ) ), ARRAY_A );
+			$found = array();
+
+			foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+				$record                  = self::hydrate( $row );
+				$found[ $record['ref'] ] = $record;
+			}
+
+			// Misses are cached too, same as get() does.
+			foreach ( $chunk as $ref ) {
+				wp_cache_set( self::row_cache_key( $ref ), $found[ $ref ] ?? null, self::CACHE_GROUP, self::ENTRY_CACHE_TTL );
+			}
+		}
+	}
+
+	/**
+	 * Full rows (with field_snapshot) whose customer email matches, oldest first, for the privacy exporter.
+	 *
+	 * @param string $email  The customer email.
+	 * @param int    $limit  Rows to fetch.
+	 * @param int    $offset Rows to skip.
+	 * @return array<int, Transaction>
+	 */
+	public function find_by_email( string $email, int $limit, int $offset = 0 ): array {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table; a rare privacy request, caching it would be pointless.
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE customer_email = %s ORDER BY created_at ASC, ref ASC LIMIT %d OFFSET %d', self::table_name(), $email, $limit, $offset ), ARRAY_A );
+
+		return array_map( array( self::class, 'hydrate' ), is_array( $rows ) ? $rows : array() );
+	}
+
+	/**
+	 * Strips the customer and submitted values from the given rows. The payment itself (ref, amount, status) stays.
+	 *
+	 * @param array<int, string> $refs The transaction references.
+	 * @return int How many rows changed.
+	 */
+	public function anonymize( array $refs ): int {
+		global $wpdb;
+
+		$changed = 0;
+		$now     = time();
+
+		foreach ( array_chunk( self::clean_refs( $refs ), self::BULK_WRITE_CHUNK ) as $chunk ) {
+			$placeholders = implode( ', ', array_fill( 0, count( $chunk ), '%s' ) );
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- custom plugin table, cache invalidated below; $placeholders is one %s per ref.
+			$affected = $wpdb->query( $wpdb->prepare( "UPDATE %i SET customer_name = '', customer_email = '', field_snapshot = NULL, updated_at = %d WHERE ref IN ({$placeholders})", array_merge( array( self::table_name(), $now ), $chunk ) ) );
+
+			if ( is_int( $affected ) ) {
+				$changed += $affected;
+			}
+
+			$this->forget( $chunk );
 		}
 
-		$now      = time();
-		$customer = $this->storable_customer( $this->extract_customer( $snapshot ) );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table; no WP Core API available.
-		$result = $wpdb->insert(
-			self::table_name(),
-			array(
-				'ref'            => $ref,
-				'form_id'        => 0,
-				'gateway_key'    => 'manual',
-				'amount'         => $amount,
-				'pay_method'     => self::AD_HOC_METHOD,
-				'payment_url'    => '',
-				'customer_name'  => $customer['name'],
-				'customer_email' => $customer['email'],
-				'status'         => $status,
-				'field_snapshot' => wp_json_encode( $snapshot ),
-				'is_test'        => 0,
-				'created_at'     => $now,
-				'updated_at'     => $now,
-			),
-			array( '%s', '%d', '%s', '%f', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d' )
-		);
-
-		$this->bump_last_changed();
-
-		return false !== $result ? $ref : null;
+		return $changed;
 	}
 
 	/**
-	 * `MANUAL_` keeps these visually distinct from a real ifthenpay-issued
-	 * reference at a glance in the Reference column.
-	 */
-	private function generate_manual_ref(): string {
-		do {
-			$ref = 'MANUAL_' . strtoupper( wp_generate_password( 8, false, false ) );
-		} while ( null !== $this->get( $ref ) );
-
-		return $ref;
-	}
-
-	/**
-	 * Pulls the customer's name/email out of a field snapshot for the
-	 * Customer column. Manual entries carry them as `customer_name` /
-	 * `customer_email`; a Forminator submission is keyed by input name (see
-	 * `collectFields()` in frontend.js), so it's `email-N`, and either
-	 * `name-N` (single name field) or `name-N-first-name` / `-middle-name` /
-	 * `-last-name` (multi-part). Repeater copies (`email-1-2`) are skipped.
+	 * Pulls the customer's name/email out of a snapshot for the Customer column.
+	 * Forminator keys them `email-N` / `name-N` (or `name-N-first-name` etc.); I skip repeater copies like `email-1-2`.
 	 *
 	 * @param array<string, mixed> $fields Element_id => {label, value} snapshot.
 	 * @return array{name: string, email: string}
@@ -449,7 +458,6 @@ class TransactionStore {
 		$email = self::snapshot_value( $fields['customer_email'] ?? '' );
 		$parts = array();
 
-		// The public payment AJAX accepts any field key, so this one gets the same check as email-N.
 		if ( '' !== $email && false === is_email( $email ) ) {
 			$email = '';
 		}
@@ -471,16 +479,10 @@ class TransactionStore {
 			}
 		}
 
-		// No single-mode name, so I join the first multi-part name field's pieces.
+		// No single-mode name, so I join the first multi-part name's pieces.
 		if ( '' === $name && array() !== $parts ) {
 			$first = reset( $parts );
-			$name  = implode(
-				' ',
-				array_filter(
-					array( $first['first'] ?? '', $first['middle'] ?? '', $first['last'] ?? '' ),
-					static fn( string $part ): bool => '' !== $part
-				)
-			);
+			$name  = implode( ' ', array_filter( array( $first['first'] ?? '', $first['middle'] ?? '', $first['last'] ?? '' ) ) );
 		}
 
 		return array(
@@ -490,10 +492,473 @@ class TransactionStore {
 	}
 
 	/**
-	 * The customer name/email cut down to what their columns can hold. wpdb
-	 * fails the whole write rather than store a character the table's charset
-	 * can't (an emoji on a utf8mb3 table, say), so I strip first, and fall
-	 * back to '' if wpdb can't tell me.
+	 * A row's snapshot flattened to label/value pairs, skipping empty values.
+	 *
+	 * @param array<string, mixed> $record A transaction row, as returned by get().
+	 * @return array<int, array{label: string, value: string}>
+	 */
+	public function entry_data_pairs( array $record ): array {
+		$pairs    = array();
+		$snapshot = is_string( $record['field_snapshot'] ?? null ) ? $record['field_snapshot'] : '';
+
+		foreach ( self::decode_snapshot( $snapshot ) as $element_id => $pair ) {
+			$value = self::snapshot_value( $pair );
+
+			if ( '' === $value ) {
+				continue;
+			}
+
+			$label = is_array( $pair ) && isset( $pair['label'] ) && is_scalar( $pair['label'] ) ? (string) $pair['label'] : (string) $element_id;
+
+			$pairs[] = array(
+				'label' => $label,
+				'value' => $value,
+			);
+		}
+
+		return $pairs;
+	}
+
+	/**
+	 * A stored snapshot as an array, or empty when it's missing or malformed.
+	 *
+	 * @param string $json The field_snapshot column.
+	 * @return array<string, mixed>
+	 */
+	public static function decode_snapshot( string $json ): array {
+		$snapshot = '' !== $json ? json_decode( $json, true ) : null;
+
+		return is_array( $snapshot ) ? $snapshot : array();
+	}
+
+	/**
+	 * One page of the Payment Entries list, filtered, sorted and paginated in SQL.
+	 * Rows come without field_snapshot (see LIST_COLUMNS); get() has it.
+	 *
+	 * @param array<string, mixed> $args See build_where()/build_order(), plus paged and per_page.
+	 * @return array{items: array<int, Transaction>, total: int, pages: int, paged: int}
+	 */
+	public function query( array $args ): array {
+		global $wpdb;
+
+		$cache_key = 'query_' . $this->last_changed() . '_' . md5( (string) wp_json_encode( $args ) );
+		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
+
+		if ( is_array( $cached ) ) {
+			/**
+			 * Only this method writes the key, so the shape is known.
+			 *
+			 * @var array{items: array<int, Transaction>, total: int, pages: int, paged: int} $cached
+			 */
+			return $cached;
+		}
+
+		$table     = self::table_name();
+		$where_sql = $this->build_where( $args );
+		$order_sql = $this->build_order( $args );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, cached below; $where_sql is built from prepare() calls.
+		$total = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i' . $where_sql, $table ) );
+
+		$per_page = max( 1, (int) ( $args['per_page'] ?? 20 ) );
+		$pages    = max( 1, (int) ceil( $total / $per_page ) );
+		$paged    = min( $pages, max( 1, (int) ( $args['paged'] ?? 1 ) ) );
+
+		$result = array(
+			'items' => $this->fetch_page( $where_sql, $order_sql, $per_page, ( $paged - 1 ) * $per_page ),
+			'total' => $total,
+			'pages' => $pages,
+			'paged' => $paged,
+		);
+
+		wp_cache_set( $cache_key, $result, self::CACHE_GROUP, self::LIST_CACHE_TTL );
+
+		return $result;
+	}
+
+	/**
+	 * Every row matching query()'s filters, unpaginated and without field_snapshot, for the CSV export.
+	 * Uncached and read in batches so memory stays flat on a big table.
+	 *
+	 * @param array<string, mixed> $args  Same filter/sort args as query(); paged/per_page are ignored.
+	 * @param int                  $batch Rows per SELECT.
+	 * @return \Generator<int, Transaction, void, void>
+	 */
+	public function iterate( array $args, int $batch = 500 ): \Generator {
+		global $wpdb;
+
+		$batch     = max( 1, $batch );
+		$where_sql = $this->build_where( $args );
+		$order_sql = $this->build_order( $args );
+		$offset    = 0;
+
+		do {
+			$rows = $this->fetch_page( $where_sql, $order_sql, $batch, $offset );
+
+			// wpdb keeps its own copy of the last result set; I drop it before yielding.
+			$wpdb->flush();
+
+			$fetched = count( $rows );
+
+			yield from $rows;
+
+			$offset += $batch;
+		} while ( $fetched === $batch );
+	}
+
+	/**
+	 * The distinct form ids with at least one transaction, for the Form filter.
+	 *
+	 * @return array<int, int>
+	 */
+	public function distinct_form_ids(): array {
+		global $wpdb;
+
+		$cache_key = 'distinct_form_ids_' . $this->last_changed();
+		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
+
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, cached right below.
+		$ids = array_map( 'intval', $wpdb->get_col( $wpdb->prepare( 'SELECT DISTINCT form_id FROM %i WHERE form_id != 0 ORDER BY form_id ASC', self::table_name() ) ) );
+
+		wp_cache_set( $cache_key, $ids, self::CACHE_GROUP, self::LIST_CACHE_TTL );
+
+		return $ids;
+	}
+
+	/**
+	 * The distinct non-empty payment methods, sorted, for the Method filter.
+	 *
+	 * @return array<int, string>
+	 */
+	public function distinct_methods(): array {
+		global $wpdb;
+
+		$cache_key = 'distinct_methods_' . $this->last_changed();
+		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
+
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table, cached right below.
+		$methods = array_map( 'strval', $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT pay_method FROM %i WHERE pay_method <> '' ORDER BY pay_method ASC", self::table_name() ) ) );
+
+		wp_cache_set( $cache_key, $methods, self::CACHE_GROUP, self::LIST_CACHE_TTL );
+
+		return $methods;
+	}
+
+	/**
+	 * Count and amount per status for the given filters, ignoring their `status`.
+	 * Cancelled rolls into Failed, since the admin list has no Cancelled tab.
+	 *
+	 * @param array<string, mixed> $args Same filter args as build_where().
+	 * @return array<string, array{count: int, amount: float}>
+	 */
+	public function status_summary( array $args = array() ): array {
+		global $wpdb;
+
+		unset( $args['status'] );
+
+		$cache_key = 'status_summary_' . $this->last_changed() . '_' . md5( (string) wp_json_encode( $args ) );
+		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
+
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, cached below; the WHERE clause is built from prepare() calls.
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT status, COUNT(*) AS total, SUM(amount) AS amount FROM %i' . $this->build_where( $args ) . ' GROUP BY status', self::table_name() ), ARRAY_A );
+
+		$summary = array();
+
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$status = self::STATUS_CANCELLED === $row['status'] ? self::STATUS_FAILED : (string) $row['status'];
+			$prior  = $summary[ $status ] ?? array(
+				'count'  => 0,
+				'amount' => 0.0,
+			);
+
+			$summary[ $status ] = array(
+				'count'  => $prior['count'] + (int) $row['total'],
+				'amount' => round( $prior['amount'] + (float) $row['amount'], 2 ),
+			);
+		}
+
+		wp_cache_set( $cache_key, $summary, self::CACHE_GROUP, self::LIST_CACHE_TTL );
+
+		return $summary;
+	}
+
+	/**
+	 * Inserts a row, filling in the customer columns and timestamps.
+	 *
+	 * @param array{ref: string, form_id: int, gateway_key: string, amount: float, status: string, field_snapshot: array<string, mixed>, payment_url?: string, pay_method?: string} $row The row to insert.
+	 */
+	private function insert( array $row ): bool {
+		global $wpdb;
+
+		$now      = time();
+		$customer = $this->storable_customer( $this->extract_customer( $row['field_snapshot'] ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table; no WP Core API available.
+		$result = $wpdb->insert(
+			self::table_name(),
+			array(
+				'ref'            => $row['ref'],
+				'form_id'        => $row['form_id'],
+				'gateway_key'    => $row['gateway_key'],
+				'amount'         => $row['amount'],
+				'pay_method'     => $row['pay_method'] ?? '',
+				'payment_url'    => $row['payment_url'] ?? '',
+				'customer_name'  => $customer['name'],
+				'customer_email' => $customer['email'],
+				'status'         => $row['status'],
+				'field_snapshot' => (string) wp_json_encode( $row['field_snapshot'] ),
+				'created_at'     => $now,
+				'updated_at'     => $now,
+			),
+			array( '%s', '%d', '%s', '%f', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d' )
+		);
+
+		// unique_ref() cached a miss for this ref; a persistent cache would hide the row from the webhook.
+		$this->forget( array( $row['ref'] ) );
+
+		return false !== $result;
+	}
+
+	/**
+	 * Writes a status unless the row is already paid — in the WHERE clause, so a
+	 * webhook landing at the same moment can't be overwritten.
+	 *
+	 * @param string $ref    The transaction reference.
+	 * @param string $status One of ALL_STATUSES.
+	 */
+	private function set_status_unless_paid( string $ref, string $status ): bool {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table; cache is invalidated right below.
+		$affected = $wpdb->query(
+			$wpdb->prepare(
+				'UPDATE %i SET status = %s, updated_at = %d WHERE ref = %s AND status <> %s',
+				self::table_name(),
+				$status,
+				time(),
+				$ref,
+				self::STATUS_PAID
+			)
+		);
+
+		$this->forget( array( $ref ) );
+
+		return is_int( $affected ) && $affected > 0;
+	}
+
+	/**
+	 * Sets one status on many rows, one UPDATE per chunk of refs.
+	 *
+	 * @param array<int, string> $refs        The transaction references.
+	 * @param string             $status      The status to write.
+	 * @param string             $only_status Only touch rows currently in this status, or '' for any.
+	 * @return int How many rows changed.
+	 */
+	private function set_status_many( array $refs, string $status, string $only_status = '' ): int {
+		global $wpdb;
+
+		$changed = 0;
+		$now     = time();
+		$guard   = '' !== $only_status ? 'status = %s' : 'status <> %s';
+		$guarded = '' !== $only_status ? $only_status : $status;
+
+		foreach ( array_chunk( self::clean_refs( $refs ), self::BULK_WRITE_CHUNK ) as $chunk ) {
+			$placeholders = implode( ', ', array_fill( 0, count( $chunk ), '%s' ) );
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- custom plugin table, cache invalidated below; $placeholders is one %s per ref and $guard is a fixed string.
+			$affected = $wpdb->query( $wpdb->prepare( "UPDATE %i SET status = %s, updated_at = %d WHERE ref IN ({$placeholders}) AND {$guard}", array_merge( array( self::table_name(), $status, $now ), $chunk, array( $guarded ) ) ) );
+
+			if ( is_int( $affected ) ) {
+				$changed += $affected;
+			}
+
+			$this->forget( $chunk );
+		}
+
+		return $changed;
+	}
+
+	/**
+	 * Updates a transaction row and invalidates its cache entry.
+	 *
+	 * @param string               $ref    The transaction reference.
+	 * @param array<string, mixed> $fields The columns to update.
+	 */
+	private function update( string $ref, array $fields ): bool {
+		global $wpdb;
+
+		$fields['updated_at'] = time();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table; cache is invalidated right below.
+		$result = $wpdb->update( self::table_name(), $fields, array( 'ref' => $ref ) );
+
+		$this->forget( array( $ref ) );
+
+		return false !== $result;
+	}
+
+	/**
+	 * One page of full rows. I pick the refs first and join the rows back, so a
+	 * deep OFFSET doesn't sort every row's snapshot along with it.
+	 *
+	 * @param string $where_sql From build_where().
+	 * @param string $order_sql From build_order().
+	 * @param int    $limit     Rows to fetch.
+	 * @param int    $offset    Rows to skip.
+	 * @return array<int, Transaction>
+	 */
+	private function fetch_page( string $where_sql, string $order_sql, int $limit, int $offset ): array {
+		global $wpdb;
+
+		$table = self::table_name();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, callers cache; $where_sql is built from prepare() calls, $order_sql from SORTABLE_COLUMNS, and LIST_COLUMNS is a constant.
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT ' . self::LIST_COLUMNS . ' FROM %i AS t INNER JOIN (SELECT ref FROM %i' . $where_sql . $order_sql . ' LIMIT %d OFFSET %d) AS page USING (ref)' . $order_sql, $table, $table, $limit, $offset ), ARRAY_A );
+
+		return array_map( array( self::class, 'hydrate' ), is_array( $rows ) ? $rows : array() );
+	}
+
+	/**
+	 * A fully prepared ` WHERE …` clause, or '' for no filter.
+	 *
+	 * @param array<string, mixed> $args Filter args: status, form_id, pay_method, amount_min/max, refs, date_from/to, search.
+	 */
+	private function build_where( array $args ): string {
+		global $wpdb;
+
+		$conditions = array();
+		$status     = is_string( $args['status'] ?? null ) ? $args['status'] : '';
+
+		if ( self::STATUS_FAILED === $status ) {
+			// The admin list treats cancelled as a kind of failed.
+			$conditions[] = $wpdb->prepare( 'status IN (%s, %s)', self::STATUS_FAILED, self::STATUS_CANCELLED );
+		} elseif ( '' !== $status ) {
+			$conditions[] = $wpdb->prepare( 'status = %s', $status );
+		}
+
+		$form_id = is_numeric( $args['form_id'] ?? null ) ? (int) $args['form_id'] : 0;
+
+		if ( 0 !== $form_id ) {
+			$conditions[] = $wpdb->prepare( 'form_id = %d', $form_id );
+		}
+
+		$pay_method = is_string( $args['pay_method'] ?? null ) ? $args['pay_method'] : '';
+
+		if ( '' !== $pay_method ) {
+			$conditions[] = $wpdb->prepare( 'pay_method = %s', $pay_method );
+		}
+
+		if ( is_numeric( $args['amount_min'] ?? null ) ) {
+			$conditions[] = $wpdb->prepare( 'amount >= %f', (float) $args['amount_min'] );
+		}
+
+		if ( is_numeric( $args['amount_max'] ?? null ) ) {
+			$conditions[] = $wpdb->prepare( 'amount <= %f', (float) $args['amount_max'] );
+		}
+
+		if ( isset( $args['refs'] ) && is_array( $args['refs'] ) && array() !== $args['refs'] ) {
+			$refs = self::clean_refs( $args['refs'] );
+
+			if ( array() === $refs ) {
+				// A selection with nothing valid in it must match nothing, not everything.
+				$conditions[] = '1 = 0';
+			} else {
+				$placeholders = implode( ', ', array_fill( 0, count( $refs ), '%s' ) );
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $placeholders is one %s per ref.
+				$conditions[] = $wpdb->prepare( "ref IN ({$placeholders})", $refs );
+			}
+		}
+
+		$date_from = is_numeric( $args['date_from'] ?? null ) ? (int) $args['date_from'] : 0;
+
+		if ( $date_from > 0 ) {
+			$conditions[] = $wpdb->prepare( 'created_at >= %d', $date_from );
+		}
+
+		$date_to = is_numeric( $args['date_to'] ?? null ) ? (int) $args['date_to'] : 0;
+
+		if ( $date_to > 0 ) {
+			$conditions[] = $wpdb->prepare( 'created_at <= %d', $date_to );
+		}
+
+		$search = is_string( $args['search'] ?? null ) ? $args['search'] : '';
+
+		if ( '' !== $search ) {
+			$like  = '%' . $wpdb->esc_like( $search ) . '%';
+			$match = $wpdb->prepare( 'ref LIKE %s OR pay_method LIKE %s OR customer_name LIKE %s OR customer_email LIKE %s', $like, $like, $like, $like );
+
+			// The Entry column shows "#19115", so I match an entry id typed with or without the "#".
+			if ( 1 === preg_match( '/^#?(\d+)$/', trim( $search ), $entry ) ) {
+				$match .= $wpdb->prepare( ' OR entry_id = %d', (int) $entry[1] );
+			}
+
+			$conditions[] = '(' . $match . ')';
+		}
+
+		return array() === $conditions ? '' : ' WHERE ' . implode( ' AND ', $conditions );
+	}
+
+	/**
+	 * The ` ORDER BY …` clause. Ties break on `ref` so LIMIT/OFFSET pages never repeat or skip a row.
+	 *
+	 * @param array<string, mixed> $args Sort args: orderby, order.
+	 */
+	private function build_order( array $args ): string {
+		$orderby = $args['orderby'] ?? '';
+
+		if ( ! in_array( $orderby, self::SORTABLE_COLUMNS, true ) ) {
+			return ' ORDER BY created_at DESC, ref DESC';
+		}
+
+		$order = 'asc' === ( $args['order'] ?? '' ) ? 'ASC' : 'DESC';
+
+		return 'ref' === $orderby ? " ORDER BY ref {$order}" : " ORDER BY {$orderby} {$order}, ref {$order}";
+	}
+
+	/**
+	 * Casts a raw ARRAY_A row to its typed shape once, so callers don't have to.
+	 *
+	 * @param array<string, mixed> $row A raw table row.
+	 * @return Transaction
+	 */
+	private static function hydrate( array $row ): array {
+		$text = static fn( string $key ): string => is_scalar( $row[ $key ] ?? null ) ? (string) $row[ $key ] : '';
+		$int  = static fn( string $key ): int => is_numeric( $row[ $key ] ?? null ) ? (int) $row[ $key ] : 0;
+
+		return array(
+			'ref'            => $text( 'ref' ),
+			'form_id'        => $int( 'form_id' ),
+			'entry_id'       => $int( 'entry_id' ),
+			'gateway_key'    => $text( 'gateway_key' ),
+			'amount'         => is_numeric( $row['amount'] ?? null ) ? (float) $row['amount'] : 0.0,
+			'pay_method'     => $text( 'pay_method' ),
+			'request_id'     => $text( 'request_id' ),
+			'transaction_id' => $text( 'transaction_id' ),
+			'payment_url'    => $text( 'payment_url' ),
+			'customer_name'  => $text( 'customer_name' ),
+			'customer_email' => $text( 'customer_email' ),
+			'status'         => $text( 'status' ),
+			'field_snapshot' => $text( 'field_snapshot' ),
+			'created_at'     => $int( 'created_at' ),
+			'updated_at'     => $int( 'updated_at' ),
+		);
+	}
+
+	/**
+	 * The customer cut down to what its columns can store.
+	 * wpdb fails the whole insert on a character the charset can't hold (emoji on utf8mb3), so I strip those.
 	 *
 	 * @param array{name: string, email: string} $customer As returned by extract_customer().
 	 * @return array{name: string, email: string}
@@ -523,463 +988,47 @@ class TransactionStore {
 	}
 
 	/**
-	 * Fills the customer columns for rows stored before schema v2, one batch
-	 * per (non-AJAX) admin request so a big table never stalls a page. I walk
-	 * the primary key from a saved cursor rather than re-selecting "still
-	 * empty" rows, since rows with no name/email in them would stay empty and
-	 * be picked up again forever.
-	 */
-	public function maybe_backfill_customers(): void {
-		if ( wp_doing_ajax() || get_option( self::BACKFILL_DONE_OPTION ) || (int) get_option( self::DB_VERSION_OPTION, 0 ) < 2 ) {
-			return;
-		}
-
-		global $wpdb;
-
-		$table  = self::table_name();
-		$cursor = (string) get_option( self::BACKFILL_CURSOR_OPTION, '' );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom plugin table; one-off migration read, caching it would be pointless.
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT ref, field_snapshot FROM %i WHERE ref > %s AND customer_name = '' AND customer_email = '' AND field_snapshot IS NOT NULL AND field_snapshot <> '' ORDER BY ref ASC LIMIT %d",
-				$table,
-				$cursor,
-				self::BACKFILL_BATCH
-			),
-			ARRAY_A
-		);
-		$rows = is_array( $rows ) ? $rows : array();
-
-		$updates = array();
-
-		foreach ( $rows as $row ) {
-			$snapshot = json_decode( (string) $row['field_snapshot'], true );
-			$customer = is_array( $snapshot ) ? $this->storable_customer( $this->extract_customer( $snapshot ) ) : array(
-				'name'  => '',
-				'email' => '',
-			);
-
-			if ( '' !== $customer['name'] || '' !== $customer['email'] ) {
-				$updates[] = array( (string) $row['ref'], $customer['name'], $customer['email'] );
-			}
-		}
-
-		// Cursor stays put on a failed write, so the next request retries this batch.
-		if ( array() !== $updates ) {
-			if ( ! $this->write_customers( $updates ) ) {
-				return;
-			}
-
-			$this->bump_last_changed();
-		}
-
-		if ( count( $rows ) < self::BACKFILL_BATCH ) {
-			update_option( self::BACKFILL_DONE_OPTION, 1, true );
-			delete_option( self::BACKFILL_CURSOR_OPTION );
-
-			return;
-		}
-
-		$last = end( $rows );
-
-		update_option( self::BACKFILL_CURSOR_OPTION, (string) $last['ref'], false );
-	}
-
-	/**
-	 * Writes a backfill batch in one UPDATE (a CASE per column) instead of one
-	 * query per row. Only still-empty rows are touched, so a customer written
-	 * by a concurrent request is never overwritten.
+	 * Scalar, non-empty, de-duplicated refs, re-indexed.
 	 *
-	 * @param array<int, array{0: string, 1: string, 2: string}> $updates Ref, name, email tuples.
-	 */
-	private function write_customers( array $updates ): bool {
-		global $wpdb;
-
-		$name_args  = array();
-		$email_args = array();
-		$refs       = array();
-
-		foreach ( $updates as $update ) {
-			array_push( $name_args, $update[0], $update[1] );
-			array_push( $email_args, $update[0], $update[2] );
-			$refs[] = $update[0];
-		}
-
-		$whens        = str_repeat( ' WHEN %s THEN %s', count( $updates ) );
-		$placeholders = implode( ', ', array_fill( 0, count( $refs ), '%s' ) );
-		$values       = array_merge( array( self::table_name() ), $name_args, $email_args, $refs );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- custom plugin table; one-off migration write; $whens and $placeholders are only %s placeholders, one per value passed to prepare().
-		$result = $wpdb->query( $wpdb->prepare( 'UPDATE %i SET customer_name = CASE ref' . $whens . ' ELSE customer_name END, customer_email = CASE ref' . $whens . " ELSE customer_email END WHERE ref IN ({$placeholders}) AND customer_name = '' AND customer_email = ''", $values ) );
-
-		return false !== $result;
-	}
-
-	/**
-	 * Flattens a stored field snapshot into label/value pairs for the confirmation popup.
-	 *
-	 * @param array<string, mixed> $record A transaction row, as returned by get().
-	 * @return array{label: string, value: string}[]
-	 */
-	public function entry_data_pairs( array $record ): array {
-		$snapshot = json_decode( (string) ( $record['field_snapshot'] ?? '' ), true );
-
-		if ( ! is_array( $snapshot ) ) {
-			return array();
-		}
-
-		$pairs = array();
-
-		foreach ( $snapshot as $element_id => $pair ) {
-			$label = is_array( $pair ) && isset( $pair['label'] ) ? $pair['label'] : $element_id;
-			$value = is_array( $pair ) ? ( $pair['value'] ?? '' ) : $pair;
-
-			if ( ! is_scalar( $value ) || '' === (string) $value ) {
-				continue;
-			}
-
-			$pairs[] = array(
-				'label' => (string) $label,
-				'value' => (string) $value,
-			);
-		}
-
-		return $pairs;
-	}
-
-	/**
-	 * Backs the Payment Entries admin dashboard — filter/sort/paginate in
-	 * SQL. Direct column sorting is plenty at this table's expected scale
-	 * (a cross-form payment-attempt log, not Ninja Forms' primary
-	 * submissions store) — no secondary index table needed, unlike
-	 * `SubmissionStore::query_index()`.
-	 *
-	 * @param array<string, mixed> $args Filter/sort/pagination args: status,
-	 *                                    form_id, pay_method, amount_min,
-	 *                                    amount_max, refs, date_from, date_to,
-	 *                                    search, orderby, order, paged, per_page.
-	 * @return array{items: array<int, array<string, mixed>>, total: int, pages: int, paged: int}
-	 */
-	public function query( array $args ): array {
-		global $wpdb;
-
-		$cache_key = 'query_' . $this->get_last_changed() . '_' . md5( (string) wp_json_encode( $args ) );
-		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
-
-		if ( false !== $cached ) {
-			return $cached;
-		}
-
-		$table     = self::table_name();
-		$where_sql = $this->build_where( $args );
-		$order_sql = $this->build_order( $args );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table; $where_sql is assembled from $wpdb->prepare() calls in build_where(), no user data interpolated directly.
-		$total = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i' . $where_sql, $table ) );
-
-		$per_page = max( 1, (int) ( $args['per_page'] ?? 20 ) );
-		$pages    = max( 1, (int) ceil( $total / $per_page ) );
-		$paged    = min( $pages, max( 1, (int) ( $args['paged'] ?? 1 ) ) );
-		$offset   = ( $paged - 1 ) * $per_page;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table; $where_sql is assembled from $wpdb->prepare() calls in build_where(), $order_sql is validated against SORTABLE_COLUMNS in build_order(), no user data interpolated directly.
-		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i' . $where_sql . $order_sql . ' LIMIT %d OFFSET %d', $table, $per_page, $offset ), ARRAY_A );
-
-		$result = array(
-			'items' => is_array( $rows ) ? $rows : array(),
-			'total' => $total,
-			'pages' => $pages,
-			'paged' => $paged,
-		);
-
-		wp_cache_set( $cache_key, $result, self::CACHE_GROUP, self::LIST_CACHE_TTL );
-
-		return $result;
-	}
-
-	/**
-	 * The distinct form IDs with at least one transaction, for the "Form"
-	 * filter dropdown — ascending, so the admin's own forms sort roughly
-	 * oldest-first same as they were created.
-	 *
-	 * @return array<int, int>
-	 */
-	public function distinct_form_ids(): array {
-		global $wpdb;
-
-		$cache_key = 'distinct_form_ids_' . $this->get_last_changed();
-		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
-
-		if ( false !== $cached ) {
-			return $cached;
-		}
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table; no WP Core API available.
-		$ids = $wpdb->get_col( $wpdb->prepare( 'SELECT DISTINCT form_id FROM %i WHERE form_id != 0 ORDER BY form_id ASC', self::table_name() ) );
-		$ids = array_map( 'intval', is_array( $ids ) ? $ids : array() );
-
-		wp_cache_set( $cache_key, $ids, self::CACHE_GROUP, self::LIST_CACHE_TTL );
-
-		return $ids;
-	}
-
-	/**
-	 * The distinct non-empty payment methods, sorted, for the "Method" filter dropdown.
-	 *
+	 * @param array<mixed> $refs Raw refs.
 	 * @return array<int, string>
 	 */
-	public function distinct_methods(): array {
-		global $wpdb;
+	private static function clean_refs( array $refs ): array {
+		$refs = array_map( 'strval', array_filter( $refs, 'is_scalar' ) );
 
-		$cache_key = 'distinct_methods_' . $this->get_last_changed();
-		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
-
-		if ( false !== $cached ) {
-			return $cached;
-		}
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom plugin table; no WP Core API available.
-		$methods = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT pay_method FROM %i WHERE pay_method <> '' ORDER BY pay_method ASC", self::table_name() ) );
-		$methods = array_map( 'strval', is_array( $methods ) ? $methods : array() );
-
-		wp_cache_set( $cache_key, $methods, self::CACHE_GROUP, self::LIST_CACHE_TTL );
-
-		return $methods;
+		return array_values( array_unique( array_filter( $refs, static fn( string $ref ): bool => '' !== $ref ) ) );
 	}
 
 	/**
-	 * Every row matching `query()`'s filters and sort, unpaginated, for the
-	 * CSV export. Deliberately uncached — an export can be the whole table —
-	 * and read `$batch` rows at a time so memory stays flat. Each page picks
-	 * its refs first and joins the full rows back after: a deep OFFSET over
-	 * `SELECT *` sorts every row's snapshot too (~0.9s a batch at 90k rows,
-	 * vs ~10ms this way).
+	 * Drops the given rows' cached copies and every cached list.
 	 *
-	 * @param array<string, mixed> $args  Same filter/sort args as query(); paged/per_page are ignored.
-	 * @param int                  $batch Rows per SELECT.
-	 * @return \Generator<int, array<string, mixed>, void, void>
+	 * @param array<int, string> $refs The transaction references.
 	 */
-	public function iterate( array $args, int $batch = 500 ): \Generator {
-		global $wpdb;
-
-		$batch     = max( 1, $batch );
-		$table     = self::table_name();
-		$where_sql = $this->build_where( $args );
-		$order_sql = $this->build_order( $args );
-		$offset    = 0;
-
-		do {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table; streaming export, caching it would only waste memory; $where_sql is assembled from $wpdb->prepare() calls in build_where(), $order_sql is validated against SORTABLE_COLUMNS in build_order(), no user data interpolated directly.
-			$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT t.* FROM %i AS t INNER JOIN (SELECT ref FROM %i' . $where_sql . $order_sql . ' LIMIT %d OFFSET %d) AS page USING (ref)' . $order_sql, $table, $table, $batch, $offset ), ARRAY_A );
-			$rows = is_array( $rows ) ? $rows : array();
-
-			// wpdb keeps its own copy of the last result set; I drop it before yielding.
-			$wpdb->flush();
-
-			foreach ( $rows as $row ) {
-				yield $row;
-			}
-
-			$offset += $batch;
-			$fetched = count( $rows );
-		} while ( $fetched === $batch );
+	private function forget( array $refs ): void {
+		wp_cache_delete_multiple( array_map( array( self::class, 'row_cache_key' ), $refs ), self::CACHE_GROUP );
+		wp_cache_set( 'last_changed', microtime(), self::CACHE_GROUP );
 	}
 
 	/**
-	 * Builds a fully-prepared ` WHERE …` clause (or '' for no filter) from list args.
+	 * The cache key for one row.
 	 *
-	 * @param array<string, mixed> $args Filter args: status, form_id, pay_method,
-	 *                                    amount_min, amount_max, refs, date_from,
-	 *                                    date_to, search.
+	 * @param string $ref The transaction reference.
 	 */
-	private function build_where( array $args ): string {
-		global $wpdb;
-
-		$conditions = array();
-
-		$status = (string) ( $args['status'] ?? '' );
-
-		if ( '' !== $status ) {
-			// "Failed" folds in cancelled rows — the admin list treats cancelled
-			// as a subset of failed and only surfaces it standalone in the
-			// post-payment popup, not here.
-			if ( self::STATUS_FAILED === $status ) {
-				$conditions[] = $wpdb->prepare( 'status IN (%s, %s)', self::STATUS_FAILED, self::STATUS_CANCELLED );
-			} else {
-				$conditions[] = $wpdb->prepare( 'status = %s', $status );
-			}
-		}
-
-		$form_id = (int) ( $args['form_id'] ?? 0 );
-
-		if ( 0 !== $form_id ) {
-			$conditions[] = $wpdb->prepare( 'form_id = %d', $form_id );
-		}
-
-		$pay_method = (string) ( $args['pay_method'] ?? '' );
-
-		if ( '' !== $pay_method ) {
-			$conditions[] = $wpdb->prepare( 'pay_method = %s', $pay_method );
-		}
-
-		$amount_min = $args['amount_min'] ?? null;
-
-		if ( is_numeric( $amount_min ) ) {
-			$conditions[] = $wpdb->prepare( 'amount >= %f', (float) $amount_min );
-		}
-
-		$amount_max = $args['amount_max'] ?? null;
-
-		if ( is_numeric( $amount_max ) ) {
-			$conditions[] = $wpdb->prepare( 'amount <= %f', (float) $amount_max );
-		}
-
-		$refs = isset( $args['refs'] ) && is_array( $args['refs'] ) ? $args['refs'] : array();
-
-		if ( array() !== $refs ) {
-			$refs = array_values( array_unique( array_filter( array_map( 'strval', array_filter( $refs, 'is_scalar' ) ), static fn( string $ref ): bool => '' !== $ref ) ) );
-
-			// A selection with nothing valid in it must match nothing, not everything.
-			if ( array() === $refs ) {
-				$conditions[] = '1 = 0';
-			} else {
-				$placeholders = implode( ', ', array_fill( 0, count( $refs ), '%s' ) );
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $placeholders is only %s placeholders, one per ref passed to prepare().
-				$conditions[] = $wpdb->prepare( "ref IN ({$placeholders})", $refs );
-			}
-		}
-
-		$date_from = (int) ( $args['date_from'] ?? 0 );
-
-		if ( $date_from > 0 ) {
-			$conditions[] = $wpdb->prepare( 'created_at >= %d', $date_from );
-		}
-
-		$date_to = (int) ( $args['date_to'] ?? 0 );
-
-		if ( $date_to > 0 ) {
-			$conditions[] = $wpdb->prepare( 'created_at <= %d', $date_to );
-		}
-
-		$search = (string) ( $args['search'] ?? '' );
-
-		if ( '' !== $search ) {
-			$like         = '%' . $wpdb->esc_like( $search ) . '%';
-			$conditions[] = $wpdb->prepare( '(ref LIKE %s OR pay_method LIKE %s OR customer_name LIKE %s OR customer_email LIKE %s)', $like, $like, $like, $like );
-		}
-
-		return array() === $conditions ? '' : ' WHERE ' . implode( ' AND ', $conditions );
+	private static function row_cache_key( string $ref ): string {
+		return 'txn_' . $ref;
 	}
 
 	/**
-	 * Builds the ` ORDER BY …` clause. `orderby` is checked against
-	 * SORTABLE_COLUMNS rather than passed through `$wpdb->prepare()` — a
-	 * column identifier can't be a placeholder, so an allow-list is what
-	 * keeps this safe instead. Ties break on `ref` (the primary key) so
-	 * LIMIT/OFFSET pages never repeat or skip a row.
-	 *
-	 * @param array<string, mixed> $args Sort args: orderby, order.
+	 * A token bumped on every write, so list caches never need per-row invalidation.
 	 */
-	private function build_order( array $args ): string {
-		$orderby = (string) ( $args['orderby'] ?? '' );
-
-		if ( ! in_array( $orderby, self::SORTABLE_COLUMNS, true ) ) {
-			return ' ORDER BY created_at DESC, ref DESC';
-		}
-
-		$order = 'asc' === strtolower( (string) ( $args['order'] ?? '' ) ) ? 'ASC' : 'DESC';
-
-		return 'ref' === $orderby ? " ORDER BY ref {$order}" : " ORDER BY {$orderby} {$order}, ref {$order}";
-	}
-
-	/**
-	 * Count and amount total per status, keyed by status — against the given
-	 * filters (its own `status` key, if any, is ignored) so the status tabs
-	 * and totals stay accurate for whatever else the admin has filtered, same
-	 * idea as `query()`. Only statuses with rows are present.
-	 *
-	 * @param array<string, mixed> $args Same filter args as build_where().
-	 * @return array<string, array{count: int, amount: float}>
-	 */
-	public function status_summary( array $args = array() ): array {
-		global $wpdb;
-
-		unset( $args['status'] );
-
-		$cache_key = 'status_summary_' . $this->get_last_changed() . '_' . md5( (string) wp_json_encode( $args ) );
-		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
-
-		if ( false !== $cached ) {
-			return $cached;
-		}
-
-		$where_sql = $this->build_where( $args );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table; $where_sql is assembled from $wpdb->prepare() calls in build_where(), no user data interpolated directly.
-		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT status, COUNT(*) AS total, SUM(amount) AS amount FROM %i' . $where_sql . ' GROUP BY status', self::table_name() ) );
-
-		$summary = array();
-
-		foreach ( (array) $rows as $row ) {
-			$summary[ (string) $row->status ] = array(
-				'count'  => (int) $row->total,
-				'amount' => (float) $row->amount,
-			);
-		}
-
-		// Cancelled has no tab of its own — it rolls into "Failed".
-		if ( isset( $summary[ self::STATUS_CANCELLED ] ) ) {
-			$failed = $summary[ self::STATUS_FAILED ] ?? array(
-				'count'  => 0,
-				'amount' => 0.0,
-			);
-
-			$summary[ self::STATUS_FAILED ] = array(
-				'count'  => $failed['count'] + $summary[ self::STATUS_CANCELLED ]['count'],
-				'amount' => round( $failed['amount'] + $summary[ self::STATUS_CANCELLED ]['amount'], 2 ),
-			);
-			unset( $summary[ self::STATUS_CANCELLED ] );
-		}
-
-		wp_cache_set( $cache_key, $summary, self::CACHE_GROUP, self::LIST_CACHE_TTL );
-
-		return $summary;
-	}
-
-	/**
-	 * The count of transactions per status, keyed by status — `status_summary()`
-	 * without the amounts.
-	 *
-	 * @param array<string, mixed> $args Same filter args as build_where().
-	 * @return array<string, int>
-	 */
-	public function status_counts( array $args = array() ): array {
-		return array_map(
-			static fn( array $status ): int => $status['count'],
-			$this->status_summary( $args )
-		);
-	}
-
-	/**
-	 * A cache-busting token bumped on every write, used to key list/stat
-	 * caches so they never need per-row invalidation.
-	 */
-	private function get_last_changed(): string {
+	private function last_changed(): string {
 		$last_changed = wp_cache_get( 'last_changed', self::CACHE_GROUP );
 
-		if ( false === $last_changed ) {
+		if ( ! is_string( $last_changed ) ) {
 			$last_changed = microtime();
 			wp_cache_set( 'last_changed', $last_changed, self::CACHE_GROUP );
 		}
 
-		return (string) $last_changed;
-	}
-
-	/**
-	 * Bumps the cache-busting token, invalidating every list/stat cache entry.
-	 */
-	private function bump_last_changed(): void {
-		wp_cache_set( 'last_changed', microtime(), self::CACHE_GROUP );
+		return $last_changed;
 	}
 }

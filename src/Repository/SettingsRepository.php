@@ -14,12 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Reads and writes the plugin's global ifthenpay configuration.
- *
- * Forminator's payment fields (PayPal/Stripe) are configured per-site too, not
- * per-form, so I follow that same shape here — one global connection + one
- * global methods/description/expiry configuration, referenced by every form
- * that adds the ifthenpay field.
+ * Site-wide ifthenpay settings — per site, not per form, like Forminator's own Stripe/PayPal.
  */
 class SettingsRepository {
 
@@ -33,22 +28,16 @@ class SettingsRepository {
 	private const OPTION_DESCRIPTION    = 'iftp_fm_description';
 	private const OPTION_EXPIRY_DAYS    = 'iftp_fm_expiry_days';
 
-	private const OPTION_CONFIRMATION_PAID_TYPE         = 'iftp_fm_confirmation_paid_type';
-	private const OPTION_CONFIRMATION_PAID_PAGE_ID      = 'iftp_fm_confirmation_paid_page_id';
-	private const OPTION_CONFIRMATION_PAID_URL          = 'iftp_fm_confirmation_paid_url';
-	private const OPTION_CONFIRMATION_SHOW_ENTRY_DATA   = 'iftp_fm_confirmation_show_entry_data';
-	private const OPTION_CONFIRMATION_PAID_MESSAGE      = 'iftp_fm_confirmation_paid_message';
-	private const OPTION_CONFIRMATION_PENDING_MESSAGE   = 'iftp_fm_confirmation_pending_message';
-	private const OPTION_CONFIRMATION_FAILED_MESSAGE    = 'iftp_fm_confirmation_failed_message';
-	private const OPTION_CONFIRMATION_CANCELLED_MESSAGE = 'iftp_fm_confirmation_cancelled_message';
-	private const OPTION_CONFIRMATION_PAID_TITLE        = 'iftp_fm_confirmation_paid_title';
-	private const OPTION_CONFIRMATION_PENDING_TITLE     = 'iftp_fm_confirmation_pending_title';
-	private const OPTION_CONFIRMATION_FAILED_TITLE      = 'iftp_fm_confirmation_failed_title';
-	private const OPTION_CONFIRMATION_CANCELLED_TITLE   = 'iftp_fm_confirmation_cancelled_title';
+	private const OPTION_CONFIRMATION_PAID_TYPE       = 'iftp_fm_confirmation_paid_type';
+	private const OPTION_CONFIRMATION_PAID_PAGE_ID    = 'iftp_fm_confirmation_paid_page_id';
+	private const OPTION_CONFIRMATION_PAID_URL        = 'iftp_fm_confirmation_paid_url';
+	private const OPTION_CONFIRMATION_SHOW_ENTRY_DATA = 'iftp_fm_confirmation_show_entry_data';
 
 	public const CONFIRMATION_TYPE_POPUP = 'popup';
 	public const CONFIRMATION_TYPE_PAGE  = 'page';
 	public const CONFIRMATION_TYPE_URL   = 'url';
+
+	public const CONFIRMATION_STATUSES = array( 'paid', 'pending', 'failed', 'cancelled' );
 
 	/**
 	 * The stored Backoffice Key, or '' when not connected.
@@ -136,7 +125,7 @@ class SettingsRepository {
 	}
 
 	/**
-	 * Deletes every stored anti-phishing key — uninstall only, see delete_all().
+	 * Deletes every stored anti-phishing key (uninstall only).
 	 */
 	public function delete_anti_phishing_keys(): void {
 		delete_option( self::OPTION_APK_KEYS );
@@ -152,7 +141,7 @@ class SettingsRepository {
 	/**
 	 * Stores the hash of the callback ifthenpay just accepted.
 	 *
-	 * @param string $hash See `WebhookRegistrar::hash()`.
+	 * @param string $hash Hash of the Gateway Key + callback URL.
 	 */
 	public function set_callback_hash( string $hash ): void {
 		update_option( self::OPTION_CALLBACK_HASH, $hash, false );
@@ -206,9 +195,7 @@ class SettingsRepository {
 	}
 
 	/**
-	 * The catalog `Position` value for the configured default method, as
-	 * expected by the PBL payload's `selected_method` field. Empty when no
-	 * default is set or it's no longer an enabled method.
+	 * The default method's catalog Position (what the payload's `selected_method` expects), or ''.
 	 */
 	public function get_default_method_position(): string {
 		$default = $this->get_default_method();
@@ -286,7 +273,9 @@ class SettingsRepository {
 	 * @param string $type One of the CONFIRMATION_TYPE_* constants.
 	 */
 	public function set_paid_confirmation_type( string $type ): void {
-		update_option( self::OPTION_CONFIRMATION_PAID_TYPE, $type );
+		$allowed = array( self::CONFIRMATION_TYPE_POPUP, self::CONFIRMATION_TYPE_PAGE, self::CONFIRMATION_TYPE_URL );
+
+		update_option( self::OPTION_CONFIRMATION_PAID_TYPE, in_array( $type, $allowed, true ) ? $type : self::CONFIRMATION_TYPE_POPUP );
 	}
 
 	/**
@@ -338,8 +327,7 @@ class SettingsRepository {
 	}
 
 	/**
-	 * The page/URL the paid popup links to (opened in a new tab) — empty
-	 * when the confirmation type is a plain popup.
+	 * The page/URL the paid popup opens in a new tab, or '' for a plain popup.
 	 */
 	public function get_paid_page_url(): string {
 		switch ( $this->get_paid_confirmation_type() ) {
@@ -357,102 +345,67 @@ class SettingsRepository {
 	/**
 	 * The configured popup message for a status, or '' when not set.
 	 *
-	 * @param string $status One of 'paid', 'pending', 'failed', 'cancelled'.
+	 * @param string $status One of CONFIRMATION_STATUSES.
 	 */
 	public function get_confirmation_message( string $status ): string {
-		$option = self::confirmation_message_option( $status );
-
-		return null !== $option ? (string) get_option( $option, '' ) : '';
+		return self::is_confirmation_status( $status ) ? (string) get_option( self::confirmation_option( $status, 'message' ), '' ) : '';
 	}
 
 	/**
 	 * Stores the popup message for a status.
 	 *
-	 * @param string $status  One of 'paid', 'pending', 'failed', 'cancelled'.
+	 * @param string $status  One of CONFIRMATION_STATUSES.
 	 * @param string $message The message to store.
 	 */
 	public function set_confirmation_message( string $status, string $message ): void {
-		$option = self::confirmation_message_option( $status );
-
-		if ( null === $option ) {
-			return;
-		}
-
-		update_option( $option, $message );
-	}
-
-	/**
-	 * The option key for a status's confirmation message, or null when unknown.
-	 *
-	 * @param string $status One of 'paid', 'pending', 'failed', 'cancelled'.
-	 */
-	private static function confirmation_message_option( string $status ): ?string {
-		switch ( $status ) {
-			case 'paid':
-				return self::OPTION_CONFIRMATION_PAID_MESSAGE;
-			case 'pending':
-				return self::OPTION_CONFIRMATION_PENDING_MESSAGE;
-			case 'failed':
-				return self::OPTION_CONFIRMATION_FAILED_MESSAGE;
-			case 'cancelled':
-				return self::OPTION_CONFIRMATION_CANCELLED_MESSAGE;
-			default:
-				return null;
+		if ( self::is_confirmation_status( $status ) ) {
+			update_option( self::confirmation_option( $status, 'message' ), $message );
 		}
 	}
 
 	/**
-	 * The configured popup title for a status, or '' when not set (falls back to the built-in title).
+	 * The configured popup title for a status, or '' when not set.
 	 *
-	 * @param string $status One of 'paid', 'pending', 'failed', 'cancelled'.
+	 * @param string $status One of CONFIRMATION_STATUSES.
 	 */
 	public function get_confirmation_title( string $status ): string {
-		$option = self::confirmation_title_option( $status );
-
-		return null !== $option ? (string) get_option( $option, '' ) : '';
+		return self::is_confirmation_status( $status ) ? (string) get_option( self::confirmation_option( $status, 'title' ), '' ) : '';
 	}
 
 	/**
 	 * Stores the popup title for a status.
 	 *
-	 * @param string $status One of 'paid', 'pending', 'failed', 'cancelled'.
+	 * @param string $status One of CONFIRMATION_STATUSES.
 	 * @param string $title  The title to store.
 	 */
 	public function set_confirmation_title( string $status, string $title ): void {
-		$option = self::confirmation_title_option( $status );
-
-		if ( null === $option ) {
-			return;
+		if ( self::is_confirmation_status( $status ) ) {
+			update_option( self::confirmation_option( $status, 'title' ), $title );
 		}
-
-		update_option( $option, $title );
 	}
 
 	/**
-	 * The option key for a status's confirmation title, or null when unknown.
+	 * Whether a status has its own configurable popup copy.
 	 *
-	 * @param string $status One of 'paid', 'pending', 'failed', 'cancelled'.
+	 * @param string $status The status to check.
 	 */
-	private static function confirmation_title_option( string $status ): ?string {
-		switch ( $status ) {
-			case 'paid':
-				return self::OPTION_CONFIRMATION_PAID_TITLE;
-			case 'pending':
-				return self::OPTION_CONFIRMATION_PENDING_TITLE;
-			case 'failed':
-				return self::OPTION_CONFIRMATION_FAILED_TITLE;
-			case 'cancelled':
-				return self::OPTION_CONFIRMATION_CANCELLED_TITLE;
-			default:
-				return null;
-		}
+	private static function is_confirmation_status( string $status ): bool {
+		return in_array( $status, self::CONFIRMATION_STATUSES, true );
 	}
 
 	/**
-	 * Deletes every option this repository owns — used on disconnect and uninstall.
+	 * The option key for a status's popup title or message.
 	 *
-	 * I keep the anti-phishing keys here: ifthenpay still calls back for
-	 * payments started before a disconnect, and those need the key to validate.
+	 * @param string $status One of CONFIRMATION_STATUSES.
+	 * @param string $part   'title' or 'message'.
+	 */
+	private static function confirmation_option( string $status, string $part ): string {
+		return 'iftp_fm_confirmation_' . $status . '_' . $part;
+	}
+
+	/**
+	 * Deletes every option I own, on disconnect and uninstall.
+	 * I keep the anti-phishing keys: payments started before a disconnect still need them to validate their callback.
 	 */
 	public function delete_all(): void {
 		delete_option( self::OPTION_BACKOFFICE_KEY );
@@ -467,13 +420,10 @@ class SettingsRepository {
 		delete_option( self::OPTION_CONFIRMATION_PAID_PAGE_ID );
 		delete_option( self::OPTION_CONFIRMATION_PAID_URL );
 		delete_option( self::OPTION_CONFIRMATION_SHOW_ENTRY_DATA );
-		delete_option( self::OPTION_CONFIRMATION_PAID_MESSAGE );
-		delete_option( self::OPTION_CONFIRMATION_PENDING_MESSAGE );
-		delete_option( self::OPTION_CONFIRMATION_FAILED_MESSAGE );
-		delete_option( self::OPTION_CONFIRMATION_CANCELLED_MESSAGE );
-		delete_option( self::OPTION_CONFIRMATION_PAID_TITLE );
-		delete_option( self::OPTION_CONFIRMATION_PENDING_TITLE );
-		delete_option( self::OPTION_CONFIRMATION_FAILED_TITLE );
-		delete_option( self::OPTION_CONFIRMATION_CANCELLED_TITLE );
+
+		foreach ( self::CONFIRMATION_STATUSES as $status ) {
+			delete_option( self::confirmation_option( $status, 'title' ) );
+			delete_option( self::confirmation_option( $status, 'message' ) );
+		}
 	}
 }

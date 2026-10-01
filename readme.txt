@@ -1,12 +1,12 @@
-=== ifthenpay Payments for Forminator ===
+=== ifthenpay | Payments for Forminator ===
 Contributors: ifthenpay
 Tags: Forminator, payments, multibanco, mb way, payshop
 Requires at least: 6.4
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 7.4
 Stable tag: 1.0.0
-License: GPL v3 or later
-License URI: https://www.gnu.org/licenses/gpl-3.0.html
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 Adds ifthenpay payment methods to Forminator: cards, wallets, and local payment options; supports secure one-time payments via pay-by-link.
 

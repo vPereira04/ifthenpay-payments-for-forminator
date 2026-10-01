@@ -1,15 +1,5 @@
-/**
- * Payment Entries admin dashboard — drives the parts of the screen that
- * don't need a full page reload: bulk select/status-change/delete, the
- * "+ New Payment" popup, row details toggling, a confirm dialog + toast in
- * place of window.confirm()/alert(), a scroll-to-top button, the
- * copy-link row action, the columns popover (show/hide and reorder), the
- * filter panel disclosure, the per-page auto-submit, and "Export selected".
- *
- * Sort/filter/pagination stay plain GET links/form submits (see
- * `Admin\PaymentEntriesPage::filtered_url()`) — only the actions below ever
- * touch admin-ajax.php.
- */
+// Payment Entries: the in-place AJAX actions (bulk, new payment, resend, columns) and the UI around them.
+// Sort, filter and pagination stay plain GET navigations.
 ( function () {
 	'use strict';
 
@@ -17,12 +7,25 @@
 		return;
 	}
 
-	// Selected refs live here, not just as checked checkboxes in the DOM —
-	// pagination is a plain link (full page reload), so a Set backed by
-	// sessionStorage is what lets a selection make it from one page to the
-	// next instead of being wiped every time the admin turns the page.
+	// Pagination is a full reload, so I keep the selection in sessionStorage to carry it across pages.
 	var SELECTION_STORAGE_KEY = 'iftpFmEntriesSelectedRefs';
 	var selectedRefsSet = new Set( loadPersistedSelection() );
+
+	// ref => status for the selected rows, so the bulk bar knows statuses on pages that aren't showing.
+	var STATUS_STORAGE_KEY = 'iftpFmEntriesSelectedStatus';
+	var selectedStatus = loadPersistedStatus();
+
+	// Tells the next page (entries-restore.js reads it) to open already spinning, carrying on from this one.
+	var NAV_LOADING_STORAGE_KEY = 'iftpFmEntriesNavLoading';
+	var loadingSince = 0;
+	var settleTimer = 0;
+	// From entries-restore.js (loaded in <head>); without it the spinner just settles straight away.
+	var afterSpinLap =
+		window.iftpFmAfterSpinLap ||
+		function ( scope, done ) {
+			done();
+			return 0;
+		};
 
 	document.addEventListener( 'DOMContentLoaded', function () {
 		var wrap = document.querySelector( '.iftp-fm-entries' );
@@ -39,12 +42,118 @@
 		bindNewEntryModal( wrap );
 		bindScrollButton( wrap );
 		bindCopyLink( wrap );
+		bindResendEmail( wrap );
 		bindColumnsMenu( wrap );
 		bindFilterPanel( wrap );
 		bindPerPage( wrap );
+		// Last, so it sees defaultPrevented from every other click/submit handler on wrap.
+		bindNavLoading( wrap );
 
 		restoreSelectionState( wrap );
 	} );
+
+	// CSS turns the logo mark into the spinner while data-iftp-loading is set. kind 'nav' means the page is
+	// about to change, which CSS shows without the AJAX delay.
+	function setLoading( wrap, loading, kind ) {
+		var body = wrap.querySelector( '[data-iftp-entries-body]' );
+
+		function finish() {
+			wrap.removeAttribute( 'data-iftp-loading' );
+
+			if ( body ) {
+				body.setAttribute( 'aria-busy', 'false' );
+			}
+		}
+
+		window.clearTimeout( settleTimer );
+
+		if ( loading ) {
+			loadingSince = Date.now();
+			wrap.removeAttribute( 'data-iftp-settle' );
+			wrap.setAttribute( 'data-iftp-loading', kind || 'ajax' );
+
+			if ( body ) {
+				body.setAttribute( 'aria-busy', 'true' );
+			}
+
+			return;
+		}
+
+		// Over before the spinner ever showed (the 150ms --iftp-fm-mark-delay), so nothing to settle back from.
+		if ( Date.now() - loadingSince < 150 ) {
+			wrap.setAttribute( 'data-iftp-settle', 'none' );
+			finish();
+			return;
+		}
+
+		settleTimer = afterSpinLap( wrap, finish );
+	}
+
+	// Sort, filter, tab and pagination are full page loads — I show the loader until the next page paints.
+	function bindNavLoading( wrap ) {
+		var currentPage = new URL( window.location.href ).searchParams.get( 'page' );
+
+		function startNav() {
+			setLoading( wrap, true, 'nav' );
+
+			try {
+				sessionStorage.setItem( NAV_LOADING_STORAGE_KEY, '1' );
+			} catch ( e ) {
+				// The next page just starts its spinner from the disc instead.
+			}
+		}
+
+		function isViewUrl( url, pageSlug ) {
+			return url.origin === window.location.origin && url.pathname === window.location.pathname && pageSlug === currentPage;
+		}
+
+		wrap.addEventListener( 'click', function ( event ) {
+			var link = event.target.closest( 'a[href]' );
+
+			if ( ! link || event.defaultPrevented || 0 !== event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ) {
+				return;
+			}
+
+			if ( ( link.target && '_self' !== link.target ) || link.hasAttribute( 'download' ) || '#' === link.getAttribute( 'href' ).charAt( 0 ) ) {
+				return;
+			}
+
+			var url = new URL( link.href, window.location.href );
+
+			if ( isViewUrl( url, url.searchParams.get( 'page' ) ) && ! wrap.hasAttribute( 'data-iftp-bulk-busy' ) ) {
+				startNav();
+			}
+		} );
+
+		wrap.addEventListener( 'submit', function ( event ) {
+			var form = event.target;
+			var page = form.querySelector( '[name="page"]' );
+
+			if ( event.defaultPrevented || 'get' !== form.method || ! page ) {
+				return;
+			}
+
+			if ( isViewUrl( new URL( form.action, window.location.href ), page.value ) ) {
+				startNav();
+			}
+		} );
+
+		// Back/forward cache brings the page back exactly as it left — mid-load.
+		window.addEventListener( 'pageshow', function ( event ) {
+			if ( event.persisted ) {
+				setLoading( wrap, false );
+			}
+		} );
+	}
+
+	// Counts in the site's thousands separator, like number_format_i18n() on the PHP side.
+	function formatCount( value ) {
+		var sep = iftpFmEntries.numberFormat ? iftpFmEntries.numberFormat.thousands : ',';
+
+		return String( parseInt( value, 10 ) || 0 ).replace( /\B(?=(\d{3})+(?!\d))/g, function () {
+			return sep;
+		} );
+	}
 
 	function submitForm( form ) {
 		if ( 'function' === typeof form.requestSubmit ) {
@@ -91,11 +200,7 @@
 		} );
 	}
 
-	/**
-	 * Every AJAX action ends by swapping in a freshly rendered tbody +
-	 * pagination + counts for the browser's current filtered/sorted/
-	 * paginated view, so the screen reflects the change without a reload.
-	 */
+	// Every AJAX action answers with a re-rendered view for the current URL, swapped in here instead of a reload.
 	function applyViewResponse( wrap, data ) {
 		var body = wrap.querySelector( '[data-iftp-entries-body]' );
 		var pagination = wrap.querySelector( '[data-iftp-pagination]' );
@@ -104,6 +209,10 @@
 
 		if ( body && 'string' === typeof data.rowsHtml ) {
 			body.innerHTML = data.rowsHtml;
+			// Only first paint gets the drop-in; after an action the mark settles out of the loader instead.
+			body.querySelectorAll( '.iftp-fm-empty-state__icon' ).forEach( function ( icon ) {
+				icon.classList.add( 'iftp-fm-mark--no-entrance' );
+			} );
 			// A column save may still be in flight, so the server's rows can be in the old order.
 			applyColumnOrder( wrap, rootColumnOrder( wrap ) );
 		}
@@ -124,50 +233,38 @@
 			totalCount.setAttribute( 'data-iftp-total', data.total );
 		}
 
-		if ( data.counts ) {
-			wrap.querySelectorAll( '.iftp-fm-status-tab' ).forEach( function ( tab ) {
-				var url = new URL( tab.getAttribute( 'href' ), window.location.href );
-				var slug = url.searchParams.get( 'status' ) || '';
-				var countEl = tab.querySelector( '.count' );
-
-				if ( countEl && Object.prototype.hasOwnProperty.call( data.counts, slug ) ) {
-					countEl.textContent = data.counts[ slug ];
-				} else if ( countEl && '' === slug ) {
-					var total = 0;
-					Object.keys( data.counts ).forEach( function ( key ) {
-						total += parseInt( data.counts[ key ], 10 ) || 0;
-					} );
-					countEl.textContent = total;
-				} else if ( countEl ) {
-					// The server leaves out statuses with no rows, so I zero those tabs.
-					countEl.textContent = 0;
-				}
-			} );
+		if ( 'number' === typeof data.paged ) {
+			syncPaged( data.paged );
 		}
 
-		// Re-check whichever of the freshly rendered rows are still part of
-		// the (possibly cross-page) selection, rather than clearing it —
-		// this same response also lands after a plain filter-preserving
-		// refresh, not only after the selection's own bulk action.
+		// Re-check the rows still in the cross-page selection rather than clearing it.
 		restoreSelectionState( wrap );
 	}
 
-	/**
-	 * The current view's filter/sort/pagination state, read straight off
-	 * the page's own URL — every AJAX handler needs this to know which
-	 * page of results to hand back.
-	 *
-	 * @param {string} prefix '' or 'view_' — see `PaymentEntriesPage::view_state_from_request()`.
-	 */
+	// Emptying the last page makes the server fall back a page, so the URL and my next posts follow it.
+	function syncPaged( paged ) {
+		var url = new URL( window.location.href );
+
+		iftpFmEntries.currentFilters.paged = paged;
+
+		if ( paged > 1 ) {
+			url.searchParams.set( 'paged', paged );
+		} else {
+			url.searchParams.delete( 'paged' );
+		}
+
+		if ( url.href !== window.location.href ) {
+			window.history.replaceState( window.history.state, '', url.href );
+		}
+	}
+
+	// prefix is '' or 'view_', matching PaymentEntriesPage::view_state_from_request().
 	function currentViewParams( prefix ) {
 		var f = iftpFmEntries.currentFilters;
 		var params = {};
 
 		params[ prefix + 's' ] = f.s;
-		// Always 'view_status', never just prefix + 'status' — with an
-		// empty prefix that would collide with the bulk status-change
-		// request's own 'status' field (the *target* status), which is a
-		// different thing entirely. See view_state_from_request() in PHP.
+		// Always view_status: a bare 'status' would clash with the bulk status change's target status.
 		params.view_status = f.status;
 		params[ prefix + 'form_id' ] = f.form_id;
 		params[ prefix + 'date_from' ] = f.date_from;
@@ -183,6 +280,8 @@
 		return params;
 	}
 
+	// The details rows arrive empty; the first open fetches the panel and the row keeps it after that.
+	// An AJAX re-render swaps the rows, so a panel is never older than the table around it.
 	function bindDetailsToggle( wrap ) {
 		wrap.addEventListener( 'click', function ( event ) {
 			var toggle = event.target.closest( '.iftp-fm-details-toggle' );
@@ -193,11 +292,56 @@
 
 			var target = document.getElementById( toggle.getAttribute( 'data-details-target' ) );
 
-			if ( target ) {
-				target.hidden = ! target.hidden;
-				toggle.setAttribute( 'aria-expanded', target.hidden ? 'false' : 'true' );
+			if ( ! target ) {
+				return;
+			}
+
+			target.hidden = ! target.hidden;
+			toggle.setAttribute( 'aria-expanded', target.hidden ? 'false' : 'true' );
+
+			if ( ! target.hidden ) {
+				loadDetails( target );
 			}
 		} );
+	}
+
+	function loadDetails( detailsRow ) {
+		var cell = detailsRow.firstElementChild;
+
+		if ( ! cell || detailsRow.hasAttribute( 'data-iftp-details-state' ) ) {
+			return;
+		}
+
+		function showStatus( message, isError ) {
+			var panel = document.createElement( 'div' );
+
+			panel.className = 'iftp-fm-details-panel iftp-fm-details-panel--status' + ( isError ? ' iftp-fm-details-panel--error' : '' );
+			panel.setAttribute( 'role', isError ? 'alert' : 'status' );
+			panel.textContent = message;
+			cell.replaceChildren( panel );
+		}
+
+		detailsRow.setAttribute( 'data-iftp-details-state', 'loading' );
+		cell.setAttribute( 'aria-busy', 'true' );
+		showStatus( iftpFmEntries.i18n.detailsLoading, false );
+
+		post( 'iftp_fm_entry_details', { ref: detailsRow.getAttribute( 'data-iftp-details-ref' ) } )
+			.then( function ( response ) {
+				if ( ! response || ! response.success || 'string' !== typeof response.data.html ) {
+					return Promise.reject( response && response.data && response.data.message );
+				}
+
+				cell.innerHTML = response.data.html;
+				detailsRow.setAttribute( 'data-iftp-details-state', 'loaded' );
+			} )
+			.catch( function ( message ) {
+				// Cleared, so closing and opening the panel again retries.
+				detailsRow.removeAttribute( 'data-iftp-details-state' );
+				showStatus( 'string' === typeof message && message ? message : iftpFmEntries.i18n.detailsError, true );
+			} )
+			.then( function () {
+				cell.removeAttribute( 'aria-busy' );
+			} );
 	}
 
 	function loadPersistedSelection() {
@@ -211,12 +355,33 @@
 		}
 	}
 
+	function loadPersistedStatus() {
+		try {
+			var map = JSON.parse( sessionStorage.getItem( STATUS_STORAGE_KEY ) || '{}' );
+
+			return map && 'object' === typeof map ? map : {};
+		} catch ( e ) {
+			return {};
+		}
+	}
+
 	function persistSelection() {
+		var statuses = {};
+
+		// Pruned to the selection, so it can't grow past it.
+		selectedRefsSet.forEach( function ( ref ) {
+			if ( selectedStatus[ ref ] ) {
+				statuses[ ref ] = selectedStatus[ ref ];
+			}
+		} );
+
+		selectedStatus = statuses;
+
 		try {
 			sessionStorage.setItem( SELECTION_STORAGE_KEY, JSON.stringify( Array.from( selectedRefsSet ) ) );
+			sessionStorage.setItem( STATUS_STORAGE_KEY, JSON.stringify( selectedStatus ) );
 		} catch ( e ) {
-			// sessionStorage unavailable (private browsing, storage full,
-			// etc.) — the selection just won't survive turning the page.
+			// No storage, so the selection just won't survive a page turn.
 		}
 	}
 
@@ -224,14 +389,7 @@
 		return Array.prototype.slice.call( wrap.querySelectorAll( '[data-iftp-row-check]' ) );
 	}
 
-	/**
-	 * Drops the given refs out of the selection without touching the rest
-	 * of it — used once an action has actually consumed them (deleted them,
-	 * or changed their status), so a still-in-progress cross-page selection
-	 * elsewhere isn't wiped by an unrelated single-row delete.
-	 *
-	 * @param {string[]} refs
-	 */
+	// Only drops the refs an action consumed, so a single-row delete never wipes a cross-page selection.
 	function removeRefsFromSelection( refs ) {
 		var changed = false;
 
@@ -246,19 +404,29 @@
 		}
 	}
 
-	/**
-	 * Syncs every visible row checkbox (and the header "select all") to
-	 * match selectedRefsSet, then refreshes the bulk-actions bar and the
-	 * footer's selection summary. Called on load and after any re-render,
-	 * since freshly inserted rows start unchecked regardless of what's
-	 * already in the set.
-	 */
+	function selectRow( checkbox ) {
+		selectedRefsSet.add( checkbox.value );
+		selectedStatus[ checkbox.value ] = checkbox.getAttribute( 'data-iftp-status' ) || '';
+	}
+
+	// Freshly rendered rows start unchecked, so I re-sync them (and select-all) to the stored selection.
+	// Their statuses are the freshest I have, so they overwrite what I stored.
 	function restoreSelectionState( wrap ) {
 		var checkboxes = visibleRowCheckboxes( wrap );
+		var statusChanged = false;
 
 		checkboxes.forEach( function ( checkbox ) {
 			checkbox.checked = selectedRefsSet.has( checkbox.value );
+
+			if ( checkbox.checked && selectedStatus[ checkbox.value ] !== checkbox.getAttribute( 'data-iftp-status' ) ) {
+				selectRow( checkbox );
+				statusChanged = true;
+			}
 		} );
+
+		if ( statusChanged ) {
+			persistSelection();
+		}
 
 		var selectAll = wrap.querySelector( '[data-iftp-select-all]' );
 
@@ -271,10 +439,7 @@
 		refreshSelectionUI( wrap );
 	}
 
-	/**
-	 * Empties the whole selection, including refs selected on other pages —
-	 * the footer's "Cancel" link, and every bulk action once it's applied.
-	 */
+	// Includes refs selected on other pages.
 	function clearSelection( wrap ) {
 		selectedRefsSet.clear();
 		persistSelection();
@@ -290,7 +455,7 @@
 					checkbox.checked = selectAll.checked;
 
 					if ( selectAll.checked ) {
-						selectedRefsSet.add( checkbox.value );
+						selectRow( checkbox );
 					} else {
 						selectedRefsSet.delete( checkbox.value );
 					}
@@ -307,23 +472,13 @@
 			}
 
 			if ( event.target.checked ) {
-				selectedRefsSet.add( event.target.value );
+				selectRow( event.target );
 			} else {
 				selectedRefsSet.delete( event.target.value );
 			}
 
 			persistSelection();
-
-			var selectAllBox = wrap.querySelector( '[data-iftp-select-all]' );
-
-			if ( selectAllBox ) {
-				var checkboxes = visibleRowCheckboxes( wrap );
-				selectAllBox.checked = checkboxes.length > 0 && checkboxes.every( function ( checkbox ) {
-					return checkbox.checked;
-				} );
-			}
-
-			refreshSelectionUI( wrap );
+			restoreSelectionState( wrap );
 		} );
 	}
 
@@ -342,12 +497,6 @@
 		} );
 	}
 
-	/**
-	 * Shows/hides the header bulk-actions bar and swaps the footer between
-	 * its normal "1 - 10 out of 17" range label and the "10 selected out of
-	 * 17 | Cancel" summary, depending on whether anything is selected —
-	 * across every page, not just the one currently on screen.
-	 */
 	function refreshSelectionUI( wrap ) {
 		var bar = wrap.querySelector( '[data-iftp-bulk-actions]' );
 		var rangeLabel = wrap.querySelector( '[data-iftp-total-count]' );
@@ -366,8 +515,10 @@
 		}
 
 		if ( bulkCount && iftpFmEntries.i18n.bulkSelectedCount ) {
-			bulkCount.textContent = iftpFmEntries.i18n.bulkSelectedCount.replace( '%s', count );
+			bulkCount.textContent = iftpFmEntries.i18n.bulkSelectedCount.replace( '%s', formatCount( count ) );
 		}
+
+		refreshBulkOptions( wrap );
 
 		if ( rangeLabel ) {
 			rangeLabel.hidden = hasSelection;
@@ -379,9 +530,50 @@
 
 		if ( selectionText ) {
 			selectionText.textContent = iftpFmEntries.i18n.selectedOfTotal
-				.replace( '%1$s', count )
-				.replace( '%2$s', total );
+				.replace( '%1$s', formatCount( count ) )
+				.replace( '%2$s', formatCount( total ) );
 		}
+	}
+
+	// "Send payment email" only makes sense when every selected entry is pending, and Delete when at least
+	// one isn't paid. A ref with no stored status (selected before this shipped) counts as neither pending
+	// nor paid. The server re-checks each one anyway.
+	function refreshBulkOptions( wrap ) {
+		var refs = Array.from( selectedRefsSet );
+
+		setBulkOption(
+			wrap.querySelector( '[data-iftp-bulk-email]' ),
+			refs.length > 0 && refs.every( function ( ref ) {
+				return 'pending' === selectedStatus[ ref ];
+			} ),
+			true
+		);
+
+		setBulkOption( wrap.querySelector( '[data-iftp-bulk-delete]' ), deletableRefs( refs ).length > 0, false );
+	}
+
+	// Safari ignores hidden on <option>, so disabled keeps it unpickable there.
+	function setBulkOption( option, available, hideWhenOff ) {
+		if ( ! option ) {
+			return;
+		}
+
+		option.disabled = ! available;
+
+		if ( hideWhenOff ) {
+			option.hidden = ! available;
+		}
+
+		if ( ! available && option.selected ) {
+			option.parentNode.value = '';
+		}
+	}
+
+	// Paid entries are payment history: the server won't delete them, so I don't send them.
+	function deletableRefs( refs ) {
+		return refs.filter( function ( ref ) {
+			return 'paid' !== selectedStatus[ ref ];
+		} );
 	}
 
 	function bindRowDelete( wrap ) {
@@ -407,20 +599,219 @@
 	}
 
 	function deleteEntries( wrap, refs ) {
-		post( 'iftp_fm_delete_entries', Object.assign( { refs: refs }, currentViewParams( '' ) ) )
-			.then( function ( response ) {
-				if ( ! response.success ) {
-					showToast( ( response.data && response.data.message ) || iftpFmEntries.i18n.deleteError, true );
-					return;
+		return runBulk( wrap, 'iftp_fm_delete_entries', refs, {}, {
+			progress: iftpFmEntries.i18n.bulkDeleting,
+			done: iftpFmEntries.i18n.deleteToastSuccess,
+			error: iftpFmEntries.i18n.deleteError,
+		} );
+	}
+
+	function updateStatus( wrap, refs, status ) {
+		return runBulk( wrap, 'iftp_fm_update_status', refs, { status: status }, {
+			progress: iftpFmEntries.i18n.bulkUpdating,
+			done: iftpFmEntries.i18n.statusToastSuccess,
+			error: iftpFmEntries.i18n.updateStatusError,
+		} );
+	}
+
+	// Posts refs a chunk at a time, re-rendering after each so the table and count move as it goes.
+	// On an error I stop, leaving the rest selected. Resolves to whether every chunk went through.
+	function runBulk( wrap, action, refs, extra, text ) {
+		var size = Math.max( 1, parseInt( iftpFmEntries.bulkChunkSize, 10 ) || 250 );
+		var chunks = [];
+		var done = 0;
+
+		for ( var i = 0; i < refs.length; i += size ) {
+			chunks.push( refs.slice( i, i + size ) );
+		}
+
+		function progress() {
+			// One request finishes too fast for a progress message to be worth showing.
+			if ( chunks.length > 1 ) {
+				showToast( text.progress.replace( '%1$s', formatCount( done ) ).replace( '%2$s', formatCount( refs.length ) ), false, true );
+			}
+		}
+
+		function fail( message ) {
+			if ( done > 0 ) {
+				message = iftpFmEntries.i18n.bulkPartialError.replace( '%1$s', formatCount( done ) ).replace( '%2$s', formatCount( refs.length ) );
+			}
+
+			showToast( message || text.error, true );
+
+			return false;
+		}
+
+		setLoading( wrap, true );
+		progress();
+
+		return chunks
+			.reduce( function ( chain, chunk ) {
+				return chain.then( function ( ok ) {
+					if ( ! ok ) {
+						return false;
+					}
+
+					return post( action, Object.assign( { refs: JSON.stringify( chunk ) }, extra, currentViewParams( '' ) ) ).then( function ( response ) {
+						if ( ! response.success ) {
+							return fail( response.data && response.data.message );
+						}
+
+						done += chunk.length;
+						removeRefsFromSelection( chunk );
+						applyViewResponse( wrap, response.data );
+						progress();
+
+						return true;
+					} );
+				} );
+			}, Promise.resolve( true ) )
+			.then(
+				function ( ok ) {
+					if ( ok ) {
+						showToast( text.done );
+					}
+
+					return ok;
+				},
+				function () {
+					return fail();
+				}
+			)
+			.then( function ( ok ) {
+				setLoading( wrap, false );
+
+				return ok;
+			} );
+	}
+
+	// Its own runner, not runBulk(): a request may hand back fewer refs than I sent (it ran out of time),
+	// and the outcome is a per-ref tally, not all-or-nothing. Sent and skipped refs leave the selection;
+	// failed ones stay, so Apply again retries just those.
+	function sendPaymentEmails( wrap, refs ) {
+		var size = Math.max( 1, parseInt( iftpFmEntries.emailChunkSize, 10 ) || 10 );
+		var queue = refs.slice();
+		var tally = { sent: 0, skipped: 0, failed: 0 };
+
+		function handled() {
+			return tally.sent + tally.skipped + tally.failed;
+		}
+
+		function progress() {
+			showToast( iftpFmEntries.i18n.bulkEmailing.replace( '%1$s', formatCount( handled() ) ).replace( '%2$s', formatCount( refs.length ) ), false, true );
+		}
+
+		function summary() {
+			var parts = [ iftpFmEntries.i18n.bulkEmailSent.replace( '%s', formatCount( tally.sent ) ) ];
+
+			if ( tally.skipped ) {
+				parts.push( iftpFmEntries.i18n.bulkEmailSkipped.replace( '%s', formatCount( tally.skipped ) ) );
+			}
+
+			if ( tally.failed ) {
+				parts.push( iftpFmEntries.i18n.bulkEmailFailed.replace( '%s', formatCount( tally.failed ) ) );
+			}
+
+			return parts.join( ' ' );
+		}
+
+		function next() {
+			if ( 0 === queue.length ) {
+				return Promise.resolve( true );
+			}
+
+			var chunk = queue.slice( 0, size );
+			// Only the last chunk asks for the re-rendered table; the ones before would redraw it for nothing.
+			var params = { refs: JSON.stringify( chunk ), render: chunk.length === queue.length ? '1' : '' };
+
+			return post( 'iftp_fm_send_payment_emails', Object.assign( params, currentViewParams( '' ) ) ).then( function ( response ) {
+				var data = response && response.data;
+
+				if ( ! response || ! response.success || ! Array.isArray( data.sent ) ) {
+					return Promise.reject( data && data.message );
 				}
 
-				removeRefsFromSelection( refs );
-				applyViewResponse( wrap, response.data );
-				showToast( iftpFmEntries.i18n.deleteToastSuccess );
-			} )
-			.catch( function () {
-				showToast( iftpFmEntries.i18n.deleteError, true );
+				var done = new Set( data.sent.concat( data.skipped, data.failed ) );
+
+				// Nothing handled would loop forever; treat it as an error.
+				if ( 0 === done.size ) {
+					return Promise.reject();
+				}
+
+				queue = queue.filter( function ( ref ) {
+					return ! done.has( ref );
+				} );
+
+				tally.sent += data.sent.length;
+				tally.skipped += data.skipped.length;
+				tally.failed += data.failed.length;
+
+				removeRefsFromSelection( data.sent.concat( data.skipped ) );
+
+				if ( 'string' === typeof data.rowsHtml ) {
+					applyViewResponse( wrap, data );
+				} else {
+					restoreSelectionState( wrap );
+				}
+
+				progress();
+
+				return next();
 			} );
+		}
+
+		setLoading( wrap, true );
+		progress();
+
+		return next()
+			.then(
+				function () {
+					showToast( summary(), tally.failed > 0 );
+
+					return 0 === tally.failed;
+				},
+				function ( message ) {
+					// What's left (the unsent chunk onwards, plus any failures) is still selected.
+					showToast( handled() > 0 ? summary() + ' ' + iftpFmEntries.i18n.bulkPartialError.replace( '%1$s', formatCount( handled() ) ).replace( '%2$s', formatCount( refs.length ) ) : message || iftpFmEntries.i18n.resendError, true );
+
+					return false;
+				}
+			)
+			.then( function ( ok ) {
+				setLoading( wrap, false );
+
+				return ok;
+			} );
+	}
+
+	function warnBeforeLeave( event ) {
+		event.preventDefault();
+		event.returnValue = iftpFmEntries.i18n.bulkLeaveWarning;
+
+		return event.returnValue;
+	}
+
+	// Locks the bulk bar while a run is in flight, and warns before leaving mid-run.
+	function setBulkBusy( wrap, busy ) {
+		wrap.toggleAttribute( 'data-iftp-bulk-busy', busy );
+
+		wrap.querySelectorAll( '[data-iftp-bulk-apply], [data-iftp-bulk-select], [data-iftp-selection-cancel]' ).forEach( function ( el ) {
+			el.disabled = busy;
+		} );
+
+		if ( busy ) {
+			window.addEventListener( 'beforeunload', warnBeforeLeave );
+		} else {
+			window.removeEventListener( 'beforeunload', warnBeforeLeave );
+		}
+	}
+
+	function runLocked( wrap, run ) {
+		setBulkBusy( wrap, true );
+
+		run().then( function () {
+			setBulkBusy( wrap, false );
+		} );
 	}
 
 	function bindBulkActions( wrap ) {
@@ -452,14 +843,39 @@
 			}
 
 			if ( 'delete' === value ) {
+				var deletable = deletableRefs( refs );
+				var keptPaid = refs.length - deletable.length;
+
+				if ( 0 === deletable.length ) {
+					return;
+				}
+
 				confirmAction(
 					iftpFmEntries.i18n.confirmDeleteTitle,
-					iftpFmEntries.i18n.confirmDeleteMessage,
+					iftpFmEntries.i18n.confirmDeleteMessage + ( keptPaid > 0 ? ' ' + iftpFmEntries.i18n.deleteKeepsPaid.replace( '%s', formatCount( keptPaid ) ) : '' ),
 					iftpFmEntries.i18n.confirmDeleteButton,
 					true,
 					function () {
-						deleteEntries( wrap, refs );
 						select.value = '';
+						runLocked( wrap, function () {
+							return deleteEntries( wrap, deletable );
+						} );
+					}
+				);
+				return;
+			}
+
+			if ( 'email' === value ) {
+				confirmAction(
+					iftpFmEntries.i18n.bulkEmailTitle,
+					iftpFmEntries.i18n.bulkEmailMessage.replace( '%s', formatCount( refs.length ) ),
+					iftpFmEntries.i18n.bulkEmailButton,
+					false,
+					function () {
+						select.value = '';
+						runLocked( wrap, function () {
+							return sendPaymentEmails( wrap, refs );
+						} );
 					}
 				);
 				return;
@@ -473,36 +889,16 @@
 				iftpFmEntries.i18n.confirmStatusButton,
 				false,
 				function () {
-					updateStatus( wrap, refs, value );
 					select.value = '';
+					runLocked( wrap, function () {
+						return updateStatus( wrap, refs, value );
+					} );
 				}
 			);
 		} );
 	}
 
-	function updateStatus( wrap, refs, status ) {
-		post( 'iftp_fm_update_status', Object.assign( { refs: refs, status: status }, currentViewParams( '' ) ) )
-			.then( function ( response ) {
-				if ( ! response.success ) {
-					showToast( ( response.data && response.data.message ) || iftpFmEntries.i18n.updateStatusError, true );
-					return;
-				}
-
-				removeRefsFromSelection( refs );
-				applyViewResponse( wrap, response.data );
-				showToast( iftpFmEntries.i18n.statusToastSuccess );
-			} )
-			.catch( function () {
-				showToast( iftpFmEntries.i18n.updateStatusError, true );
-			} );
-	}
-
-	/**
-	 * Posts the selected refs to the admin-post export handler through a
-	 * throwaway form, so the browser handles the CSV download itself.
-	 *
-	 * @param {string[]} refs
-	 */
+	// A throwaway form post, so the browser handles the CSV download itself.
 	function exportEntries( refs ) {
 		var url = new URL( iftpFmEntries.exportUrl, window.location.href );
 		var form = document.createElement( 'form' );
@@ -524,9 +920,8 @@
 		addField( '_wpnonce', iftpFmEntries.exportNonce );
 		addField( 'orderby', f.orderby || '' );
 		addField( 'order', f.order || '' );
-		refs.forEach( function ( ref ) {
-			addField( 'refs[]', ref );
-		} );
+		// One JSON field, not refs[] — PHP drops input vars past max_input_vars (1000 by default).
+		addField( 'refs', JSON.stringify( refs ) );
 
 		document.body.appendChild( form );
 		form.submit();
@@ -580,6 +975,7 @@
 			submitBtn.disabled = true;
 			submitBtn.textContent = iftpFmEntries.i18n.newEntryCreating;
 			errorEl.hidden = true;
+			setLoading( wrap, true );
 
 			post(
 				'iftp_fm_create_entry',
@@ -598,16 +994,19 @@
 					submitBtn.textContent = submitLabel;
 
 					if ( ! response.success ) {
+						setLoading( wrap, false );
 						errorEl.textContent = ( response.data && response.data.message ) || iftpFmEntries.i18n.newEntryError;
 						errorEl.hidden = false;
 						return;
 					}
 
 					applyViewResponse( wrap, response.data );
+					setLoading( wrap, false );
 					showToast( iftpFmEntries.i18n.newEntryToastSuccess );
 					close();
 				} )
 				.catch( function () {
+					setLoading( wrap, false );
 					submitBtn.disabled = false;
 					submitBtn.textContent = submitLabel;
 					errorEl.textContent = iftpFmEntries.i18n.newEntryError;
@@ -616,10 +1015,7 @@
 		} );
 	}
 
-	/**
-	 * The one reusable confirm dialog (`render_confirm_modal()`), filled in
-	 * per call — in place of window.confirm().
-	 */
+	// Fills the shared confirm dialog per call, in place of window.confirm().
 	function confirmAction( title, message, confirmLabel, danger, onConfirm ) {
 		var modal = document.querySelector( '[data-iftp-modal]' );
 
@@ -674,11 +1070,6 @@
 		( danger ? cancelBtn : confirmBtn ).focus();
 	}
 
-	/**
-	 * Keeps Tab/Shift+Tab cycling inside an open modal.
-	 *
-	 * @param {Element} modal The open modal.
-	 */
 	function trapFocus( modal ) {
 		releaseFocus( modal );
 
@@ -722,7 +1113,8 @@
 
 	var toastTimer = null;
 
-	function showToast( message, isError ) {
+	// A sticky toast stays up until the next one replaces it (bulk progress).
+	function showToast( message, isError, sticky ) {
 		var toast = document.querySelector( '[data-iftp-toast]' );
 
 		if ( ! toast ) {
@@ -735,6 +1127,11 @@
 
 		if ( toastTimer ) {
 			clearTimeout( toastTimer );
+			toastTimer = null;
+		}
+
+		if ( sticky ) {
+			return;
 		}
 
 		toastTimer = setTimeout( function () {
@@ -750,51 +1147,101 @@
 		}
 
 		var reducedMotion = window.matchMedia( '(prefers-reduced-motion: reduce)' );
+		var queued = false;
 
-		window.addEventListener( 'scroll', function () {
-			btn.classList.toggle( 'is-visible', window.scrollY > 400 );
-		} );
+		window.addEventListener(
+			'scroll',
+			function () {
+				if ( queued ) {
+					return;
+				}
+
+				queued = true;
+				window.requestAnimationFrame( function () {
+					queued = false;
+					btn.classList.toggle( 'is-visible', window.scrollY > 400 );
+				} );
+			},
+			{ passive: true }
+		);
 
 		btn.addEventListener( 'click', function () {
 			window.scrollTo( { top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' } );
 		} );
 	}
 
-	// Delegated, since rows get swapped in by AJAX.
+	// Delegated, since rows get swapped in by AJAX. Covers the Copy link action and the reference itself.
 	function bindCopyLink( wrap ) {
 		wrap.addEventListener( 'click', function ( event ) {
-			var btn = event.target.closest( '[data-iftp-copy-link]' );
+			var btn = event.target.closest( '[data-iftp-copy-link], [data-iftp-copy-ref]' );
 
 			if ( ! btn ) {
 				return;
 			}
 
-			copyText( btn.getAttribute( 'data-iftp-copy-link' ), btn )
+			var isRef = btn.hasAttribute( 'data-iftp-copy-ref' );
+			var copiedClass = isRef ? 'iftp-fm-ref-copy--copied' : 'iftp-fm-row-action--copied';
+
+			copyText( btn.getAttribute( isRef ? 'data-iftp-copy-ref' : 'data-iftp-copy-link' ), btn )
 				.then( function () {
-					btn.classList.add( 'iftp-fm-row-action--copied' );
+					btn.classList.add( copiedClass );
 
 					if ( btn.iftpCopiedTimer ) {
 						clearTimeout( btn.iftpCopiedTimer );
 					}
 
 					btn.iftpCopiedTimer = setTimeout( function () {
-						btn.classList.remove( 'iftp-fm-row-action--copied' );
+						btn.classList.remove( copiedClass );
 						btn.iftpCopiedTimer = null;
 					}, 2000 );
 
-					showToast( iftpFmEntries.i18n.copyLinkSuccess );
+					showToast( isRef ? iftpFmEntries.i18n.copyRefSuccess : iftpFmEntries.i18n.copyLinkSuccess );
 				} )
 				.catch( function () {
-					showToast( iftpFmEntries.i18n.copyLinkError, true );
+					showToast( isRef ? iftpFmEntries.i18n.copyRefError : iftpFmEntries.i18n.copyLinkError, true );
 				} );
 		} );
 	}
 
-	/**
-	 * @param {string}  text
-	 * @param {Element} returnFocusTo Refocused after the textarea fallback.
-	 * @return {Promise} Resolves once copied.
-	 */
+	// The details panel's "Send payment email" — confirm first, since it lands in the customer's inbox.
+	function bindResendEmail( wrap ) {
+		wrap.addEventListener( 'click', function ( event ) {
+			var btn = event.target.closest( '[data-iftp-resend-email]' );
+
+			if ( ! btn || btn.disabled ) {
+				return;
+			}
+
+			confirmAction(
+				iftpFmEntries.i18n.confirmResendTitle,
+				iftpFmEntries.i18n.confirmResendMessage.replace( '%s', btn.getAttribute( 'data-iftp-resend-to' ) ),
+				iftpFmEntries.i18n.confirmResendButton,
+				false,
+				function () {
+					var label = btn.querySelector( '[data-iftp-resend-label]' );
+					var idle = label.textContent;
+
+					btn.disabled = true;
+					label.textContent = iftpFmEntries.i18n.resendSending;
+
+					post( 'iftp_fm_resend_payment_email', { ref: btn.getAttribute( 'data-iftp-resend-email' ) } )
+						.then( function ( response ) {
+							var message = response && response.data && response.data.message;
+
+							showToast( message || iftpFmEntries.i18n.resendError, ! ( response && response.success ) );
+						} )
+						.catch( function () {
+							showToast( iftpFmEntries.i18n.resendError, true );
+						} )
+						.then( function () {
+							btn.disabled = false;
+							label.textContent = idle;
+						} );
+				}
+			);
+		} );
+	}
+
 	function copyText( text, returnFocusTo ) {
 		if ( navigator.clipboard && window.isSecureContext ) {
 			return navigator.clipboard.writeText( text ).catch( function () {
@@ -805,7 +1252,7 @@
 		return legacyCopy( text, returnFocusTo );
 	}
 
-	// Plain-http admins have no Clipboard API, so I fall back to execCommand.
+	// Plain-http admins have no Clipboard API, so I fall back to execCommand, then hand focus back.
 	function legacyCopy( text, returnFocusTo ) {
 		var textarea = document.createElement( 'textarea' );
 		var copied = false;

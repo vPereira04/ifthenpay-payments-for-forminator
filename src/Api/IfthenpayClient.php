@@ -137,9 +137,7 @@ class IfthenpayClient {
 	}
 
 	/**
-	 * POST /endpoint/callback/activation/?cms=forminator
-	 *
-	 * Registers (or re-registers) the webhook URL for this gateway key.
+	 * POST /endpoint/callback/activation/?cms=forminator — (re-)registers the webhook URL.
 	 *
 	 * @param string $gateway_key       The Gateway Key to register the webhook for.
 	 * @param string $anti_phishing_key The key ifthenpay echoes back as `[ANTI_PHISHING_KEY]`.

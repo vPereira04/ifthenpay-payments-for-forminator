@@ -2,10 +2,8 @@
 
 /* stylelint-disable selector-class-pattern -- BEM (block__element--modifier) is this screen's convention; the shared config only allows kebab-case. */
 
-/* Tokens live on the root wrapper so the fixed modal, toast and scroll
-   button (all rendered inside it) inherit them. */
+/* Tokens sit on the wrapper so the fixed modal, toast and scroll button inside it inherit them. */
 .iftp-fm-entries {
-	/* Brand */
 	--iftp-fm-brand: #00609c;
 	--iftp-fm-brand-hover: #004f80;
 	--iftp-fm-brand-active: #003e63;
@@ -20,7 +18,6 @@
 	--iftp-fm-ramp: linear-gradient(90deg, #00609c 0%, #0078b4 20%, #008dc8 40%, #009bd7 60%, #00a4df 80%, #00a7e2 100%);
 	--iftp-fm-band: linear-gradient(115deg, #003e63 0%, #00609c 55%, #0078b4 100%);
 
-	/* Text */
 	--iftp-fm-text-strong: #1d2327;
 	--iftp-fm-text: #3c434a;
 	--iftp-fm-text-muted: #646970;
@@ -28,7 +25,6 @@
 	--iftp-fm-text-inverse: #fff;
 	--iftp-fm-text-inverse-muted: #d9e7f0;
 
-	/* Surfaces */
 	--iftp-fm-surface: #fff;
 	--iftp-fm-surface-sunken: #f6f8fa;
 	--iftp-fm-surface-hover: #f0f6fc;
@@ -36,13 +32,11 @@
 	--iftp-fm-surface-disabled: #f6f7f7;
 	--iftp-fm-overlay: rgb(0 30 50 / 60%);
 
-	/* Borders */
 	--iftp-fm-border: #dcdcde;
 	--iftp-fm-border-subtle: #eaedf0;
 	--iftp-fm-border-control: #8c8f94;
 	--iftp-fm-border-control-hover: #646970;
 
-	/* Status */
 	--iftp-fm-pending-fg: #7c4a00;
 	--iftp-fm-pending-bg: #fef8ec;
 	--iftp-fm-pending-dot: #dba617;
@@ -56,23 +50,19 @@
 	--iftp-fm-expired-bg: #f0f0f1;
 	--iftp-fm-expired-dot: #8c8f94;
 
-	/* Danger actions */
 	--iftp-fm-danger: #b32d2e;
 	--iftp-fm-danger-hover: #8a2424;
 	--iftp-fm-danger-bg: #fff5f4;
 	--iftp-fm-danger-border: #f0c4c4;
 
-	/* Toast */
 	--iftp-fm-toast-bg: #003e63;
 	--iftp-fm-toast-error-bg: #8a2424;
 
-	/* Focus */
 	--iftp-fm-focus: #00609c;
 	--iftp-fm-focus-inverse: #fff;
 	--iftp-fm-focus-width: 2px;
 	--iftp-fm-focus-offset: 2px;
 
-	/* Spacing (4px grid) */
 	--iftp-fm-space-1: 4px;
 	--iftp-fm-space-2: 8px;
 	--iftp-fm-space-3: 12px;
@@ -84,19 +74,16 @@
 	--iftp-fm-space-10: 40px;
 	--iftp-fm-space-14: 56px;
 
-	/* Radii */
 	--iftp-fm-radius-sm: 4px;
 	--iftp-fm-radius-md: 6px;
 	--iftp-fm-radius-lg: 8px;
 	--iftp-fm-radius-xl: 12px;
 	--iftp-fm-radius-pill: 999px;
 
-	/* Elevation */
 	--iftp-fm-shadow-1: 0 1px 2px rgb(0 37 61 / 6%), 0 1px 3px rgb(0 37 61 / 4%);
 	--iftp-fm-shadow-2: 0 4px 12px rgb(0 37 61 / 12%), 0 1px 3px rgb(0 37 61 / 8%);
 	--iftp-fm-shadow-3: 0 24px 48px -12px rgb(0 37 61 / 30%), 0 2px 6px rgb(0 37 61 / 8%);
 
-	/* Type */
 	--iftp-fm-font-mono: ui-monospace, sfmono-regular, menlo, consolas, "Liberation Mono", monospace;
 	--iftp-fm-fs-xs: 11px;
 	--iftp-fm-fs-sm: 12px;
@@ -111,21 +98,19 @@
 	--iftp-fm-fw-semibold: 600;
 	--iftp-fm-tracking-caps: 0.06em;
 
-	/* Control sizes */
 	--iftp-fm-control-h: 36px;
 	--iftp-fm-control-h-sm: 32px;
 
-	/* Motion */
 	--iftp-fm-dur-fast: 120ms;
 	--iftp-fm-dur-base: 160ms;
 	--iftp-fm-dur-slow: 200ms;
 	--iftp-fm-ease: cubic-bezier(0.2, 0, 0, 1);
 	--iftp-fm-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
-	/* Mask glyphs */
 	--iftp-fm-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3.5 8.5 3 3 6-7' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--iftp-fm-icon-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='5.25' y='5.25' width='8' height='8' rx='1.5' fill='none' stroke='%23000' stroke-width='1.5'/%3E%3Cpath d='M10.75 3.5v-.25a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v5a1.5 1.5 0 0 0 1.5 1.5h.25' fill='none' stroke='%23000' stroke-width='1.5'/%3E%3C/svg%3E");
 
-	/* Layers (admin bar is 99999) */
+	/* Layers; the admin bar sits at 99999. */
 	--iftp-fm-z-popover: 50;
 	--iftp-fm-z-bulk: 9990;
 	--iftp-fm-z-scroll: 99999;
@@ -169,8 +154,6 @@
 		transform: translateY(-4px);
 	}
 }
-
-/* Masthead */
 
 .iftp-fm-entries .iftp-fm-entries__masthead {
 	position: relative;
@@ -254,8 +237,6 @@
 	flex: none;
 }
 
-/* Totals summary (read-only, colour comes only from the badges) */
-
 .iftp-fm-entries .iftp-fm-summary {
 	margin-top: var(--iftp-fm-space-5);
 	background: var(--iftp-fm-surface);
@@ -264,26 +245,60 @@
 	box-shadow: var(--iftp-fm-shadow-1);
 }
 
+/* Clipped to the card's corners, so hover and current fills stay inside them. */
 .iftp-fm-entries .iftp-fm-summary__list {
 	display: grid;
 	grid-template-columns: repeat(4, minmax(0, 1fr));
 	margin: 0;
+	padding: 0;
+	list-style: none;
+	border-radius: calc(var(--iftp-fm-radius-xl) - 1px);
+	overflow: hidden;
 }
 
 .iftp-fm-entries .iftp-fm-summary__item {
-	display: grid;
-	grid-template-columns: auto minmax(0, 1fr);
-	grid-template-areas:
-		"label count"
-		"amount amount";
-	align-items: center;
-	gap: var(--iftp-fm-space-2) var(--iftp-fm-space-3);
 	min-width: 0;
-	padding: var(--iftp-fm-space-4) var(--iftp-fm-space-5);
+	margin: 0;
 }
 
 .iftp-fm-entries .iftp-fm-summary__item + .iftp-fm-summary__item {
 	border-left: 1px solid var(--iftp-fm-border-subtle);
+}
+
+/* DOM order is label, amount, count for screen readers; the grid puts the count beside the pill. */
+.iftp-fm-entries .iftp-fm-summary__link {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	grid-template-areas:
+		"label count icon"
+		"amount amount icon";
+	align-items: center;
+	gap: var(--iftp-fm-space-2);
+	height: 100%;
+	box-sizing: border-box;
+	padding: var(--iftp-fm-space-4) var(--iftp-fm-space-5);
+	color: inherit;
+	text-decoration: none;
+	transition: background-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-summary__link:hover {
+	background: var(--iftp-fm-surface-hover);
+}
+
+.iftp-fm-entries .iftp-fm-summary__link:focus {
+	box-shadow: none;
+}
+
+/* Inset, since the list clips anything outside. */
+.iftp-fm-entries .iftp-fm-summary__link:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: calc(var(--iftp-fm-focus-width) * -1);
+}
+
+.iftp-fm-entries .iftp-fm-summary__item--current .iftp-fm-summary__link {
+	background: var(--iftp-fm-surface-selected);
+	box-shadow: inset 0 -3px 0 var(--iftp-fm-brand);
 }
 
 .iftp-fm-entries .iftp-fm-summary__label {
@@ -291,14 +306,54 @@
 	margin: 0;
 }
 
+.iftp-fm-entries .iftp-fm-summary__icon {
+	grid-area: icon;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 50px;
+	height: 50px;
+	border-radius: 50%;
+}
+
+.iftp-fm-entries .iftp-fm-summary__icon svg {
+	display: block;
+	width: 25px;
+	height: 25px;
+}
+
+.iftp-fm-entries .iftp-fm-summary__icon--paid {
+	color: var(--iftp-fm-paid-dot);
+	background: var(--iftp-fm-paid-bg);
+}
+
+.iftp-fm-entries .iftp-fm-summary__icon--pending {
+	color: var(--iftp-fm-pending-dot);
+	background: var(--iftp-fm-pending-bg);
+}
+
+.iftp-fm-entries .iftp-fm-summary__icon--failed {
+	color: var(--iftp-fm-failed-dot);
+	background: var(--iftp-fm-failed-bg);
+}
+
+.iftp-fm-entries .iftp-fm-summary__icon--expired {
+	color: var(--iftp-fm-expired-dot);
+	background: var(--iftp-fm-expired-bg);
+}
+
+/* Clipped rather than running under the icon when a big count meets a narrow card. */
 .iftp-fm-entries .iftp-fm-summary__count {
 	grid-area: count;
-	justify-self: end;
+	justify-self: start;
+	max-width: 100%;
 	margin: 0;
 	font-size: var(--iftp-fm-fs-sm);
 	color: var(--iftp-fm-text-muted);
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .iftp-fm-entries .iftp-fm-summary__amount {
@@ -317,8 +372,6 @@
 .iftp-fm-entries .iftp-fm-summary__item--empty .iftp-fm-summary__amount {
 	color: var(--iftp-fm-text-muted);
 }
-
-/* Buttons */
 
 .iftp-fm-entries .iftp-fm-btn {
 	display: inline-flex;
@@ -471,8 +524,6 @@
 	color: #fff;
 }
 
-/* Card + toolbar */
-
 /* Not clipped, so the Columns popover can overhang short tables. */
 .iftp-fm-entries .iftp-fm-entries-card {
 	margin-top: var(--iftp-fm-space-5);
@@ -525,14 +576,13 @@
 	}
 }
 
-/* View tools (search, Filters, Columns, Export CSV) */
-
 .iftp-fm-entries .iftp-fm-entries__view-tools {
 	display: flex;
 	align-items: center;
 	gap: var(--iftp-fm-space-2);
 	margin-left: auto;
-	flex: none;
+	flex: 0 1 auto;
+	min-width: 0;
 }
 
 .iftp-fm-entries .iftp-fm-entries__search {
@@ -596,8 +646,6 @@
 	background: var(--iftp-fm-brand);
 	box-shadow: 0 0 0 2px var(--iftp-fm-surface);
 }
-
-/* Columns popover. Shown/hidden by the [hidden] guard. */
 
 .iftp-fm-entries .iftp-fm-columns-menu {
 	position: absolute;
@@ -765,7 +813,6 @@
 	cursor: default;
 }
 
-/* Drag states; JS sets these classes (see entries.js). */
 .iftp-fm-entries .iftp-fm-columns-menu__item--dragging {
 	opacity: 0.5;
 }
@@ -801,8 +848,6 @@
 	font-size: var(--iftp-fm-fs-sm);
 }
 
-/* Status tabs */
-
 /* The 2px padding keeps focus rings from being clipped by the scroller. */
 .iftp-fm-entries .iftp-fm-status-tabs {
 	display: flex;
@@ -822,7 +867,7 @@
 	align-items: center;
 	gap: var(--iftp-fm-space-2);
 	height: var(--iftp-fm-control-h-sm);
-	padding: 0 6px 0 var(--iftp-fm-space-3);
+	padding: 0 var(--iftp-fm-space-3);
 	border-radius: var(--iftp-fm-radius-pill);
 	font-size: var(--iftp-fm-fs-base);
 	font-weight: var(--iftp-fm-fw-medium);
@@ -861,30 +906,6 @@
 .iftp-fm-entries .iftp-fm-status-tab.iftp-fm-status-tab--current:hover {
 	background: var(--iftp-fm-brand-hover);
 }
-
-.iftp-fm-entries .iftp-fm-status-tab .count {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: 20px;
-	height: 20px;
-	padding: 0 6px;
-	box-sizing: border-box;
-	border-radius: var(--iftp-fm-radius-pill);
-	background: #f0f0f1;
-	color: #50575e;
-	font-size: var(--iftp-fm-fs-xs);
-	font-weight: var(--iftp-fm-fw-semibold);
-	font-variant-numeric: tabular-nums;
-}
-
-/* Solid #004f80, not a white alpha — that one fails contrast. */
-.iftp-fm-entries .iftp-fm-status-tab--current .count {
-	background: var(--iftp-fm-brand-hover);
-	color: #fff;
-}
-
-/* Shared form controls */
 
 .iftp-fm-entries select,
 .iftp-fm-entries input[type="date"],
@@ -989,8 +1010,6 @@
 	line-height: calc(var(--iftp-fm-control-h-sm) - 2px);
 }
 
-/* Filter panel. It stays in flow, so opening it pushes the table down. */
-
 .iftp-fm-entries .iftp-fm-filter-panel {
 	padding: var(--iftp-fm-space-4);
 	background: var(--iftp-fm-surface-sunken);
@@ -1062,8 +1081,7 @@
 	margin-top: var(--iftp-fm-space-4);
 }
 
-/* Date presets. The 2px padding keeps focus rings unclipped, as on the tabs. */
-
+/* The 2px padding keeps focus rings unclipped. */
 .iftp-fm-entries .iftp-fm-date-presets {
 	display: flex;
 	flex-wrap: wrap;
@@ -1144,8 +1162,6 @@
 	margin: 2px -2px 0;
 }
 
-/* Active-filter chips. Each one is a plain link that drops its filter. */
-
 .iftp-fm-entries .iftp-fm-active-filters {
 	display: flex;
 	flex-wrap: wrap;
@@ -1158,7 +1174,7 @@
 	display: none;
 }
 
-/* 2px padding keeps focus rings unclipped, as on the tabs. */
+/* The 2px padding keeps focus rings unclipped. */
 .iftp-fm-entries .iftp-fm-active-filters__list {
 	display: flex;
 	flex-wrap: wrap;
@@ -1239,8 +1255,6 @@
 	font-size: var(--iftp-fm-fs-sm);
 }
 
-/* Bulk-actions bar. On desktop it sits where the tabs were while rows are selected. */
-
 .iftp-fm-entries .iftp-fm-bulk-actions {
 	display: flex;
 	align-items: center;
@@ -1299,6 +1313,13 @@
 	outline-offset: 0;
 }
 
+.iftp-fm-entries[data-iftp-bulk-busy] .iftp-fm-bulk-actions select,
+.iftp-fm-entries[data-iftp-bulk-busy] .iftp-fm-bulk-actions__clear,
+.iftp-fm-entries[data-iftp-bulk-busy] .iftp-fm-bulk-actions .iftp-fm-btn:disabled {
+	opacity: 0.6;
+	cursor: progress;
+}
+
 .iftp-fm-entries .iftp-fm-bulk-actions select {
 	min-width: 180px;
 	height: var(--iftp-fm-control-h-sm);
@@ -1308,8 +1329,6 @@
 .iftp-fm-entries .iftp-fm-bulk-actions .iftp-fm-btn {
 	height: var(--iftp-fm-control-h-sm);
 }
-
-/* Table */
 
 /* Focusable scroll region, so the ring is inset to stay inside the card. */
 .iftp-fm-entries .iftp-fm-entries-table-wrap {
@@ -1372,11 +1391,11 @@
 }
 
 .iftp-fm-entries .iftp-fm-entries-table th[data-col="entry"] {
-	width: 80px;
+	width: 110px;
 }
 
 .iftp-fm-entries .iftp-fm-entries-table th[data-col="created"] {
-	width: 170px;
+	width: 140px;
 }
 
 .iftp-fm-entries .iftp-fm-entry-row > td {
@@ -1392,9 +1411,74 @@
 }
 
 .iftp-fm-entries .iftp-fm-entry-row > td[data-col="ref"] strong {
-	color: var(--iftp-fm-text-strong);
+	color: inherit;
 	font-weight: var(--iftp-fm-fw-semibold);
 	font-variant-numeric: tabular-nums;
+}
+
+/* Plain text at rest, a copy icon on hover/focus, a check once copied. The icon hangs into the
+   cell's padding, so it never widens the column or wraps the reference. */
+.iftp-fm-entries .iftp-fm-ref-copy {
+	position: relative;
+	display: inline-block;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	color: var(--iftp-fm-text-strong);
+	text-align: start;
+	cursor: copy;
+	transition: color var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-ref-copy__icon {
+	position: absolute;
+	top: calc(50% - 6px);
+	left: calc(100% + 4px);
+	width: 12px;
+	height: 12px;
+	background: currentcolor;
+	mask: var(--iftp-fm-icon-copy) center / contain no-repeat;
+	opacity: 0;
+	transition: opacity var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-ref-copy:hover {
+	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-ref-copy:is(:hover, :focus-visible) .iftp-fm-ref-copy__icon {
+	opacity: 1;
+}
+
+.iftp-fm-entries .iftp-fm-ref-copy:focus {
+	box-shadow: none;
+}
+
+.iftp-fm-entries .iftp-fm-ref-copy:focus-visible {
+	border-radius: 2px;
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+}
+
+.iftp-fm-entries .iftp-fm-ref-copy--copied,
+.iftp-fm-entries .iftp-fm-ref-copy--copied:hover {
+	color: var(--iftp-fm-paid-fg);
+}
+
+.iftp-fm-entries .iftp-fm-ref-copy--copied .iftp-fm-ref-copy__icon {
+	opacity: 1;
+	color: inherit;
+	mask-image: var(--iftp-fm-icon-check);
+}
+
+/* No hover on touch, so the icon stays in view, muted. */
+@media (hover: none) {
+	.iftp-fm-entries .iftp-fm-ref-copy__icon {
+		opacity: 1;
+		color: var(--iftp-fm-text-muted);
+	}
 }
 
 .iftp-fm-entries .iftp-fm-entries-table .iftp-fm-col-amount {
@@ -1504,8 +1588,7 @@
 	background: var(--iftp-fm-surface-selected);
 }
 
-/* Checkbox. Out-ranks core's 25px mobile size too; the cell gives the tap area. */
-
+/* Out-ranks core's 25px mobile checkbox too; the cell gives the tap area. */
 .iftp-fm-entries input[type="checkbox"] {
 	appearance: none;
 	display: inline-grid;
@@ -1553,8 +1636,6 @@
 	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
 	outline-offset: var(--iftp-fm-focus-offset);
 }
-
-/* Sort links */
 
 .iftp-fm-entries .iftp-fm-sortable {
 	display: inline-flex;
@@ -1689,6 +1770,16 @@
 	animation: iftp-fm-fade-in var(--iftp-fm-dur-base) var(--iftp-fm-ease);
 }
 
+/* While entries.js fetches the panel, and if that fails. */
+.iftp-fm-entries .iftp-fm-details-panel--status {
+	color: var(--iftp-fm-text-muted);
+	font-size: var(--iftp-fm-fs-sm);
+}
+
+.iftp-fm-entries .iftp-fm-details-panel--error {
+	color: var(--iftp-fm-danger);
+}
+
 .iftp-fm-entries .iftp-fm-details-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -1749,6 +1840,24 @@
 	color: var(--iftp-fm-text-muted);
 }
 
+.iftp-fm-entries .iftp-fm-details-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--iftp-fm-space-2) var(--iftp-fm-space-3);
+	margin-top: var(--iftp-fm-space-5);
+}
+
+.iftp-fm-entries .iftp-fm-details-actions__hint {
+	font-size: var(--iftp-fm-fs-sm);
+	color: var(--iftp-fm-text-muted);
+	overflow-wrap: anywhere;
+}
+
+.iftp-fm-entries .iftp-fm-details-actions .iftp-fm-btn[data-iftp-resend-email]:disabled {
+	cursor: progress;
+}
+
 .iftp-fm-entries .iftp-fm-details-fields {
 	margin-top: var(--iftp-fm-space-5);
 	max-width: 720px;
@@ -1802,8 +1911,7 @@
 	overflow-wrap: anywhere;
 }
 
-/* The last entry row is usually followed by its hidden details row, so
-   :last-child alone would miss it and double the footer border. */
+/* The last entry row is usually followed by its hidden details row, which :last-child alone would miss. */
 .iftp-fm-entries .iftp-fm-entry-row:nth-last-child(2) > td {
 	border-bottom: 0;
 }
@@ -1812,8 +1920,7 @@
 	border-bottom: 0;
 }
 
-/* Expanded/selected row cells. Kept below the other cell rules so the
-   high-specificity :has() selectors never have to be out-ranked. */
+/* Kept below the other cell rules, so these :has() selectors never need out-ranking. */
 .iftp-fm-entries .iftp-fm-entry-row:has(+ .iftp-fm-entry-details:not([hidden])) > td {
 	border-bottom-color: transparent;
 }
@@ -1823,8 +1930,7 @@
 	box-shadow: inset 3px 0 0 var(--iftp-fm-brand);
 }
 
-/* Status badges — the label always carries the meaning, the dot is decoration. */
-
+/* The badge label carries the meaning; the dot is decoration. */
 .iftp-fm-entries .iftp-fm-badge {
 	display: inline-flex;
 	align-items: center;
@@ -1886,8 +1992,6 @@
 	background: var(--iftp-fm-expired-dot);
 }
 
-/* Method pill */
-
 .iftp-fm-entries .iftp-fm-method-pill {
 	display: inline-flex;
 	align-items: center;
@@ -1928,7 +2032,22 @@
 	padding-left: 10px;
 }
 
-/* Empty state */
+/* Entry column on unpaid rows: Forminator has no entry for them yet. */
+.iftp-fm-entries .iftp-fm-entry-none {
+	color: var(--iftp-fm-text-muted);
+	font-size: var(--iftp-fm-fs-sm);
+	white-space: nowrap;
+}
+
+/* No method yet (pending) or ever (expired): a quiet placeholder rather than a real method. */
+.iftp-fm-entries .iftp-fm-method-pill--placeholder {
+	padding-left: 10px;
+	border-style: dashed;
+	border-color: var(--iftp-fm-text-disabled);
+	background: var(--iftp-fm-surface-sunken);
+	color: var(--iftp-fm-text-muted);
+	font-weight: var(--iftp-fm-fw-medium);
+}
 
 .iftp-fm-entries .iftp-fm-entries-empty {
 	padding: var(--iftp-fm-space-14) var(--iftp-fm-space-6);
@@ -1947,20 +2066,362 @@
 	gap: var(--iftp-fm-space-3);
 }
 
-.iftp-fm-entries .iftp-fm-empty-state__icon {
-	display: grid;
-	place-items: center;
+/* Logo mark: the empty-state icon at rest, which morphs into the orbit spinner while busy and back.
+   One element, so a load that ends empty settles straight into place. */
+
+/* An AJAX action waits a beat so a fast request never flashes the loader; a click that leaves the page shows it at once. */
+.iftp-fm-entries {
+	--iftp-fm-mark-delay: 150ms;
+}
+
+.iftp-fm-entries[data-iftp-loading="nav"] {
+	--iftp-fm-mark-delay: 0ms;
+}
+
+/* Orbit: a 9px head ball on a 24px-radius circle, its tail as box-shadows at 60° steps (24·sin θ, 24 − 24·cos θ).
+   `-off` is the same ball shrunk in place, so the tail grows along the circle instead of flying across it. */
+.iftp-fm-entries .iftp-fm-mark {
+	--iftp-fm-mark-ease: cubic-bezier(0.65, 0, 0.35, 1);
+	--iftp-fm-orbit-spin: 1100ms cubic-bezier(0.55, 0.15, 0.45, 0.85);
+	--iftp-fm-orbit-d1: -20.8px 12px 0 -0.5px var(--iftp-fm-ramp-2);
+	--iftp-fm-orbit-d2: -20.8px 36px 0 -1px var(--iftp-fm-ramp-3);
+	--iftp-fm-orbit-d3: 0 48px 0 -1.5px var(--iftp-fm-ramp-4);
+	--iftp-fm-orbit-d4: 20.8px 36px 0 -2px var(--iftp-fm-ramp-5);
+	--iftp-fm-orbit-d5: 20.8px 12px 0 -2.5px var(--iftp-fm-ramp-6);
+	--iftp-fm-orbit-d1-off: -20.8px 12px 0 -4.5px var(--iftp-fm-ramp-2);
+	--iftp-fm-orbit-d2-off: -20.8px 36px 0 -4.5px var(--iftp-fm-ramp-3);
+	--iftp-fm-orbit-d3-off: 0 48px 0 -4.5px var(--iftp-fm-ramp-4);
+	--iftp-fm-orbit-d4-off: 20.8px 36px 0 -4.5px var(--iftp-fm-ramp-5);
+	--iftp-fm-orbit-d5-off: 20.8px 12px 0 -4.5px var(--iftp-fm-ramp-6);
+
+	position: relative;
+	display: block;
 	width: 56px;
 	height: 56px;
+}
+
+.iftp-fm-entries .iftp-fm-mark__disc {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
 	border-radius: 50%;
 	background: var(--iftp-fm-band);
 	box-shadow: var(--iftp-fm-shadow-1);
 }
 
-.iftp-fm-entries .iftp-fm-empty-state__icon img {
+/* Padded out to the disc's size, so the reveal's clip box and the bar share one box. */
+.iftp-fm-entries .iftp-fm-mark__logo {
 	display: block;
+	box-sizing: content-box;
 	width: 28px;
 	height: 28px;
+	padding: 14px;
+}
+
+/* The 45° light bar. At 75% → 25% it rides the reveal's edge exactly; at rest it's parked off the disc. */
+.iftp-fm-entries .iftp-fm-mark__disc::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	background: linear-gradient(135deg, transparent 44%, rgb(255 255 255 / 55%) 50%, transparent 56%) 100% 100% / 300% 300% no-repeat;
+	pointer-events: none;
+}
+
+.iftp-fm-entries .iftp-fm-mark__orbit {
+	position: absolute;
+	top: calc(50% - 28.5px);
+	left: calc(50% - 4.5px);
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: var(--iftp-fm-ramp-1);
+	box-shadow: var(--iftp-fm-orbit-d1), var(--iftp-fm-orbit-d2), var(--iftp-fm-orbit-d3), var(--iftp-fm-orbit-d4), var(--iftp-fm-orbit-d5);
+	transform-origin: 50% 28.5px; /* the mark's centre */
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* The disc fades in on first paint; once the page is ready, the bar descends at 45° and reveals the logo behind it. */
+.iftp-fm-entries .iftp-fm-empty-state__icon .iftp-fm-mark__disc {
+	animation: iftp-fm-mark-in 240ms var(--iftp-fm-ease-out) backwards;
+}
+
+.iftp-fm-entries .iftp-fm-empty-state__icon:not(.iftp-fm-page-loading *) .iftp-fm-mark__logo {
+	animation: iftp-fm-mark-reveal 720ms var(--iftp-fm-mark-ease) 180ms backwards;
+}
+
+.iftp-fm-entries .iftp-fm-empty-state__icon:not([data-iftp-loading] *, .iftp-fm-page-loading *) .iftp-fm-mark__disc::before {
+	animation: iftp-fm-mark-sweep 720ms var(--iftp-fm-mark-ease) 180ms backwards;
+}
+
+/* No reveal when swapped in by AJAX (the loader already showed the logo) or once this tab has seen it (entries-restore.js). */
+.iftp-fm-entries .iftp-fm-empty-state__icon.iftp-fm-mark--no-entrance .iftp-fm-mark__disc,
+.iftp-fm-entries .iftp-fm-empty-state__icon.iftp-fm-mark--no-entrance .iftp-fm-mark__logo,
+.iftp-fm-entries .iftp-fm-empty-state__icon.iftp-fm-mark--no-entrance .iftp-fm-mark__disc::before,
+.iftp-fm-intro-seen .iftp-fm-entries .iftp-fm-empty-state__icon .iftp-fm-mark__disc,
+.iftp-fm-intro-seen .iftp-fm-entries .iftp-fm-empty-state__icon .iftp-fm-mark__logo,
+.iftp-fm-intro-seen .iftp-fm-entries .iftp-fm-empty-state__icon .iftp-fm-mark__disc::before {
+	animation: none;
+}
+
+/* Busy. The static values are the spinner itself (all reduced motion gets); the animations morph the disc
+   into it. `.iftp-fm-page-loading` is the page itself still arriving. */
+.iftp-fm-entries .iftp-fm-mark--busy .iftp-fm-mark__disc,
+.iftp-fm-entries[data-iftp-loading] .iftp-fm-mark .iftp-fm-mark__disc,
+.iftp-fm-page-loading .iftp-fm-entries .iftp-fm-empty-state__icon .iftp-fm-mark__disc {
+	opacity: 0;
+	scale: 0.16;
+	translate: 0 -24px;
+	animation:
+		iftp-fm-mark-shrink 420ms var(--iftp-fm-mark-ease) var(--iftp-fm-mark-delay) backwards,
+		iftp-fm-mark-rise 380ms var(--iftp-fm-mark-ease) calc(var(--iftp-fm-mark-delay) + 200ms) backwards,
+		iftp-fm-mark-hide 1ms calc(var(--iftp-fm-mark-delay) + 580ms) backwards;
+}
+
+.iftp-fm-entries .iftp-fm-mark--busy .iftp-fm-mark__logo,
+.iftp-fm-entries[data-iftp-loading] .iftp-fm-mark .iftp-fm-mark__logo,
+.iftp-fm-page-loading .iftp-fm-entries .iftp-fm-empty-state__icon .iftp-fm-mark__logo {
+	opacity: 0;
+	animation: iftp-fm-mark-logo-out 180ms var(--iftp-fm-ease) var(--iftp-fm-mark-delay) backwards;
+}
+
+.iftp-fm-entries .iftp-fm-mark--busy .iftp-fm-mark__orbit,
+.iftp-fm-entries[data-iftp-loading] .iftp-fm-mark .iftp-fm-mark__orbit,
+.iftp-fm-page-loading .iftp-fm-entries .iftp-fm-empty-state__icon .iftp-fm-mark__orbit {
+	opacity: 1;
+	animation:
+		iftp-fm-orbit-show 1ms calc(var(--iftp-fm-mark-delay) + 580ms) backwards,
+		iftp-fm-orbit-lay 900ms linear calc(var(--iftp-fm-mark-delay) + 580ms) backwards,
+		iftp-fm-orbit-spin var(--iftp-fm-orbit-spin) calc(var(--iftp-fm-mark-delay) + 580ms) infinite;
+}
+
+/* Already a spinner: the overlay loader, a mark swapped in mid-load, or the next page after a click (entries-restore.js). */
+.iftp-fm-entries .iftp-fm-mark--busy .iftp-fm-mark__disc,
+.iftp-fm-entries .iftp-fm-mark--busy .iftp-fm-mark__logo,
+.iftp-fm-entries[data-iftp-loading] .iftp-fm-mark--no-entrance .iftp-fm-mark__disc,
+.iftp-fm-entries[data-iftp-loading] .iftp-fm-mark--no-entrance .iftp-fm-mark__logo,
+.iftp-fm-page-loading.iftp-fm-page-continue .iftp-fm-entries .iftp-fm-empty-state__icon .iftp-fm-mark__disc,
+.iftp-fm-page-loading.iftp-fm-page-continue .iftp-fm-entries .iftp-fm-empty-state__icon .iftp-fm-mark__logo {
+	animation: none;
+}
+
+.iftp-fm-entries .iftp-fm-mark--busy .iftp-fm-mark__orbit,
+.iftp-fm-entries[data-iftp-loading] .iftp-fm-mark--no-entrance .iftp-fm-mark__orbit,
+.iftp-fm-page-loading.iftp-fm-page-continue .iftp-fm-entries .iftp-fm-empty-state__icon .iftp-fm-mark__orbit {
+	animation: iftp-fm-orbit-spin var(--iftp-fm-orbit-spin) infinite;
+}
+
+/* Spinner → logo. Loading only clears once the orbit eases to rest at the top, so the tail reels in, the head
+   drops into the disc and the logo returns. `[data-iftp-settle="none"]` marks a load too quick to have spun. */
+.iftp-fm-page-ready .iftp-fm-entries .iftp-fm-empty-state__icon:not([data-iftp-loading] *, [data-iftp-settle="none"] *) .iftp-fm-mark__orbit,
+.iftp-fm-entries .iftp-fm-mark--no-entrance:not([data-iftp-loading] *, [data-iftp-settle="none"] *) .iftp-fm-mark__orbit {
+	animation: iftp-fm-orbit-reel 420ms var(--iftp-fm-mark-ease) backwards;
+}
+
+.iftp-fm-page-ready .iftp-fm-entries .iftp-fm-empty-state__icon:not([data-iftp-loading] *, [data-iftp-settle="none"] *) .iftp-fm-mark__disc,
+.iftp-fm-entries .iftp-fm-mark--no-entrance:not([data-iftp-loading] *, [data-iftp-settle="none"] *) .iftp-fm-mark__disc {
+	animation:
+		iftp-fm-mark-show 1ms 420ms backwards,
+		iftp-fm-mark-drop 400ms var(--iftp-fm-mark-ease) 420ms backwards,
+		iftp-fm-mark-grow 520ms cubic-bezier(0.34, 1.4, 0.64, 1) 600ms backwards;
+}
+
+.iftp-fm-page-ready .iftp-fm-entries .iftp-fm-empty-state__icon:not([data-iftp-loading] *, [data-iftp-settle="none"] *) .iftp-fm-mark__logo,
+.iftp-fm-entries .iftp-fm-mark--no-entrance:not([data-iftp-loading] *, [data-iftp-settle="none"] *) .iftp-fm-mark__logo {
+	animation: iftp-fm-mark-logo-in 280ms var(--iftp-fm-ease) 900ms backwards;
+}
+
+/* First visit in the tab: the logo comes back with the 45° reveal instead. */
+.iftp-fm-page-ready:not(.iftp-fm-intro-seen) .iftp-fm-entries .iftp-fm-empty-state__icon:not([data-iftp-loading] *, [data-iftp-settle="none"] *) .iftp-fm-mark__logo {
+	animation: iftp-fm-mark-reveal 720ms var(--iftp-fm-mark-ease) 960ms backwards;
+}
+
+.iftp-fm-page-ready:not(.iftp-fm-intro-seen) .iftp-fm-entries .iftp-fm-empty-state__icon:not([data-iftp-loading] *, [data-iftp-settle="none"] *) .iftp-fm-mark__disc::before {
+	animation: iftp-fm-mark-sweep 720ms var(--iftp-fm-mark-ease) 960ms backwards;
+}
+
+@keyframes iftp-fm-mark-in {
+	from {
+		opacity: 0;
+		scale: 0.92;
+	}
+}
+
+/* The visible area's lower edge is a 45° line sliding from above the top corner to past the bottom one. */
+@keyframes iftp-fm-mark-reveal {
+	from {
+		clip-path: polygon(0 0, 100% 0, 100% -100%, 0 0);
+	}
+
+	to {
+		clip-path: polygon(0 0, 100% 0, 100% 100%, 0 200%);
+	}
+}
+
+@keyframes iftp-fm-mark-sweep {
+	from {
+		background-position: 75% 75%;
+	}
+
+	to {
+		background-position: 25% 25%;
+	}
+}
+
+@keyframes iftp-fm-mark-logo-out {
+	from {
+		opacity: 1;
+	}
+}
+
+@keyframes iftp-fm-mark-logo-in {
+	from {
+		opacity: 0;
+	}
+}
+
+/* Disc ↔ head ball. Each runs from the disc's resting value to the busy one (or back), so they can overlap. */
+@keyframes iftp-fm-mark-shrink {
+	from {
+		scale: 1;
+	}
+}
+
+@keyframes iftp-fm-mark-rise {
+	from {
+		translate: 0 0;
+	}
+}
+
+@keyframes iftp-fm-mark-hide {
+	from {
+		opacity: 1;
+	}
+}
+
+@keyframes iftp-fm-mark-show {
+	from {
+		opacity: 0;
+	}
+}
+
+/* Only moves it — iftp-fm-mark-grow's backwards fill holds the ball size until the grow takes over. */
+@keyframes iftp-fm-mark-drop {
+	from {
+		translate: 0 -24px;
+	}
+}
+
+@keyframes iftp-fm-mark-grow {
+	from {
+		scale: 0.16;
+	}
+}
+
+@keyframes iftp-fm-orbit-show {
+	from {
+		opacity: 0;
+	}
+}
+
+/* The tail grows in place behind the head, nearest ball first. */
+@keyframes iftp-fm-orbit-lay {
+	from {
+		box-shadow: var(--iftp-fm-orbit-d1-off), var(--iftp-fm-orbit-d2-off), var(--iftp-fm-orbit-d3-off), var(--iftp-fm-orbit-d4-off), var(--iftp-fm-orbit-d5-off);
+	}
+
+	20% {
+		box-shadow: var(--iftp-fm-orbit-d1), var(--iftp-fm-orbit-d2-off), var(--iftp-fm-orbit-d3-off), var(--iftp-fm-orbit-d4-off), var(--iftp-fm-orbit-d5-off);
+	}
+
+	40% {
+		box-shadow: var(--iftp-fm-orbit-d1), var(--iftp-fm-orbit-d2), var(--iftp-fm-orbit-d3-off), var(--iftp-fm-orbit-d4-off), var(--iftp-fm-orbit-d5-off);
+	}
+
+	60% {
+		box-shadow: var(--iftp-fm-orbit-d1), var(--iftp-fm-orbit-d2), var(--iftp-fm-orbit-d3), var(--iftp-fm-orbit-d4-off), var(--iftp-fm-orbit-d5-off);
+	}
+
+	80% {
+		box-shadow: var(--iftp-fm-orbit-d1), var(--iftp-fm-orbit-d2), var(--iftp-fm-orbit-d3), var(--iftp-fm-orbit-d4), var(--iftp-fm-orbit-d5-off);
+	}
+}
+
+@keyframes iftp-fm-orbit-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* The reverse: the tail shrinks away from its far end back to the head. */
+@keyframes iftp-fm-orbit-reel {
+	from {
+		opacity: 1;
+	}
+
+	20% {
+		box-shadow: var(--iftp-fm-orbit-d1), var(--iftp-fm-orbit-d2), var(--iftp-fm-orbit-d3), var(--iftp-fm-orbit-d4), var(--iftp-fm-orbit-d5-off);
+	}
+
+	40% {
+		box-shadow: var(--iftp-fm-orbit-d1), var(--iftp-fm-orbit-d2), var(--iftp-fm-orbit-d3), var(--iftp-fm-orbit-d4-off), var(--iftp-fm-orbit-d5-off);
+	}
+
+	60% {
+		box-shadow: var(--iftp-fm-orbit-d1), var(--iftp-fm-orbit-d2), var(--iftp-fm-orbit-d3-off), var(--iftp-fm-orbit-d4-off), var(--iftp-fm-orbit-d5-off);
+	}
+
+	80% {
+		box-shadow: var(--iftp-fm-orbit-d1), var(--iftp-fm-orbit-d2-off), var(--iftp-fm-orbit-d3-off), var(--iftp-fm-orbit-d4-off), var(--iftp-fm-orbit-d5-off);
+	}
+
+	to {
+		opacity: 1;
+		box-shadow: var(--iftp-fm-orbit-d1-off), var(--iftp-fm-orbit-d2-off), var(--iftp-fm-orbit-d3-off), var(--iftp-fm-orbit-d4-off), var(--iftp-fm-orbit-d5-off);
+	}
+}
+
+/* Loader over a populated table. With an empty state on screen, its own mark spins instead. */
+.iftp-fm-entries .iftp-fm-entries-stage {
+	position: relative;
+}
+
+.iftp-fm-entries .iftp-fm-entries-loader {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	padding-top: var(--iftp-fm-space-14);
+	background: rgb(255 255 255 / 65%);
+	border-radius: 0 0 var(--iftp-fm-radius-xl) var(--iftp-fm-radius-xl);
+	pointer-events: none;
+	opacity: 0;
+	visibility: hidden;
+	transition:
+		opacity var(--iftp-fm-dur-slow) var(--iftp-fm-ease),
+		visibility 0s linear var(--iftp-fm-dur-slow);
+}
+
+.iftp-fm-entries .iftp-fm-entries-loader .iftp-fm-mark {
+	position: sticky;
+	top: 45vh;
+}
+
+.iftp-fm-entries[data-iftp-loading] .iftp-fm-entries-loader {
+	pointer-events: auto;
+	opacity: 1;
+	visibility: visible;
+	transition:
+		opacity var(--iftp-fm-dur-slow) var(--iftp-fm-ease) var(--iftp-fm-mark-delay),
+		visibility 0s linear var(--iftp-fm-mark-delay);
+}
+
+.iftp-fm-entries[data-iftp-loading]:has(.iftp-fm-empty-state) .iftp-fm-entries-loader {
+	display: none;
 }
 
 .iftp-fm-entries .iftp-fm-empty-state__text {
@@ -1971,7 +2432,220 @@
 	color: var(--iftp-fm-text);
 }
 
-/* Footer + pagination */
+/* Skeleton screen: placeholders from the first paint of a fresh load until the footer scripts run, then the
+   real content fades in (`.iftp-fm-page-unveil`). Skipped in forced colours, where they would just be blank. */
+@media (forced-colors: none) {
+	.iftp-fm-entries {
+		/* Negative, so every held animation below is already at its end on the first frame. */
+		--iftp-fm-skeleton-after: -1ms;
+		/* Fixed to the viewport, so one highlight sweeps across every block in step. */
+		--iftp-fm-skeleton-image: linear-gradient(90deg, #eceff2 0%, #eceff2 38%, #f8f9fb 50%, #eceff2 62%, #eceff2 100%);
+		--iftp-fm-skeleton-shimmer: iftp-fm-skeleton-shimmer 1600ms linear var(--iftp-fm-skeleton-after) infinite;
+	}
+
+	/* The masthead turns into a plain card like the rest. */
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries__masthead {
+		animation: iftp-fm-skeleton-card 1ms var(--iftp-fm-skeleton-after) forwards;
+	}
+
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries__masthead::before,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries__masthead::after {
+		animation: iftp-fm-skeleton-hide 1ms var(--iftp-fm-skeleton-after) forwards;
+	}
+
+	/* Each block keeps its own box and shape, drawn as a placeholder. These lists stay spelled out rather than
+	   in :is(), so the browser can skip them for every table row instead of testing each one. */
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-new-entry-trigger,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-summary__label .iftp-fm-badge,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-summary__count,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-summary__icon,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-status-tab,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries__search input,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries__tool,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries-count,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-per-page__label,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-per-page__select,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-pagination > * {
+		animation:
+			iftp-fm-skeleton-block 1ms var(--iftp-fm-skeleton-after) forwards,
+			var(--iftp-fm-skeleton-shimmer);
+	}
+
+	/* Text sized to what it says, not to the full column. */
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries__title,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-summary__amount,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-empty-state__text {
+		animation:
+			iftp-fm-skeleton-block 1ms var(--iftp-fm-skeleton-after) forwards,
+			iftp-fm-skeleton-fit 1ms var(--iftp-fm-skeleton-after) forwards,
+			var(--iftp-fm-skeleton-shimmer);
+	}
+
+	/* Two-line subtitle: two bars, the second shorter. */
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries__subtitle {
+		animation:
+			iftp-fm-skeleton-block 1ms var(--iftp-fm-skeleton-after) forwards,
+			iftp-fm-skeleton-lines 1ms var(--iftp-fm-skeleton-after) forwards,
+			var(--iftp-fm-skeleton-shimmer);
+	}
+
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-empty-state__text {
+		margin-inline: auto;
+	}
+
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-new-entry-trigger :is(*, ::before, ::after),
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-summary__label .iftp-fm-badge :is(*, ::before, ::after),
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-summary__icon :is(*, ::before, ::after),
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-status-tab :is(*, ::before, ::after),
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries__tool :is(*, ::before, ::after),
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-per-page__select :is(*, ::before, ::after),
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-pagination > * :is(*, ::before, ::after),
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-summary__label .iftp-fm-badge::before,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-status-tab::before,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries-table thead th > * {
+		animation: iftp-fm-skeleton-hide 1ms var(--iftp-fm-skeleton-after) forwards;
+	}
+
+	/* Replaced content: the logo image is pushed out of its own box, and the search box's placeholder text hidden. */
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries__logo {
+		animation:
+			iftp-fm-skeleton-block 1ms var(--iftp-fm-skeleton-after) forwards,
+			iftp-fm-skeleton-unimage 1ms var(--iftp-fm-skeleton-after) forwards,
+			var(--iftp-fm-skeleton-shimmer);
+	}
+
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries__search input::placeholder {
+		animation: iftp-fm-skeleton-block 1ms var(--iftp-fm-skeleton-after) forwards;
+	}
+
+	/* Column headings: one short bar each. */
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries-table thead th {
+		position: relative;
+		animation: iftp-fm-skeleton-clear 1ms var(--iftp-fm-skeleton-after) forwards;
+	}
+
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries-table thead th[data-col]::after {
+		content: "";
+		position: absolute;
+		top: calc(50% - 4px);
+		left: var(--iftp-fm-space-4);
+		width: 52px;
+		height: 8px;
+		border-radius: var(--iftp-fm-radius-pill);
+		background: var(--iftp-fm-skeleton-image) 0 0 / 200vw 100% fixed;
+		opacity: 0;
+		animation:
+			iftp-fm-skeleton-show 1ms var(--iftp-fm-skeleton-after) forwards,
+			var(--iftp-fm-skeleton-shimmer);
+	}
+
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-entries-table thead th.iftp-fm-col-amount::after {
+		right: var(--iftp-fm-space-4);
+		left: auto;
+	}
+
+	/* Rows sit under the spinner on a clean panel; an empty view's own mark is already spinning. */
+	.iftp-fm-page-loading .iftp-fm-entries .iftp-fm-entries-loader {
+		animation: iftp-fm-skeleton-panel 1ms var(--iftp-fm-skeleton-after) forwards;
+	}
+
+	.iftp-fm-page-loading .iftp-fm-entries:has(.iftp-fm-empty-state) .iftp-fm-entries-loader {
+		display: none;
+	}
+
+	/* Ready: content fades in over where its placeholder was. */
+	.iftp-fm-page-unveil .iftp-fm-entries .iftp-fm-entries__masthead,
+	.iftp-fm-page-unveil .iftp-fm-entries .iftp-fm-summary__item,
+	.iftp-fm-page-unveil .iftp-fm-entries .iftp-fm-entries-card-header,
+	.iftp-fm-page-unveil .iftp-fm-entries .iftp-fm-entries-table thead,
+	.iftp-fm-page-unveil .iftp-fm-entries .iftp-fm-empty-state__text,
+	.iftp-fm-page-unveil .iftp-fm-entries .iftp-fm-entries-card-footer {
+		animation: iftp-fm-fade-in 360ms var(--iftp-fm-ease-out);
+	}
+}
+
+/* `to`-only keyframes: each starts from whatever the element really looks like, and `forwards` holds the placeholder. */
+@keyframes iftp-fm-skeleton-block {
+	to {
+		color: transparent;
+		background-color: #eceff2;
+		background-image: var(--iftp-fm-skeleton-image);
+		background-size: 200vw 100%;
+		background-attachment: fixed;
+		background-repeat: no-repeat;
+		border-color: transparent;
+		border-radius: var(--iftp-fm-radius-md);
+		box-shadow: none;
+	}
+}
+
+@keyframes iftp-fm-skeleton-fit {
+	to {
+		width: fit-content;
+		max-width: 100%;
+	}
+}
+
+@keyframes iftp-fm-skeleton-lines {
+	to {
+		border-radius: 0;
+		mask:
+			linear-gradient(#000 0 0) top left / 100% 38% no-repeat,
+			linear-gradient(#000 0 0) bottom left / 64% 38% no-repeat;
+	}
+}
+
+@keyframes iftp-fm-skeleton-unimage {
+	to {
+		object-position: 200vw 0;
+	}
+}
+
+@keyframes iftp-fm-skeleton-card {
+	to {
+		background-image: none;
+		background-color: var(--iftp-fm-surface);
+		color: transparent;
+	}
+}
+
+@keyframes iftp-fm-skeleton-clear {
+	to {
+		color: transparent;
+	}
+}
+
+@keyframes iftp-fm-skeleton-hide {
+	to {
+		visibility: hidden;
+	}
+}
+
+@keyframes iftp-fm-skeleton-show {
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes iftp-fm-skeleton-panel {
+	to {
+		background-color: var(--iftp-fm-surface);
+		opacity: 1;
+		visibility: visible;
+		pointer-events: auto;
+	}
+}
+
+/* Background-position only, so it never fights iftp-fm-skeleton-block over the rest of `background`. */
+@keyframes iftp-fm-skeleton-shimmer {
+	from {
+		background-position: 100vw 0;
+	}
+
+	to {
+		background-position: -100vw 0;
+	}
+}
 
 /* The card no longer clips, so the sunken footer rounds its own corners. */
 .iftp-fm-entries .iftp-fm-entries-card-footer {
@@ -2014,7 +2688,6 @@
 	font-variant-numeric: tabular-nums;
 }
 
-/* Per page + pagination share the footer's right side. */
 .iftp-fm-entries .iftp-fm-entries-card-footer__nav {
 	display: flex;
 	flex-wrap: wrap;
@@ -2051,7 +2724,7 @@
 	padding: 0 var(--iftp-fm-space-3);
 }
 
-/* "Custom…" value box; its own [hidden] rule (near the end) hides it until that option is picked. */
+/* "Custom…" value box, hidden until that option is picked. */
 .iftp-fm-entries .iftp-fm-per-page__custom {
 	display: inline-flex;
 	align-items: center;
@@ -2164,6 +2837,8 @@
 /* (0,3,0), so it beats the shared number-input rule (0,2,1) but not its :hover/:focus (0,3,1).
    The control border (not the pills' #dcdcde) is what says this one takes typing. */
 .iftp-fm-entries .iftp-fm-page-jump .iftp-fm-page-jump__input {
+	border: none;
+    background: transparent;
 	width: 48px;
 	height: var(--iftp-fm-control-h-sm);
 	padding: 0 var(--iftp-fm-space-1);
@@ -2192,8 +2867,6 @@
 	border-color: var(--iftp-fm-danger);
 	box-shadow: 0 0 0 1px var(--iftp-fm-danger);
 }
-
-/* Modals */
 
 .iftp-fm-entries .iftp-fm-modal {
 	position: fixed;
@@ -2339,8 +3012,7 @@
 	font-size: var(--iftp-fm-fs-base);
 }
 
-/* Toast (icon shape differs as well as colour, so it isn't colour-only) */
-
+/* The toast's icon shape changes too, so an error isn't colour-only. */
 .iftp-fm-entries .iftp-fm-toast {
 	--iftp-fm-toast-icon: var(--iftp-fm-icon-check);
 
@@ -2385,8 +3057,6 @@
 .iftp-fm-entries .iftp-fm-form-error::before {
 	margin-top: 1px;
 }
-
-/* Scroll-to-top */
 
 /* visibility, not just opacity, so the hidden button isn't a Tab stop. */
 .iftp-fm-entries .iftp-fm-scroll-btn {
@@ -2444,7 +3114,35 @@
 	height: 18px;
 }
 
-/* ≤ 782px */
+/* Tablet: four summary cards and a one-line toolbar both run out of room below ~1200px (sooner with
+   wider system fonts or longer translations), so they switch to the phone layout's 2x2 cards and
+   two-row toolbar here instead of overlapping or wrapping on their own. */
+@media (width <= 1200px) {
+	.iftp-fm-entries .iftp-fm-summary__list {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.iftp-fm-entries .iftp-fm-summary__item:nth-child(odd) {
+		border-left: 0;
+	}
+
+	.iftp-fm-entries .iftp-fm-summary__item:nth-child(n + 3) {
+		border-top: 1px solid var(--iftp-fm-border-subtle);
+	}
+
+	/* Tabs (or the bulk bar) get their own row; the tools share the next one, search taking what's left. */
+	.iftp-fm-entries .iftp-fm-entries__status-nav,
+	.iftp-fm-entries .iftp-fm-bulk-actions,
+	.iftp-fm-entries .iftp-fm-entries__view-tools {
+		flex: 1 1 100%;
+		margin-left: 0;
+	}
+
+	.iftp-fm-entries .iftp-fm-entries__search {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+}
 
 @media (width <= 782px) {
 	.iftp-fm-entries {
@@ -2468,35 +3166,8 @@
 		display: none;
 	}
 
-	.iftp-fm-entries .iftp-fm-summary__list {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-
-	.iftp-fm-entries .iftp-fm-summary__item {
+	.iftp-fm-entries .iftp-fm-summary__link {
 		padding: 14px var(--iftp-fm-space-4);
-	}
-
-	.iftp-fm-entries .iftp-fm-summary__item:nth-child(odd) {
-		border-left: 0;
-	}
-
-	.iftp-fm-entries .iftp-fm-summary__item:nth-child(n + 3) {
-		border-top: 1px solid var(--iftp-fm-border-subtle);
-	}
-
-	/* Tabs get their own row; the tools share the next one, search taking what's left. */
-	.iftp-fm-entries .iftp-fm-entries__status-nav {
-		flex: 1 1 100%;
-	}
-
-	.iftp-fm-entries .iftp-fm-entries__view-tools {
-		flex: 1 1 100%;
-		margin-left: 0;
-	}
-
-	.iftp-fm-entries .iftp-fm-entries__search {
-		flex: 1 1 auto;
-		min-width: 0;
 	}
 
 	.iftp-fm-entries .iftp-fm-entries__tool {
@@ -2512,7 +3183,6 @@
 		width: 36px;
 		height: 36px;
 	}
-
 
 	/* 16px stops iOS zooming on focus. */
 	.iftp-fm-entries select,
@@ -2631,8 +3301,6 @@
 	}
 }
 
-/* ≤ 600px */
-
 @media (width <= 600px) {
 	.iftp-fm-entries .iftp-fm-entries__title {
 		font-size: 20px;
@@ -2647,18 +3315,24 @@
 		display: none;
 	}
 
-	.iftp-fm-entries .iftp-fm-summary__item {
-		grid-template-columns: minmax(0, 1fr);
+	.iftp-fm-entries .iftp-fm-summary__link {
+		grid-template-columns: minmax(0, 1fr) auto;
 		grid-template-areas:
-			"label"
-			"amount"
-			"count";
-		gap: var(--iftp-fm-space-1);
+			"label icon"
+			"amount icon"
+			"count icon";
+		gap: var(--iftp-fm-space-1) var(--iftp-fm-space-2);
 		padding: var(--iftp-fm-space-3) 14px;
 	}
 
-	.iftp-fm-entries .iftp-fm-summary__count {
-		justify-self: start;
+	.iftp-fm-entries .iftp-fm-summary__icon {
+		width: 32px;
+		height: 32px;
+	}
+
+	.iftp-fm-entries .iftp-fm-summary__icon svg {
+		width: 16px;
+		height: 16px;
 	}
 
 	.iftp-fm-entries .iftp-fm-summary__amount {
@@ -3005,9 +3679,7 @@
 	}
 }
 
-/* Column visibility. The root attribute comes from user meta and JS updates
-   it on toggle; (0,4,0) so it also beats the phone card cell rules. */
-
+/* (0,4,0), so hidden columns also beat the phone card cell rules. */
 .iftp-fm-entries[data-iftp-hidden-cols~="customer"] .iftp-fm-entries-table [data-col="customer"],
 .iftp-fm-entries[data-iftp-hidden-cols~="form"] .iftp-fm-entries-table [data-col="form"],
 .iftp-fm-entries[data-iftp-hidden-cols~="method"] .iftp-fm-entries-table [data-col="method"],
@@ -3018,11 +3690,10 @@
 	display: none;
 }
 
-/* Windows High Contrast */
-
 @media (forced-colors: active) {
 	/* Keeps the navy band, otherwise the white wordmark vanishes on a light canvas. */
-	.iftp-fm-entries .iftp-fm-entries__masthead {
+	.iftp-fm-entries .iftp-fm-entries__masthead,
+	.iftp-fm-entries .iftp-fm-mark {
 		forced-color-adjust: none;
 	}
 
@@ -3057,10 +3728,6 @@
 		border: 1px solid CanvasText;
 	}
 
-	.iftp-fm-entries .iftp-fm-status-tab .count {
-		border: 1px solid CanvasText;
-	}
-
 	.iftp-fm-entries input[type="checkbox"] {
 		appearance: auto;
 	}
@@ -3070,8 +3737,14 @@
 		content: none;
 	}
 
-	.iftp-fm-entries .iftp-fm-badge {
+	.iftp-fm-entries .iftp-fm-badge,
+	.iftp-fm-entries .iftp-fm-summary__icon {
 		border: 1px solid CanvasText;
+	}
+
+	.iftp-fm-entries .iftp-fm-summary__item--current .iftp-fm-summary__link {
+		outline: 2px solid Highlight;
+		outline-offset: -2px;
 	}
 
 	.iftp-fm-entries .iftp-fm-badge::before,

@@ -17,9 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Fetches Gateway Key rows and the methods catalog from ifthenpay and
- * reconciles them into settings. Shared by the connect/switch AJAX flows and
- * the Gateway Configuration screen's lazy backfill for older connections.
+ * Syncs Gateway Key rows and the methods catalog from ifthenpay into settings.
  */
 class GatewaySync {
 
@@ -40,8 +38,8 @@ class GatewaySync {
 	/**
 	 * Sets up the sync.
 	 *
-	 * @param SettingsRepository|null $settings Settings storage; a fresh instance is used when omitted.
-	 * @param IfthenpayClient|null    $client   Ifthenpay API client; a fresh instance is used when omitted.
+	 * @param SettingsRepository|null $settings Settings storage.
+	 * @param IfthenpayClient|null    $client   Ifthenpay API client.
 	 */
 	public function __construct( ?SettingsRepository $settings = null, ?IfthenpayClient $client = null ) {
 		$this->settings = $settings ?? new SettingsRepository();
@@ -49,8 +47,7 @@ class GatewaySync {
 	}
 
 	/**
-	 * First-time connection: validates the Backoffice Key has at least one
-	 * Gateway Key row, stores it, and builds its methods table.
+	 * First-time connection: stores the Backoffice Key if it has a Gateway Key row, and builds its methods table.
 	 *
 	 * @param string $backoffice_key The Backoffice Key to connect.
 	 */
@@ -72,8 +69,7 @@ class GatewaySync {
 	}
 
 	/**
-	 * Re-fetches the Gateway Key list and rebuilds the methods table for
-	 * whichever key is selected. Safe to call on every settings render.
+	 * Re-fetches the Gateway Key list and rebuilds the methods table for the selected key.
 	 */
 	public function sync(): bool {
 		$rows = $this->client->get_gateway_keys( $this->settings->get_backoffice_key() );
@@ -119,8 +115,7 @@ class GatewaySync {
 	}
 
 	/**
-	 * Whether the stored settings predate a catalog field (e.g. `logo`/`alias`)
-	 * and need a fresh sync to backfill it.
+	 * Whether the stored settings predate a catalog field (e.g. `logo`/`alias`) and need a resync.
 	 */
 	public function needs_backfill(): bool {
 		if ( ! $this->settings->is_connected() ) {
@@ -141,14 +136,9 @@ class GatewaySync {
 	}
 
 	/**
-	 * Merges the ifthenpay methods catalog with the accounts already
-	 * provisioned on this gateway row. Every catalog entry is kept — including
-	 * ones ifthenpay currently marks `IsVisible: false` — so their icon/alias
-	 * are available to consumers like the payment-entries icon lookup even
-	 * though the settings table only lists the visible ones.
-	 *
-	 * `logo_dark` is ifthenpay's variant for dark backgrounds — empty when a
-	 * method doesn't ship one, so consumers fall back to `logo`.
+	 * Merges ifthenpay's methods catalog with the accounts provisioned on this gateway row.
+	 * I keep `IsVisible: false` entries too, so the entries page can still show their icon/alias.
+	 * `logo_dark` is empty when ifthenpay has no dark variant; callers fall back to `logo`.
 	 *
 	 * @param array<string, mixed> $gateway_row The Gateway Key row to resolve accounts from.
 	 * @return array<int, array{entity: string, alias: string, logo: string, logo_dark: string, enabled: bool, account: string, position: int, visible: bool}>
@@ -206,9 +196,8 @@ class GatewaySync {
 	}
 
 	/**
-	 * Multibanco's column is named "Multibanco", not "MB" like every other
-	 * method's column matches its entity code. The value already is a
-	 * complete `ENTITY|ACCOUNT` segment — I just normalize stray spacing.
+	 * A method's `ENTITY|ACCOUNT` segment from the row, with stray spacing trimmed.
+	 * Multibanco's column is "Multibanco", not its entity code "MB" like every other method.
 	 *
 	 * @param array<string, mixed> $row    The Gateway Key row.
 	 * @param string               $entity The method entity code.
