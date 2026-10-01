@@ -1,0 +1,1539 @@
+# Copyright (C) 2026 ifthenpay-payments-for-forminator
+# This file is distributed under the same license as the ifthenpay-payments-for-forminator package.
+msgid ""
+msgstr ""
+"Project-Id-Version: ifthenpay-payments-for-forminator 1.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ifthenpay-payments-for-forminator\n"
+"POT-Creation-Date: 2026-10-01 15:39:19+00:00\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2026-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+
+#: ifthenpay-payments-for-forminator.php:45
+msgid "ifthenpay | Payments for Forminator requires Forminator to be installed and active."
+msgstr ""
+
+#: ifthenpay-payments-for-forminator.php:58
+msgid "ifthenpay | Payments for Forminator could not load its classes. Run \"composer install\" in the plugin folder."
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:51
+msgid "Confirmation Type"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:52
+msgid "What the payer sees immediately after each payment outcome."
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:56 src/Admin/PaymentEntriesPage.php:1217 src/Admin/PaymentEntriesPage.php:2769 src/Api/Webhook/WebhookController.php:282
+msgid "Paid"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:57 src/Admin/PaymentEntriesPage.php:1216 src/Admin/PaymentEntriesPage.php:2768
+msgid "Pending"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:58 src/Admin/PaymentEntriesPage.php:1218 src/Admin/PaymentEntriesPage.php:2770
+msgid "Failed"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:59
+msgid "Cancelled"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:64
+msgid "When a payment is confirmed, show"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:66
+msgid "Popup message"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:67
+msgid "Popup message + WordPress page (new tab)"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:68
+msgid "Popup message + Custom URL (new tab)"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:72
+msgid "Page"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:79
+msgid "— Select a page —"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:86
+msgid "URL"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:90
+msgid "Paid popup title"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:92
+msgid "Paid popup message"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:97
+msgid "Show submitted field values in the paid popup"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:104
+msgid "Pending popup title"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:106
+msgid "Pending popup message"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:112
+msgid "Failed popup title"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:114
+msgid "Failed popup message"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:120
+msgid "Cancelled popup title"
+msgstr ""
+
+#: src/Admin/ConfirmationSettingsField.php:122
+msgid "Cancelled popup message"
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:81 src/Admin/ConnectSettings.php:192
+msgid "Connect"
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:82
+msgid "Connecting…"
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:83
+msgid "Wrong Backoffice Format.."
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:84
+msgid "Disconnect your ifthenpay Backoffice Key? This will disable the ifthenpay field on every form."
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:85
+msgid "Requesting…"
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:86
+msgid "Requested"
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:87 src/Admin/PaymentEntriesPage.php:315
+msgid "Saving…"
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:88
+msgid "Saved"
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:89 src/Admin/FieldSettingsModal.php:75
+msgid "Something went wrong. Please try again."
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:116
+msgid "Accept Multibanco, MB WAY, card, Apple Pay, Google Pay, Cofidis and Pix payments in your forms via ifthenpay Pay by Link."
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:119
+msgid "Authorization"
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:122
+msgid "Connected."
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:126
+msgid "Configure Gateway"
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:129
+msgid "Disconnect"
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:133
+msgid "Connect your ifthenpay Backoffice Key to enable the ifthenpay payment field."
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:141 src/Admin/ConnectSettings.php:168
+msgid "Connect to Ifthenpay"
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:172
+msgid "Backoffice Key"
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:177
+msgid "Insert your backoffice key here.."
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:182
+msgid "The 16-digit key from your ifthenpay Backoffice account."
+msgstr ""
+
+#: src/Admin/ConnectSettings.php:189 src/Admin/FieldSettingsModal.php:262 src/Admin/PaymentEmailSettings.php:167 src/Admin/PaymentEntriesPage.php:1173 src/Admin/PaymentEntriesPage.php:1262 src/Admin/PaymentEntriesPage.php:1288
+msgid "Cancel"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:71
+msgid "Ifthenpay Payment Settings"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:72
+msgid "— Select a field —"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:73 src/Admin/FieldSettingsModal.php:265 src/Admin/PaymentEntriesPage.php:986
+msgid "Apply"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:74
+msgid "Applying…"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:76 src/Ajax/Controller.php:275
+msgid "Save the form once first, then configure this field."
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:77
+msgid "Saved. Reloading…"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:78 src/Fields/IfthenpayField.php:95 src/Forminator/FieldSettingsStore.php:62 src/Forminator/FieldSettingsStore.php:106
+msgid "Pay now"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:79
+msgid "Remove condition"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:81
+msgid "is"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:82
+msgid "is not"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:83
+msgid "is greater than"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:84
+msgid "is less than"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:85
+msgid "contains"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:86
+msgid "does not contain"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:87
+msgid "starts with"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:88
+msgid "ends with"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:109
+msgid "Customize Ifthenpay Field"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:113
+msgid "Use this merge tag to dynamically include this field's value in email notification, success messages, and other text elements."
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:117 src/Plugin.php:162
+msgid "Close"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:122
+msgid "Settings"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:123
+msgid "Advanced"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:124
+msgid "Style"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:125
+msgid "Visibility"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:133
+msgid "Amount type"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:138 src/Admin/FieldSettingsModal.php:149
+msgid "Fixed amount"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:142
+msgid "From another field on this form"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:154
+msgid "Amount field"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:156
+msgid "That field's submitted value becomes the payment amount."
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:160
+msgid "Checkout button label"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:168
+msgid "Field label"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:170
+msgid "Optional — shown above the checkout button."
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:174 src/Admin/GatewaySettingsPage.php:148
+msgid "Description"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:179
+msgid "Description placement"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:181
+msgid "Below the label"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:182
+msgid "Above the label"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:190
+msgid "Additional CSS Classes"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:191
+msgid "Add custom CSS classes to style this field's container — great for adjusting spacing, colors, or layout."
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:192
+msgid "E.g. form-field"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:193
+msgid "Add one or more class names, separated by spaces. These apply to the field container."
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:197
+msgid "Display"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:202
+msgid "Hide the ifthenpay icon"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:207
+msgid "Hide the payment methods icons"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:210
+msgid "The field keeps working even if both are hidden."
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:218
+msgid "Enable conditional logic"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:227
+msgid "Show"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:231
+msgid "Hide"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:235
+msgid "this field if"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:240 src/Admin/PaymentEntriesPage.php:2763
+msgid "All"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:244
+msgid "Any"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:248
+msgid "of the following match:"
+msgstr ""
+
+#: src/Admin/FieldSettingsModal.php:254
+msgid "+ Add condition"
+msgstr ""
+
+#: src/Admin/GatewaySettingsField.php:59
+msgid "Connect your Backoffice Key to load the available payment methods."
+msgstr ""
+
+#: src/Admin/GatewaySettingsField.php:67 src/Admin/GatewaySettingsField.php:159 src/Admin/GatewaySettingsField.php:161
+msgid "Enabled"
+msgstr ""
+
+#: src/Admin/GatewaySettingsField.php:68
+msgid "Default"
+msgstr ""
+
+#: src/Admin/GatewaySettingsField.php:69 src/Admin/PaymentEntriesPage.php:651 src/Admin/PaymentEntriesPage.php:1050 src/Admin/PaymentEntriesPage.php:1522 src/Admin/PaymentEntriesPage.php:1988
+msgid "Method"
+msgstr ""
+
+#: src/Admin/GatewaySettingsField.php:70
+msgid "Account"
+msgstr ""
+
+#: src/Admin/GatewaySettingsField.php:71 src/Admin/PaymentEntriesPage.php:653 src/Admin/PaymentEntriesPage.php:1251 src/Admin/PaymentEntriesPage.php:1532 src/Admin/PaymentEntriesPage.php:1990 src/Privacy/PersonalData.php:107
+msgid "Status"
+msgstr ""
+
+#. translators: %s: payment method name, e.g. "MB WAY"
+#: src/Admin/GatewaySettingsField.php:109
+#, php-format
+msgid "Enable %s"
+msgstr ""
+
+#: src/Admin/GatewaySettingsField.php:127
+msgid "Default payment method"
+msgstr ""
+
+#. translators: %s: payment method name, e.g. "MB WAY"
+#: src/Admin/GatewaySettingsField.php:131
+#, php-format
+msgid "Make %s the default payment method"
+msgstr ""
+
+#: src/Admin/GatewaySettingsField.php:160 src/Admin/GatewaySettingsField.php:161
+msgid "Activated"
+msgstr ""
+
+#: src/Admin/GatewaySettingsField.php:163
+msgid "Not activated"
+msgstr ""
+
+#: src/Admin/GatewaySettingsField.php:169
+msgid "Request Activation"
+msgstr ""
+
+#: src/Admin/GatewaySettingsPage.php:84 src/Admin/GatewaySettingsPage.php:108
+msgid "Ifthenpay Gateway"
+msgstr ""
+
+#: src/Admin/GatewaySettingsPage.php:115
+msgid "Gateway Key"
+msgstr ""
+
+#: src/Admin/GatewaySettingsPage.php:116
+msgid "The ifthenpay Gateway Key this form field will use."
+msgstr ""
+
+#: src/Admin/GatewaySettingsPage.php:131
+msgid "Payment Methods"
+msgstr ""
+
+#: src/Admin/GatewaySettingsPage.php:132
+msgid "Choose which methods to offer and which one is pre-selected on the hosted payment page."
+msgstr ""
+
+#: src/Admin/GatewaySettingsPage.php:143
+msgid "Hosted Payment Page"
+msgstr ""
+
+#: src/Admin/GatewaySettingsPage.php:144
+msgid "Shown to the payer on the ifthenpay payment page, and used to expire unpaid links."
+msgstr ""
+
+#: src/Admin/GatewaySettingsPage.php:152
+msgid "Expiry Days"
+msgstr ""
+
+#: src/Admin/GatewaySettingsPage.php:164
+msgid "Save Settings"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:88
+msgid "Payment email settings"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:105
+msgid "Payment email"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:106
+msgid "What customers get from \"Send payment email\". Click a tag to drop a payment detail where your cursor is — it's filled in for each customer when the email goes out."
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:114
+msgid "Subject"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:119
+msgid "Insert a tag"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:129
+msgid "Hover or focus a tag to see what it becomes."
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:134
+msgid "Body (HTML)"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:137
+msgid "Add image"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:141
+msgid "Inline styles and tables work best in mail clients. Scripts, forms, embeds and event handlers are removed when you save."
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:147
+msgid "Preview"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:148
+msgid "With sample data"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:152
+msgid "Subject:"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:156
+msgid "Email preview"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:163
+msgid "Reset to default"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:170
+msgid "Save"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:193
+msgid "Enter a subject."
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:197
+msgid "The email body is empty."
+msgstr ""
+
+#. translators: %s: the {payment_url} tag
+#: src/Admin/PaymentEmailSettings.php:204
+#, php-format
+msgid "Add the %s tag to the body (e.g. as a button's link), or your customer has no way to pay."
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:225
+msgid "Payment email saved. Some HTML that isn't allowed in emails was removed — the editor now shows what will be sent."
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:226
+msgid "Payment email saved."
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:250 src/Privacy/PersonalData.php:115
+msgid "Name"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:254 src/Privacy/PersonalData.php:119
+msgid "Email"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:258
+msgid "Message"
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:259
+msgid "Two tickets for Saturday, please."
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:323
+msgid "The email body is too long."
+msgstr ""
+
+#: src/Admin/PaymentEmailSettings.php:339 src/Admin/PaymentEntriesPage.php:612 src/Admin/PaymentEntriesPage.php:718 src/Ajax/Controller.php:387
+msgid "You are not allowed to do this."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:159 src/Admin/PaymentEntriesPage.php:160
+msgid "ifthenpay Entries"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:259
+msgid "Delete selected entries?"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:260
+msgid "This only removes their payment-tracking record here — any real Forminator entry already created from it is left untouched."
+msgstr ""
+
+#. translators: %s: number of paid entries in the selection
+#: src/Admin/PaymentEntriesPage.php:262
+#, php-format
+msgid "Paid entries are payment history, so the %s paid ones in your selection are kept."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:263 src/Admin/PaymentEntriesPage.php:984 src/Admin/PaymentEntriesPage.php:2016
+msgid "Delete"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:264
+msgid "Loading details…"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:265
+msgid "Could not load the details. Close and open them again to retry."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:266
+msgid "Change status?"
+msgstr ""
+
+#. translators: %s: target status label, e.g. "Paid"
+#: src/Admin/PaymentEntriesPage.php:268
+#, php-format
+msgid "Mark the selected entries as \"%s\"."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:269
+msgid "Change status"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:270
+msgid "Could not delete the selected entries. Please try again."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:271
+msgid "Could not update the selected entries. Please try again."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:272
+msgid "Selected entries deleted."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:273
+msgid "Selected entries updated."
+msgstr ""
+
+#. translators: 1: entries done so far, 2: entries selected
+#: src/Admin/PaymentEntriesPage.php:275
+#, php-format
+msgid "Deleting… %1$s of %2$s"
+msgstr ""
+
+#. translators: 1: entries done so far, 2: entries selected
+#: src/Admin/PaymentEntriesPage.php:277
+#, php-format
+msgid "Updating… %1$s of %2$s"
+msgstr ""
+
+#. translators: 1: entries done before the error, 2: entries selected
+#: src/Admin/PaymentEntriesPage.php:279
+#, php-format
+msgid "Stopped after %1$s of %2$s entries. The rest are still selected — try again."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:280
+msgid "A bulk action is still running. Leave anyway?"
+msgstr ""
+
+#. translators: 1: number of selected entries, 2: total number of entries
+#: src/Admin/PaymentEntriesPage.php:282
+#, php-format
+msgid "%1$s selected out of %2$s"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:283
+msgid "Creating…"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:284
+msgid "Payment recorded."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:285
+msgid "Could not record the payment. Please try again."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:286
+msgid "Payment link copied."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:287
+msgid "Could not copy the link."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:288
+msgid "Reference copied."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:289
+msgid "Could not copy the reference."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:290
+msgid "Send payment email?"
+msgstr ""
+
+#. translators: %s: customer email address
+#: src/Admin/PaymentEntriesPage.php:292
+#, php-format
+msgid "%s will get an email with the payment button and the details they filled in."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:293
+msgid "Send email"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:294
+msgid "Sending…"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:295
+msgid "Could not send the payment email. Please try again."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:296
+msgid "Send payment emails?"
+msgstr ""
+
+#. translators: %s: number of selected entries
+#: src/Admin/PaymentEntriesPage.php:298
+#, php-format
+msgid "The customers of the %s selected pending payments will each get an email with their payment button. Entries without a customer email are skipped."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:299
+msgid "Send emails"
+msgstr ""
+
+#. translators: 1: entries done so far, 2: entries selected
+#: src/Admin/PaymentEntriesPage.php:301
+#, php-format
+msgid "Sending emails… %1$s of %2$s"
+msgstr ""
+
+#. translators: %s: number of emails sent
+#: src/Admin/PaymentEntriesPage.php:303
+#, php-format
+msgid "Payment emails sent: %s."
+msgstr ""
+
+#. translators: %s: number of entries skipped
+#: src/Admin/PaymentEntriesPage.php:305
+#, php-format
+msgid "Skipped (no longer pending, or no customer email): %s."
+msgstr ""
+
+#. translators: %s: number of emails that failed
+#: src/Admin/PaymentEntriesPage.php:307
+#, php-format
+msgid "Failed: %s. They are still selected, so you can try again."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:308
+msgid "Could not save your column choice."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:309
+msgid "Select at least one entry to export."
+msgstr ""
+
+#. translators: 1: column name, 2: new position, 3: number of movable columns
+#: src/Admin/PaymentEntriesPage.php:311
+#, php-format
+msgid "%1$s moved to position %2$s of %3$s."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:312
+msgid "Columns reset to the default order, all shown."
+msgstr ""
+
+#. translators: %s: number of selected entries
+#: src/Admin/PaymentEntriesPage.php:314
+#, php-format
+msgid "%s selected"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:316
+msgid "Could not save the payment email. Please try again."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:317
+msgid "Could not refresh the preview."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:318
+msgid "Default template restored. Save to keep it."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:319
+msgid "Choose an image for the email"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:320
+msgid "Insert image"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:336
+msgid "This entry no longer exists."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:375
+msgid "Enter an amount greater than zero."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:382
+msgid "Enter a valid email, or leave it blank."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:389 src/Admin/PaymentEntriesPage.php:434
+msgid "Unknown status."
+msgstr ""
+
+#. translators: %s: the database error
+#: src/Admin/PaymentEntriesPage.php:404
+#, php-format
+msgid "Could not save the payment: %s"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:405
+msgid "unknown database error"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:463
+msgid "This payment is no longer pending, or has no customer email to send to."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:467
+msgid "Could not create a payment link for this payment. Check the ifthenpay connection and enabled methods in the settings."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:471
+msgid "Could not send the payment email. Check that this site can send mail."
+msgstr ""
+
+#. translators: %s: customer email address
+#: src/Admin/PaymentEntriesPage.php:477
+#, php-format
+msgid "Payment email sent to %s."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:647 src/Admin/PaymentEntriesPage.php:1141 src/Admin/PaymentEntriesPage.php:1334 src/Admin/PaymentEntriesPage.php:2017 src/Mail/PaymentEmailTemplate.php:99 src/Privacy/PersonalData.php:95
+msgid "Reference"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:648 src/Admin/PaymentEntriesPage.php:1038 src/Admin/PaymentEntriesPage.php:1517 src/Admin/PaymentEntriesPage.php:1987
+msgid "Form"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:649 src/Admin/PaymentEntriesPage.php:1233 src/Forminator/TransactionStore.php:156 src/Mail/PaymentEmailTemplate.php:50
+msgid "Customer name"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:650 src/Admin/PaymentEntriesPage.php:1237 src/Forminator/TransactionStore.php:163 src/Mail/PaymentEmailTemplate.php:51
+msgid "Customer email"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:652 src/Admin/PaymentEntriesPage.php:1060 src/Admin/PaymentEntriesPage.php:1244 src/Admin/PaymentEntriesPage.php:1527 src/Admin/PaymentEntriesPage.php:1989 src/Mail/PaymentEmailTemplate.php:95 src/Privacy/PersonalData.php:103
+msgid "Amount"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:654
+msgid "Entry ID"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:655 src/Admin/PaymentEntriesPage.php:1077 src/Admin/PaymentEntriesPage.php:1542 src/Admin/PaymentEntriesPage.php:1992
+msgid "Created"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:656 src/Admin/PaymentEntriesPage.php:2022
+msgid "Last updated"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:657 src/Admin/PaymentEntriesPage.php:2018
+msgid "Request ID"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:658 src/Admin/PaymentEntriesPage.php:2019
+msgid "Transaction ID"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:659 src/Admin/PaymentEntriesPage.php:2020
+msgid "Payment link"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:671 src/Admin/PaymentEntriesPage.php:1697
+msgid "Ad Hoc"
+msgstr ""
+
+#. translators: %s: maximum entries per request
+#: src/Admin/PaymentEntriesPage.php:756
+#, php-format
+msgid "Too many entries in one request (the limit is %s)."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:910
+msgid "Payment entries"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:911
+msgid "Every ifthenpay payment attempt across your Forminator forms, whether or not it produced a real entry yet."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:918 src/Admin/PaymentEntriesPage.php:1225
+msgid "New payment"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:926
+msgid "Totals by status"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:935
+msgid "Filter by status"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:960
+msgid "Clear selection"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:964 src/Admin/PaymentEntriesPage.php:966
+msgid "Bulk actions"
+msgstr ""
+
+#. translators: %s: target status label, e.g. "Paid"
+#: src/Admin/PaymentEntriesPage.php:973
+#, php-format
+msgid "Mark as %s"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:981 src/Admin/PaymentEntriesPage.php:2023
+msgid "Send payment email"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:982
+msgid "Export selected"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:991
+msgid "Search entries"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:992
+msgid "Search entries…"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:992
+msgid "Search by reference, customer, method or entry ID"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:994
+msgid "Search"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:997 src/Admin/PaymentEntriesPage.php:999
+msgid "Filters"
+msgstr ""
+
+#. translators: %s: number of active filters
+#: src/Admin/PaymentEntriesPage.php:1007
+#, php-format
+msgid "(%s active)"
+msgid_plural "(%s active)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Admin/PaymentEntriesPage.php:1017 src/Admin/PaymentEntriesPage.php:1019
+msgid "Columns"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1025 src/Admin/PaymentEntriesPage.php:1027
+msgid "Export CSV"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1040
+msgid "All forms"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1052
+msgid "All methods"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1062
+msgid "Minimum amount"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1064
+msgid "Min"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1068
+msgid "Maximum amount"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1070
+msgid "Max"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1079
+msgid "From date"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1082
+msgid "To date"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1085
+msgid "Quick date ranges"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1107 src/Admin/PaymentEntriesPage.php:1128
+msgid "Clear filters"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1109
+msgid "Apply filters"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1116
+msgid "Active filters"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1120
+msgid "Remove filter:"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1139
+msgid "Select all"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1180
+msgid "Entries per page"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1185
+msgid "Custom…"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1188
+msgid "Custom entries per page"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1192
+msgid "Go"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1219 src/Admin/PaymentEntriesPage.php:2771
+msgid "Expired"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1226
+msgid "Record a payment taken outside the normal checkout — it appears in this list like any other entry, filed under \"Ad Hoc\"."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1265
+msgid "Create"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1284
+msgid "Are you sure?"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1285
+msgid "This action cannot be undone."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1290
+msgid "Confirm"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1313
+msgid "Scroll to top"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1330
+msgid "Choose and order columns"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1335
+msgid "Always shown"
+msgstr ""
+
+#. translators: %s: column name
+#: src/Admin/PaymentEntriesPage.php:1343
+#, php-format
+msgid "Move %s up"
+msgstr ""
+
+#. translators: %s: column name
+#: src/Admin/PaymentEntriesPage.php:1345
+#, php-format
+msgid "Move %s down"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1368
+msgid "Reset columns"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1403
+msgid "No ifthenpay payments match this view."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1512 src/Admin/PaymentEntriesPage.php:1986
+msgid "Customer"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1537 src/Admin/PaymentEntriesPage.php:1991
+msgid "Entry"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1722
+msgid "Forminator creates the entry only once the payment is paid."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1725
+msgid "Not paid yet"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1727
+msgid "Not paid"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1753
+msgid "The customer hasn't picked a payment method yet."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1753
+msgid "Awaiting selection"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1761
+msgid "The payment expired before the customer picked a payment method."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:1761
+msgid "Expired payment"
+msgstr ""
+
+#. translators: %s: number of entries
+#: src/Admin/PaymentEntriesPage.php:1960
+#, php-format
+msgid "%s entry"
+msgid_plural "%s entries"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Admin/PaymentEntriesPage.php:1967
+msgid "Selected. Activate to show all entries."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2005
+msgid "Select entry"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2006
+msgid "Copy reference"
+msgstr ""
+
+#. translators: %s: payment reference
+#: src/Admin/PaymentEntriesPage.php:2008
+#, php-format
+msgid "Copy reference %s"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2009
+msgid "View"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2010
+msgid "Copy link"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2011
+msgid "No link yet"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2012
+msgid "No payment link was created for this payment yet. Sending the payment email creates one."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2013
+msgid "Ad hoc payments are recorded by hand, so they have no payment link."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2014
+msgid "Link expired"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2015
+msgid "This payment expired, so its link can no longer be paid."
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2021
+msgid "Form ID"
+msgstr ""
+
+#. translators: %s: customer email address
+#: src/Admin/PaymentEntriesPage.php:2025
+#, php-format
+msgid "Sends the payment button to %s"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2026
+msgid "Submitted fields"
+msgstr ""
+
+#. translators: compact date and time format for the payment entries table, see https://www.php.net/manual/datetime.format.php
+#: src/Admin/PaymentEntriesPage.php:2044
+msgctxt "short date and time format"
+msgid "d/m/Y H:i"
+msgstr ""
+
+#. translators: %s: time since the payment was created, e.g. "2 hours"
+#: src/Admin/PaymentEntriesPage.php:2057
+#, php-format
+msgid "%s ago"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2131
+msgid "Today"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2136
+msgid "Last 7 days"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2141
+msgid "This month"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2146
+msgid "Last month"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2238
+msgid "Entries pagination"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2240
+msgid "Previous page"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2266
+msgid "Next page"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2282
+msgid "Go to page"
+msgstr ""
+
+#. translators: 1: first entry number shown, 2: last entry number shown, 3: total number of entries
+#: src/Admin/PaymentEntriesPage.php:2304
+#, php-format
+msgid "%1$s – %2$s out of %3$s"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2369
+msgid "Form:"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2384
+msgid "Method:"
+msgstr ""
+
+#. translators: %s: an amount or a date
+#: src/Admin/PaymentEntriesPage.php:2399
+#, php-format
+msgid "up to %s"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2404
+msgid "Amount:"
+msgstr ""
+
+#. translators: %s: an amount or a date
+#: src/Admin/PaymentEntriesPage.php:2433
+#, php-format
+msgid "until %s"
+msgstr ""
+
+#: src/Admin/PaymentEntriesPage.php:2439
+msgid "Created:"
+msgstr ""
+
+#. translators: 1: lower bound, 2: upper bound
+#: src/Admin/PaymentEntriesPage.php:2464
+#, php-format
+msgid "%1$s – %2$s"
+msgstr ""
+
+#. translators: %s: an amount or a date
+#: src/Admin/PaymentEntriesPage.php:2469
+#, php-format
+msgid "from %s"
+msgstr ""
+
+#: src/Ajax/Controller.php:121
+msgid "Invalid Backoffice Key format."
+msgstr ""
+
+#: src/Ajax/Controller.php:125
+msgid "No Forminator gateway found for this Backoffice Key."
+msgstr ""
+
+#: src/Ajax/Controller.php:163
+msgid "Unknown Gateway Key."
+msgstr ""
+
+#: src/Ajax/Controller.php:233
+msgid "Missing method or Gateway Key."
+msgstr ""
+
+#: src/Ajax/Controller.php:239
+msgid "An activation request for this method was already sent recently."
+msgstr ""
+
+#: src/Ajax/Controller.php:257
+msgid "Could not send the activation request. Please try again."
+msgstr ""
+
+#: src/Ajax/Controller.php:308
+msgid "Could not save the field settings. Please try again."
+msgstr ""
+
+#: src/Ajax/PaymentController.php:122
+msgid "Your session expired. Please reload the page and try again."
+msgstr ""
+
+#: src/Ajax/PaymentController.php:136
+msgid "Invalid payment request."
+msgstr ""
+
+#: src/Ajax/PaymentController.php:140
+msgid "ifthenpay is not configured yet. Please contact the site administrator."
+msgstr ""
+
+#: src/Ajax/PaymentController.php:144
+msgid "No ifthenpay payment methods are enabled yet. Please contact the site administrator."
+msgstr ""
+
+#: src/Ajax/PaymentController.php:152
+msgid "Unable to start the ifthenpay payment. Please try again."
+msgstr ""
+
+#: src/Ajax/StatusController.php:71
+msgid "Your session expired. Please reload the page."
+msgstr ""
+
+#: src/Ajax/StatusController.php:80
+msgid "Unknown payment reference."
+msgstr ""
+
+#. translators: %s: the ifthenpay payment page URL.
+#: src/Api/Webhook/WebhookController.php:282
+#, php-format
+msgid "Paid - %s"
+msgstr ""
+
+#: src/Fields/IfthenpayField.php:216
+msgid "Please complete the payment to submit this form."
+msgstr ""
+
+#: src/Mail/PaymentEmailTemplate.php:49
+msgid "\"Hi Ana,\" — or just \"Hi,\" when there's no name"
+msgstr ""
+
+#: src/Mail/PaymentEmailTemplate.php:52
+msgid "Amount, e.g. 12,50 €"
+msgstr ""
+
+#: src/Mail/PaymentEmailTemplate.php:53
+msgid "Payment reference"
+msgstr ""
+
+#: src/Mail/PaymentEmailTemplate.php:54
+msgid "Payment link, for a button or link href (required)"
+msgstr ""
+
+#: src/Mail/PaymentEmailTemplate.php:55
+msgid "Form name"
+msgstr ""
+
+#: src/Mail/PaymentEmailTemplate.php:56
+msgid "Table of what the customer filled in (body only)"
+msgstr ""
+
+#: src/Mail/PaymentEmailTemplate.php:57
+msgid "Site name"
+msgstr ""
+
+#: src/Mail/PaymentEmailTemplate.php:58
+msgid "Site address"
+msgstr ""
+
+#. translators: %s: site name
+#: src/Mail/PaymentEmailTemplate.php:67
+#, php-format
+msgid "Complete your payment to %s"
+msgstr ""
+
+#. translators: %s: site name, linked to the site
+#: src/Mail/PaymentEmailTemplate.php:81
+#, php-format
+msgid "You started a payment on %s that hasn't been completed yet. You can finish it securely with ifthenpay using the button below."
+msgstr ""
+
+#. translators: %s: site URL, linked to the site
+#: src/Mail/PaymentEmailTemplate.php:83
+#, php-format
+msgid "This message was sent from %s"
+msgstr ""
+
+#. translators: %s: formatted amount, e.g. "12,50 €"
+#: src/Mail/PaymentEmailTemplate.php:85
+#, php-format
+msgid "Pay %s"
+msgstr ""
+
+#: src/Mail/PaymentEmailTemplate.php:117
+msgid "If you've already paid, you can ignore this email."
+msgstr ""
+
+#: src/Mail/PaymentEmailTemplate.php:219
+msgid "What you filled in"
+msgstr ""
+
+#. translators: %s: customer name
+#: src/Mail/PaymentRequestEmail.php:98
+#, php-format
+msgid "Hi %s,"
+msgstr ""
+
+#: src/Mail/PaymentRequestEmail.php:99
+msgid "Hi,"
+msgstr ""
+
+#: src/Plugin.php:158
+msgid "Redirecting to secure payment…"
+msgstr ""
+
+#: src/Plugin.php:159
+msgid "Something went wrong starting your payment. Please try again."
+msgstr ""
+
+#: src/Plugin.php:160
+msgid "Confirming your payment…"
+msgstr ""
+
+#: src/Plugin.php:161
+msgid "OK"
+msgstr ""
+
+#: src/Plugin.php:163
+msgid "Continue"
+msgstr ""
+
+#: src/Plugin.php:164
+msgid "(opens in a new tab)"
+msgstr ""
+
+#: src/Plugin.php:272
+msgid "Payment confirmed. Thank you!"
+msgstr ""
+
+#: src/Plugin.php:274
+msgid "Payment failed. Please try again."
+msgstr ""
+
+#: src/Plugin.php:276
+msgid "Payment cancelled."
+msgstr ""
+
+#: src/Plugin.php:278
+msgid "This payment link expired."
+msgstr ""
+
+#: src/Plugin.php:280
+msgid "We're waiting for your payment to be confirmed. You don't need to do anything else — this will update automatically once it's complete."
+msgstr ""
+
+#: src/Plugin.php:292
+msgid "Paid Successfully!"
+msgstr ""
+
+#: src/Plugin.php:294
+msgid "Payment Failed"
+msgstr ""
+
+#: src/Plugin.php:296
+msgid "Payment Cancelled"
+msgstr ""
+
+#: src/Plugin.php:298
+msgid "Payment Link Expired"
+msgstr ""
+
+#: src/Plugin.php:300
+msgid "Payment Pending"
+msgstr ""
+
+#: src/Privacy/PersonalData.php:59 src/Privacy/PersonalData.php:74 src/Privacy/PersonalData.php:133
+msgid "ifthenpay payments"
+msgstr ""
+
+#: src/Privacy/PersonalData.php:99
+msgid "Date"
+msgstr ""
+
+#: src/Privacy/PersonalData.php:111
+msgid "Payment method"
+msgstr ""
+
+#. Plugin Name of the plugin/theme
+msgid "ifthenpay | Payments for Forminator"
+msgstr ""
+
+#. Plugin URI of the plugin/theme
+#. Author URI of the plugin/theme
+msgid "https://ifthenpay.com"
+msgstr ""
+
+#. Description of the plugin/theme
+msgid "Accept ifthenpay payments (card, Apple Pay, Google Pay, Cofidis, Pix, Multibanco, MB WAY) in Forminator via Pay by Link, with webhook-confirmed payment status."
+msgstr ""
+
+#. Author of the plugin/theme
+#: src/Admin/ConnectSettings.php:115 src/Fields/IfthenpayField.php:82
+msgid "ifthenpay"
+msgstr ""
