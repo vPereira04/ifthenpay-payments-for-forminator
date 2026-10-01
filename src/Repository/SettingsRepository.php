@@ -33,6 +33,9 @@ class SettingsRepository {
 	private const OPTION_CONFIRMATION_PAID_URL        = 'iftp_fm_confirmation_paid_url';
 	private const OPTION_CONFIRMATION_SHOW_ENTRY_DATA = 'iftp_fm_confirmation_show_entry_data';
 
+	private const OPTION_PAYMENT_EMAIL_SUBJECT = 'iftp_fm_payment_email_subject';
+	private const OPTION_PAYMENT_EMAIL_BODY    = 'iftp_fm_payment_email_body';
+
 	public const CONFIRMATION_TYPE_POPUP = 'popup';
 	public const CONFIRMATION_TYPE_PAGE  = 'page';
 	public const CONFIRMATION_TYPE_URL   = 'url';
@@ -254,6 +257,51 @@ class SettingsRepository {
 	 */
 	public function set_expiry_days( int $days ): void {
 		update_option( self::OPTION_EXPIRY_DAYS, max( 1, $days ) );
+	}
+
+	/**
+	 * The custom payment email subject, or '' for the translated default.
+	 */
+	public function get_payment_email_subject(): string {
+		return (string) get_option( self::OPTION_PAYMENT_EMAIL_SUBJECT, '' );
+	}
+
+	/**
+	 * The custom payment email body, or '' for the translated default.
+	 */
+	public function get_payment_email_body(): string {
+		return (string) get_option( self::OPTION_PAYMENT_EMAIL_BODY, '' );
+	}
+
+	/**
+	 * Stores the payment email template; '' for either part goes back to its default.
+	 *
+	 * Not autoloaded, since the body can be large and only Payment Entries reads it.
+	 *
+	 * @param string $subject The sanitized subject.
+	 * @param string $body    The sanitized body.
+	 */
+	public function set_payment_email( string $subject, string $body ): void {
+		foreach ( array(
+			self::OPTION_PAYMENT_EMAIL_SUBJECT => $subject,
+			self::OPTION_PAYMENT_EMAIL_BODY    => $body,
+		) as $option => $value ) {
+			if ( '' === $value ) {
+				delete_option( $option );
+			} else {
+				update_option( $option, $value, false );
+			}
+		}
+	}
+
+	/**
+	 * Deletes the payment email template, on uninstall.
+	 *
+	 * Not part of delete_all(): it's the admin's own copy, so a disconnect/reconnect keeps it.
+	 */
+	public function delete_payment_email(): void {
+		delete_option( self::OPTION_PAYMENT_EMAIL_SUBJECT );
+		delete_option( self::OPTION_PAYMENT_EMAIL_BODY );
 	}
 
 	/**

@@ -233,6 +233,13 @@
 	color: var(--iftp-fm-text-inverse-muted);
 }
 
+.iftp-fm-entries .iftp-fm-entries__masthead-actions {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: var(--iftp-fm-space-2);
+}
+
 .iftp-fm-entries .iftp-fm-new-entry-trigger {
 	flex: none;
 }
@@ -476,6 +483,11 @@
 	background: var(--iftp-fm-brand-tint-strong);
 	border-color: var(--iftp-fm-brand-tint-strong);
 	color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-btn--icon {
+	width: var(--iftp-fm-control-h);
+	padding: 0;
 }
 
 .iftp-fm-entries .iftp-fm-btn--link {
@@ -2456,6 +2468,7 @@
 	/* Each block keeps its own box and shape, drawn as a placeholder. These lists stay spelled out rather than
 	   in :is(), so the browser can skip them for every table row instead of testing each one. */
 	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-new-entry-trigger,
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-email-settings-trigger,
 	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-summary__label .iftp-fm-badge,
 	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-summary__count,
 	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-summary__icon,
@@ -2494,6 +2507,7 @@
 	}
 
 	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-new-entry-trigger :is(*, ::before, ::after),
+	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-email-settings-trigger :is(*, ::before, ::after),
 	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-summary__label .iftp-fm-badge :is(*, ::before, ::after),
 	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-summary__icon :is(*, ::before, ::after),
 	.iftp-fm-page-skeleton .iftp-fm-entries .iftp-fm-status-tab :is(*, ::before, ::after),
@@ -2903,6 +2917,10 @@
 	max-width: 520px;
 }
 
+.iftp-fm-entries .iftp-fm-modal-box--wide {
+	max-width: 1120px;
+}
+
 .iftp-fm-entries .iftp-fm-modal-box::before {
 	content: "";
 	position: absolute;
@@ -2940,6 +2958,228 @@
 	justify-content: flex-end;
 	gap: var(--iftp-fm-space-2);
 	margin-top: var(--iftp-fm-space-6);
+}
+
+.iftp-fm-entries .iftp-fm-modal-actions--split {
+	justify-content: space-between;
+	flex-wrap: wrap;
+}
+
+.iftp-fm-entries .iftp-fm-modal-actions__end {
+	display: flex;
+	gap: var(--iftp-fm-space-2);
+	margin-left: auto;
+}
+
+/* No scrolling the list behind an open modal. The gutter stays, so the page doesn't shift sideways. */
+html:has(.iftp-fm-entries .iftp-fm-modal:not([hidden])) {
+	overflow: hidden;
+	scrollbar-gutter: stable;
+}
+
+/* Payment email editor: compose on the left, live preview on the right. */
+.iftp-fm-entries .iftp-fm-email-editor {
+	--iftp-fm-email-editor-h: clamp(240px, calc(100vh - 520px), 440px);
+
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: var(--iftp-fm-space-6);
+}
+
+.iftp-fm-entries .iftp-fm-email-editor__compose {
+	display: flex;
+	flex-direction: column;
+	gap: var(--iftp-fm-space-4);
+	min-width: 0;
+}
+
+/* The modal's own label rule adds a bottom margin; the row spaces it instead. */
+.iftp-fm-entries .iftp-fm-email-editor__body-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--iftp-fm-space-2);
+	margin-bottom: 6px;
+}
+
+.iftp-fm-entries .iftp-fm-email-editor__body-head label {
+	margin-bottom: 0;
+}
+
+.iftp-fm-entries .iftp-fm-email-media {
+	height: var(--iftp-fm-control-h-sm);
+	padding: 0 var(--iftp-fm-space-3);
+}
+
+.iftp-fm-entries .iftp-fm-email-media[hidden] {
+	display: none;
+}
+
+.iftp-fm-entries .iftp-fm-email-editor__body textarea {
+	display: block;
+	width: 100%;
+	height: var(--iftp-fm-email-editor-h);
+	box-sizing: border-box;
+	font-family: var(--iftp-fm-font-mono);
+	font-size: var(--iftp-fm-fs-sm);
+	line-height: var(--iftp-fm-lh-base);
+	resize: vertical;
+}
+
+.iftp-fm-entries .iftp-fm-email-editor__body .CodeMirror {
+	height: var(--iftp-fm-email-editor-h);
+	border: 1px solid var(--iftp-fm-border-control);
+	border-radius: var(--iftp-fm-radius-sm);
+	font-family: var(--iftp-fm-font-mono);
+	font-size: var(--iftp-fm-fs-sm);
+}
+
+.iftp-fm-entries .iftp-fm-email-editor__body .CodeMirror-focused {
+	border-color: var(--iftp-fm-focus);
+	box-shadow: 0 0 0 1px var(--iftp-fm-focus);
+}
+
+.iftp-fm-entries .iftp-fm-email-editor__note {
+	margin: 6px 0 0;
+	font-size: var(--iftp-fm-fs-sm);
+	color: var(--iftp-fm-text-muted);
+}
+
+.iftp-fm-entries .iftp-fm-email-tags__label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: var(--iftp-fm-fs-sm);
+	font-weight: var(--iftp-fm-fw-semibold);
+	color: var(--iftp-fm-text);
+}
+
+.iftp-fm-entries .iftp-fm-email-tags__list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.iftp-fm-entries .iftp-fm-email-tags__list li {
+	margin: 0;
+}
+
+.iftp-fm-entries .iftp-fm-email-tag {
+	padding: 3px var(--iftp-fm-space-2);
+	background: var(--iftp-fm-brand-tint);
+	border: 1px solid var(--iftp-fm-brand-tint-strong);
+	border-radius: var(--iftp-fm-radius-sm);
+	color: var(--iftp-fm-brand);
+	font-family: var(--iftp-fm-font-mono);
+	font-size: var(--iftp-fm-fs-sm);
+	line-height: var(--iftp-fm-lh-base);
+	cursor: pointer;
+	transition:
+		background-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease),
+		border-color var(--iftp-fm-dur-fast) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-email-tag:hover {
+	background: var(--iftp-fm-brand-tint-strong);
+	border-color: var(--iftp-fm-brand);
+}
+
+.iftp-fm-entries .iftp-fm-email-tag:focus {
+	box-shadow: none;
+}
+
+.iftp-fm-entries .iftp-fm-email-tag:focus-visible {
+	outline: var(--iftp-fm-focus-width) solid var(--iftp-fm-focus);
+	outline-offset: var(--iftp-fm-focus-offset);
+}
+
+/* Holds two lines' room, so the editor below doesn't jump as descriptions change. */
+.iftp-fm-entries .iftp-fm-email-tags__help {
+	min-height: calc(2em * var(--iftp-fm-lh-base));
+	margin: var(--iftp-fm-space-2) 0 0;
+	font-size: var(--iftp-fm-fs-sm);
+	line-height: var(--iftp-fm-lh-base);
+	color: var(--iftp-fm-text-muted);
+}
+
+.iftp-fm-entries .iftp-fm-email-editor__preview {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.iftp-fm-entries .iftp-fm-email-preview__head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--iftp-fm-space-2);
+	margin-bottom: 6px;
+}
+
+.iftp-fm-entries .iftp-fm-email-preview__title {
+	font-size: var(--iftp-fm-fs-sm);
+	font-weight: var(--iftp-fm-fw-semibold);
+	color: var(--iftp-fm-text);
+}
+
+.iftp-fm-entries .iftp-fm-email-preview__hint {
+	font-size: var(--iftp-fm-fs-xs);
+	color: var(--iftp-fm-text-muted);
+}
+
+/* Stretches to the compose column's height, so the two sides line up. */
+.iftp-fm-entries .iftp-fm-email-preview__frame {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-height: 360px;
+	overflow: hidden;
+	background: var(--iftp-fm-surface-sunken);
+	border: 1px solid var(--iftp-fm-border);
+	border-radius: var(--iftp-fm-radius-lg);
+	transition: opacity var(--iftp-fm-dur-base) var(--iftp-fm-ease);
+}
+
+.iftp-fm-entries .iftp-fm-email-preview__frame--loading {
+	opacity: 0.6;
+}
+
+.iftp-fm-entries .iftp-fm-email-preview__subject {
+	margin: 0;
+	padding: 10px 14px;
+	background: var(--iftp-fm-surface);
+	border-bottom: 1px solid var(--iftp-fm-border-subtle);
+	font-size: var(--iftp-fm-fs-base);
+	font-weight: var(--iftp-fm-fw-semibold);
+	color: var(--iftp-fm-text-strong);
+	overflow-wrap: anywhere;
+}
+
+.iftp-fm-entries .iftp-fm-email-preview__subject-label {
+	margin-right: var(--iftp-fm-space-1);
+	font-weight: var(--iftp-fm-fw-regular);
+	color: var(--iftp-fm-text-muted);
+}
+
+.iftp-fm-entries .iftp-fm-email-preview__iframe {
+	display: block;
+	flex: 1;
+	width: 100%;
+	min-height: 0;
+	border: 0;
+	background: #fff;
+}
+
+@media (width <= 960px) {
+	.iftp-fm-entries .iftp-fm-email-editor {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.iftp-fm-entries .iftp-fm-email-preview__frame {
+		min-height: 480px;
+	}
 }
 
 .iftp-fm-entries .iftp-fm-form-row {
@@ -3306,9 +3546,12 @@
 		font-size: 20px;
 	}
 
-	.iftp-fm-entries .iftp-fm-new-entry-trigger {
+	.iftp-fm-entries .iftp-fm-entries__masthead-actions {
 		align-self: stretch;
-		width: 100%;
+	}
+
+	.iftp-fm-entries .iftp-fm-new-entry-trigger {
+		flex: 1;
 	}
 
 	.iftp-fm-entries .iftp-fm-entries__masthead::after {

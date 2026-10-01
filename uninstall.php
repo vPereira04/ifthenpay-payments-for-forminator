@@ -19,6 +19,7 @@ if ( class_exists( \Ifthenpay\Forminator\Repository\SettingsRepository::class ) 
 	$iftp_fm_settings = new \Ifthenpay\Forminator\Repository\SettingsRepository();
 	$iftp_fm_settings->delete_all();
 	$iftp_fm_settings->delete_anti_phishing_keys();
+	$iftp_fm_settings->delete_payment_email();
 }
 
 global $wpdb;

@@ -40,6 +40,7 @@
 		bindRowDelete( wrap );
 		bindBulkActions( wrap );
 		bindNewEntryModal( wrap );
+		bindEmailSettingsModal( wrap );
 		bindScrollButton( wrap );
 		bindCopyLink( wrap );
 		bindResendEmail( wrap );
@@ -1011,6 +1012,294 @@
 					submitBtn.textContent = submitLabel;
 					errorEl.textContent = iftpFmEntries.i18n.newEntryError;
 					errorEl.hidden = false;
+				} );
+		} );
+	}
+
+	// The "Payment email" editor. Closing throws away unsaved edits, so with any pending I only close on Cancel.
+	function bindEmailSettingsModal( wrap ) {
+		var trigger = wrap.querySelector( '[data-iftp-email-trigger]' );
+		var modal = wrap.querySelector( '[data-iftp-email-modal]' );
+		var config = iftpFmEntries.emailSettings;
+
+		if ( ! trigger || ! modal || ! config ) {
+			return;
+		}
+
+		var form = modal.querySelector( '[data-iftp-email-form]' );
+		var subjectInput = modal.querySelector( '[data-iftp-email-subject]' );
+		var bodyArea = modal.querySelector( '[data-iftp-email-body]' );
+		var errorEl = modal.querySelector( '[data-iftp-email-error]' );
+		var submitBtn = modal.querySelector( '[data-iftp-email-submit]' );
+		var submitLabel = submitBtn.textContent;
+		var previewWrap = modal.querySelector( '[data-iftp-email-preview-wrap]' );
+		var previewFrame = modal.querySelector( '[data-iftp-email-preview]' );
+		var previewSubject = modal.querySelector( '[data-iftp-email-preview-subject]' );
+		var tagDesc = modal.querySelector( '[data-iftp-email-tag-desc]' );
+		var tagDescDefault = tagDesc.textContent;
+
+		var saved = { subject: subjectInput.value, body: bodyArea.value };
+		var editor = null;
+		// Where a clicked tag goes: whichever field was focused last.
+		var tagTarget = 'body';
+		var previewTimer = null;
+		var previewSeq = 0;
+		var mediaFrame = null;
+		var mediaBtn = modal.querySelector( '[data-iftp-email-media]' );
+
+		// The email body is ~536px wide inside its card, so I cap the image there.
+		var IMAGE_MAX_WIDTH = 536;
+
+		function getBody() {
+			return editor ? editor.getValue() : bodyArea.value;
+		}
+
+		function setBody( value ) {
+			if ( editor ) {
+				editor.setValue( value );
+				editor.clearHistory();
+			} else {
+				bodyArea.value = value;
+			}
+		}
+
+		// CodeMirror can't measure itself inside a hidden modal, so I only start it on first open.
+		function ensureEditor() {
+			if ( editor || ! config.editor || ! window.wp || ! window.wp.codeEditor ) {
+				return;
+			}
+
+			editor = window.wp.codeEditor.initialize( bodyArea, config.editor ).codemirror;
+			editor.on( 'change', schedulePreview );
+			editor.on( 'focus', function () {
+				tagTarget = 'body';
+			} );
+		}
+
+		function isDirty() {
+			return subjectInput.value !== saved.subject || getBody() !== saved.body;
+		}
+
+		function showError( message ) {
+			errorEl.textContent = message;
+			errorEl.hidden = false;
+		}
+
+		function open() {
+			modal.hidden = false;
+			errorEl.hidden = true;
+			ensureEditor();
+
+			if ( editor ) {
+				editor.refresh();
+			}
+
+			trapFocus( modal );
+			subjectInput.focus();
+			refreshPreview();
+		}
+
+		function close() {
+			clearTimeout( previewTimer );
+			modal.hidden = true;
+			subjectInput.value = saved.subject;
+			setBody( saved.body );
+			tagDesc.textContent = tagDescDefault;
+			releaseFocus( modal );
+			trigger.focus();
+		}
+
+		function schedulePreview() {
+			if ( modal.hidden ) {
+				return;
+			}
+
+			clearTimeout( previewTimer );
+			previewTimer = setTimeout( refreshPreview, parseInt( config.previewDelay, 10 ) || 400 );
+		}
+
+		function refreshPreview() {
+			var seq = ++previewSeq;
+
+			previewWrap.classList.add( 'iftp-fm-email-preview__frame--loading' );
+
+			post( 'iftp_fm_preview_payment_email', { subject: subjectInput.value, body: getBody() } )
+				.then( function ( response ) {
+					if ( ! response.success ) {
+						throw ( response.data && response.data.message ) || '';
+					}
+
+					return response.data;
+				} )
+				.then(
+					function ( data ) {
+						// A slower, older preview mustn't land on top of a newer one.
+						if ( seq !== previewSeq ) {
+							return;
+						}
+
+						previewSubject.textContent = data.subject;
+						previewFrame.srcdoc = data.html;
+						previewWrap.classList.remove( 'iftp-fm-email-preview__frame--loading' );
+					},
+					function ( message ) {
+						if ( seq !== previewSeq ) {
+							return;
+						}
+
+						previewSubject.textContent = 'string' === typeof message && message ? message : iftpFmEntries.i18n.emailPreviewError;
+						previewWrap.classList.remove( 'iftp-fm-email-preview__frame--loading' );
+					}
+				);
+		}
+
+		function insertTag( tag ) {
+			if ( 'subject' === tagTarget ) {
+				subjectInput.setRangeText( tag, subjectInput.selectionStart, subjectInput.selectionEnd, 'end' );
+				subjectInput.focus();
+				schedulePreview();
+				return;
+			}
+
+			insertIntoBody( tag );
+		}
+
+		function insertIntoBody( text ) {
+			if ( editor ) {
+				editor.replaceSelection( text );
+				editor.focus();
+				return;
+			}
+
+			bodyArea.setRangeText( text, bodyArea.selectionStart, bodyArea.selectionEnd, 'end' );
+			bodyArea.focus();
+			schedulePreview();
+		}
+
+		// Built through the DOM, so the URL and alt text come out properly escaped.
+		function imageHtml( attachment ) {
+			var size = ( attachment.sizes && ( attachment.sizes.large || attachment.sizes.full ) ) || attachment;
+			var img = document.createElement( 'img' );
+
+			img.setAttribute( 'src', size.url );
+			img.setAttribute( 'alt', attachment.alt || attachment.title || '' );
+
+			if ( size.width ) {
+				img.setAttribute( 'width', String( Math.min( parseInt( size.width, 10 ), IMAGE_MAX_WIDTH ) ) );
+			}
+
+			img.setAttribute( 'style', 'display:block;max-width:100%;height:auto;border:0;' );
+
+			return img.outerHTML;
+		}
+
+		function openMedia() {
+			if ( ! window.wp || ! window.wp.media ) {
+				return;
+			}
+
+			if ( ! mediaFrame ) {
+				mediaFrame = window.wp.media( {
+					title: iftpFmEntries.i18n.emailMediaTitle,
+					button: { text: iftpFmEntries.i18n.emailMediaButton },
+					library: { type: 'image' },
+					multiple: false,
+				} );
+
+				mediaFrame.on( 'select', function () {
+					var attachment = mediaFrame.state().get( 'selection' ).first();
+
+					if ( attachment ) {
+						insertIntoBody( imageHtml( attachment.toJSON() ) );
+					}
+				} );
+			}
+
+			mediaFrame.open();
+		}
+
+		trigger.addEventListener( 'click', open );
+		modal.querySelector( '[data-iftp-email-cancel]' ).addEventListener( 'click', close );
+
+		if ( mediaBtn ) {
+			mediaBtn.hidden = ! window.wp || ! window.wp.media;
+			mediaBtn.addEventListener( 'click', openMedia );
+		}
+
+		modal.querySelector( '[data-iftp-email-overlay]' ).addEventListener( 'click', function () {
+			if ( ! isDirty() ) {
+				close();
+			}
+		} );
+
+		// Only Escapes from inside my modal: the Media Library sits on top and handles its own.
+		document.addEventListener( 'keydown', function ( event ) {
+			if ( 'Escape' === event.key && ! modal.hidden && modal.contains( event.target ) && ! isDirty() ) {
+				close();
+			}
+		} );
+
+		subjectInput.addEventListener( 'focus', function () {
+			tagTarget = 'subject';
+		} );
+		bodyArea.addEventListener( 'focus', function () {
+			tagTarget = 'body';
+		} );
+		subjectInput.addEventListener( 'input', schedulePreview );
+		bodyArea.addEventListener( 'input', schedulePreview );
+
+		modal.querySelectorAll( '[data-iftp-email-tag]' ).forEach( function ( tagBtn ) {
+			function describe() {
+				tagDesc.textContent = tagBtn.getAttribute( 'data-iftp-email-tag' ) + ' — ' + tagBtn.getAttribute( 'data-iftp-email-tag-help' );
+			}
+
+			function undescribe() {
+				tagDesc.textContent = tagDescDefault;
+			}
+
+			tagBtn.addEventListener( 'click', function () {
+				insertTag( tagBtn.getAttribute( 'data-iftp-email-tag' ) );
+			} );
+			tagBtn.addEventListener( 'mouseenter', describe );
+			tagBtn.addEventListener( 'focus', describe );
+			tagBtn.addEventListener( 'mouseleave', undescribe );
+			tagBtn.addEventListener( 'blur', undescribe );
+		} );
+
+		modal.querySelector( '[data-iftp-email-reset]' ).addEventListener( 'click', function () {
+			subjectInput.value = config.defaults.subject;
+			setBody( config.defaults.body );
+			errorEl.hidden = true;
+			schedulePreview();
+			showToast( iftpFmEntries.i18n.emailResetDone );
+		} );
+
+		form.addEventListener( 'submit', function ( event ) {
+			event.preventDefault();
+
+			submitBtn.disabled = true;
+			submitBtn.textContent = iftpFmEntries.i18n.emailSaving;
+			errorEl.hidden = true;
+
+			post( 'iftp_fm_save_payment_email', { subject: subjectInput.value, body: getBody() } )
+				.then( function ( response ) {
+					submitBtn.disabled = false;
+					submitBtn.textContent = submitLabel;
+
+					if ( ! response.success ) {
+						showError( ( response.data && response.data.message ) || iftpFmEntries.i18n.emailSaveError );
+						return;
+					}
+
+					// What was stored, after sanitizing, so reopening shows exactly what goes out.
+					saved = { subject: response.data.subject, body: response.data.body };
+					close();
+					showToast( response.data.message );
+				} )
+				.catch( function () {
+					submitBtn.disabled = false;
+					submitBtn.textContent = submitLabel;
+					showError( iftpFmEntries.i18n.emailSaveError );
 				} );
 		} );
 	}

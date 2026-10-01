@@ -33,7 +33,7 @@ class PaymentEntriesPage {
 	private const PER_PAGE_OPTIONS = array( 10, 25, 50, 100, 250 );
 	private const PER_PAGE_MIN     = 1;
 	private const PER_PAGE_MAX     = 250;
-	private const NONCE_ACTION     = 'iftp_fm_entries';
+	public const NONCE_ACTION      = 'iftp_fm_entries';
 	private const EXPORT_ACTION    = 'iftp_fm_export';
 	private const HIDDEN_COLS_META = 'iftp_fm_entries_hidden_cols';
 	private const COL_ORDER_META   = 'iftp_fm_entries_col_order';
@@ -113,14 +113,22 @@ class PaymentEntriesPage {
 	private SettingsRepository $settings;
 
 	/**
+	 * The payment email editor behind the masthead's settings button.
+	 *
+	 * @var PaymentEmailSettings
+	 */
+	private PaymentEmailSettings $email_settings;
+
+	/**
 	 * Sets up the page.
 	 *
 	 * @param TransactionStore|null   $transactions Transactions storage; a fresh instance is used when omitted.
 	 * @param SettingsRepository|null $settings     Settings storage.
 	 */
 	public function __construct( ?TransactionStore $transactions = null, ?SettingsRepository $settings = null ) {
-		$this->transactions = $transactions ?? new TransactionStore();
-		$this->settings     = $settings ?? new SettingsRepository();
+		$this->transactions   = $transactions ?? new TransactionStore();
+		$this->settings       = $settings ?? new SettingsRepository();
+		$this->email_settings = new PaymentEmailSettings( $this->settings );
 	}
 
 	/**
@@ -137,6 +145,8 @@ class PaymentEntriesPage {
 		add_action( 'wp_ajax_iftp_fm_resend_payment_email', array( $this, 'ajax_resend_payment_email' ) );
 		add_action( 'wp_ajax_iftp_fm_send_payment_emails', array( $this, 'ajax_send_payment_emails' ) );
 		add_action( 'admin_post_' . self::EXPORT_ACTION, array( $this, 'handle_export' ) );
+
+		$this->email_settings->register();
 	}
 
 	/**
@@ -196,8 +206,15 @@ class PaymentEntriesPage {
 		$entries_js  = 'assets/js/entries.js';
 		$restore_js  = 'assets/js/entries-restore.js';
 
+		$email_settings = $this->email_settings->enqueue();
+		$entries_deps   = array( Plugin::METHOD_LOGOS_HANDLE );
+
+		if ( false !== $email_settings['editor'] ) {
+			$entries_deps[] = 'code-editor';
+		}
+
 		wp_enqueue_style( 'iftp-fm-entries', IFTP_FM_URL . $entries_css, array(), (string) filemtime( IFTP_FM_PATH . $entries_css ) );
-		wp_enqueue_script( 'iftp-fm-entries', IFTP_FM_URL . $entries_js, array( Plugin::METHOD_LOGOS_HANDLE ), (string) filemtime( IFTP_FM_PATH . $entries_js ), true );
+		wp_enqueue_script( 'iftp-fm-entries', IFTP_FM_URL . $entries_js, $entries_deps, (string) filemtime( IFTP_FM_PATH . $entries_js ), true );
 
 		// Head, not footer — it may redirect to the saved view, and I don't want the default one flashing first.
 		wp_enqueue_script( 'iftp-fm-entries-restore', IFTP_FM_URL . $restore_js, array(), (string) filemtime( IFTP_FM_PATH . $restore_js ), false );
@@ -232,6 +249,7 @@ class PaymentEntriesPage {
 				'defaultColumnOrder' => self::HIDEABLE_COLUMNS,
 				'bulkChunkSize'      => self::BULK_CHUNK_SIZE,
 				'emailChunkSize'     => self::EMAIL_CHUNK_SIZE,
+				'emailSettings'      => $email_settings,
 				// Same separator as number_format_i18n(), so counts JS writes match the ones PHP rendered.
 				// Decoded, since some locales store it as "&nbsp;" and JS writes textContent.
 				'numberFormat'       => array(
@@ -294,6 +312,12 @@ class PaymentEntriesPage {
 					'columnsReset'          => __( 'Columns reset to the default order, all shown.', 'ifthenpay-payments-for-forminator' ),
 					/* translators: %s: number of selected entries */
 					'bulkSelectedCount'     => __( '%s selected', 'ifthenpay-payments-for-forminator' ),
+					'emailSaving'           => __( 'Saving…', 'ifthenpay-payments-for-forminator' ),
+					'emailSaveError'        => __( 'Could not save the payment email. Please try again.', 'ifthenpay-payments-for-forminator' ),
+					'emailPreviewError'     => __( 'Could not refresh the preview.', 'ifthenpay-payments-for-forminator' ),
+					'emailResetDone'        => __( 'Default template restored. Save to keep it.', 'ifthenpay-payments-for-forminator' ),
+					'emailMediaTitle'       => __( 'Choose an image for the email', 'ifthenpay-payments-for-forminator' ),
+					'emailMediaButton'      => __( 'Insert image', 'ifthenpay-payments-for-forminator' ),
 				),
 			)
 		);
@@ -530,8 +554,10 @@ class PaymentEntriesPage {
 				'payment_url'    => $payment_url,
 				'customer_name'  => (string) $record['customer_name'],
 				'customer_email' => (string) $record['customer_email'],
+				'form_id'        => (int) $record['form_id'],
 			),
-			$this->transactions->entry_data_pairs( $record )
+			$this->transactions->entry_data_pairs( $record ),
+			$this->settings
 		);
 
 		return $sent ? self::EMAIL_SENT : self::EMAIL_MAIL_FAILED;
@@ -886,10 +912,13 @@ class PaymentEntriesPage {
 					</div>
 				</div>
 
-				<button type="button" class="iftp-fm-btn iftp-fm-btn--inverse iftp-fm-new-entry-trigger" data-iftp-new-entry-trigger>
-					<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
-					<?php esc_html_e( 'New payment', 'ifthenpay-payments-for-forminator' ); ?>
-				</button>
+				<div class="iftp-fm-entries__masthead-actions">
+					<button type="button" class="iftp-fm-btn iftp-fm-btn--inverse iftp-fm-new-entry-trigger" data-iftp-new-entry-trigger>
+						<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+						<?php esc_html_e( 'New payment', 'ifthenpay-payments-for-forminator' ); ?>
+					</button>
+					<?php $this->email_settings->render_trigger(); ?>
+				</div>
 			</header>
 			<hr class="wp-header-end" />
 
@@ -1170,6 +1199,7 @@ class PaymentEntriesPage {
 
 			<?php $this->render_confirm_modal(); ?>
 			<?php $this->render_create_entry_modal(); ?>
+			<?php $this->email_settings->render_modal(); ?>
 			<?php $this->render_toast(); ?>
 			<?php $this->render_scroll_to_top_button(); ?>
 		</div>
