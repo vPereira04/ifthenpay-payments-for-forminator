@@ -52,7 +52,7 @@ class GatewaySync {
 	 * @param string $backoffice_key The Backoffice Key to connect.
 	 */
 	public function connect( string $backoffice_key ): bool {
-		$rows = $this->client->get_gateway_keys( $backoffice_key );
+		$rows = $this->client->get_gateway_keys( $backoffice_key, true );
 
 		if ( array() === $rows ) {
 			return false;
@@ -127,7 +127,7 @@ class GatewaySync {
 		}
 
 		foreach ( $this->settings->get_methods() as $method ) {
-			if ( ! array_key_exists( 'logo', $method ) || ! array_key_exists( 'logo_dark', $method ) || ! array_key_exists( 'visible', $method ) || '' === ( $method['alias'] ?? '' ) ) {
+			if ( ! array_key_exists( 'logo', $method ) || ! array_key_exists( 'logo_dark', $method ) || ! array_key_exists( 'visible', $method ) || '' === $method['alias'] ) {
 				return true;
 			}
 		}

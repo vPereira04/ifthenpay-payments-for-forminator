@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace Ifthenpay\Forminator\Api\Webhook;
 
 use Ifthenpay\Forminator\Api\IfthenpayClient;
+use Ifthenpay\Forminator\Cron\ExpiredPaymentsCron;
+use Ifthenpay\Forminator\Plugin;
 use Ifthenpay\Forminator\Repository\SettingsRepository;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -57,6 +59,9 @@ class WebhookRegistrar {
 	 */
 	public function register(): void {
 		add_action( 'admin_init', array( $this, 'maybe_resync' ) );
+
+		// The daily sweep catches drift too, for when no admin opens our screens after a migration.
+		add_action( ExpiredPaymentsCron::HOOK, array( $this, 'resync_if_drifted' ) );
 	}
 
 	/**
@@ -93,15 +98,29 @@ class WebhookRegistrar {
 	}
 
 	/**
-	 * Re-registers the callback when the URL no longer matches the one ifthenpay
-	 * accepted. Just a hash compare on the happy path.
+	 * Runs the drift check on Forminator's screens and ours, not on every wp-admin page.
 	 */
 	public function maybe_resync(): void {
 		// The settings AJAX handlers register on their own, so I skip them here.
-		if ( wp_doing_ajax() || ! current_user_can( forminator_get_admin_cap() ) ) {
+		if ( wp_doing_ajax() || ! current_user_can( Plugin::admin_cap() ) ) {
 			return;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- only picks which screens run the check.
+		$page = sanitize_key( wp_unslash( $_GET['page'] ?? '' ) );
+
+		if ( 0 !== strpos( $page, 'forminator' ) && 0 !== strpos( $page, 'iftp-fm' ) ) {
+			return;
+		}
+
+		$this->resync_if_drifted();
+	}
+
+	/**
+	 * Re-registers the callback when the URL no longer matches the one ifthenpay
+	 * accepted. Just a hash compare on the happy path.
+	 */
+	public function resync_if_drifted(): void {
 		$gateway_key = $this->settings->get_gateway_key();
 
 		if ( '' === $gateway_key ) {

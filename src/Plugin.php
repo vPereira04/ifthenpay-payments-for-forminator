@@ -70,21 +70,48 @@ class Plugin {
 
 		add_filter( 'forminator_fields', array( $this, 'register_field' ) );
 
-		( new ConnectSettings() )->register();
-		( new GatewaySettingsPage() )->register();
-		( new FieldSettingsModal() )->register();
-		( new PaymentEntriesPage() )->register();
-		( new AjaxController() )->register();
-		( new PaymentController() )->register();
-		( new StatusController() )->register();
+		// The webhook lands on the frontend, so it's always on.
 		( new WebhookController() )->register();
-		( new WebhookRegistrar() )->register();
-		( new ExpiredPaymentsCron() )->register();
-		( new PersonalData() )->register();
+
+		// Everything else only builds where it can run. is_admin() covers admin-ajax, so the form's AJAX is here too.
+		if ( is_admin() ) {
+			( new ConnectSettings() )->register();
+			( new GatewaySettingsPage() )->register();
+			( new FieldSettingsModal() )->register();
+			( new PaymentEntriesPage() )->register();
+			( new AjaxController() )->register();
+			( new PaymentController() )->register();
+			( new StatusController() )->register();
+			( new PersonalData() )->register();
+		}
+
+		if ( is_admin() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+			( new WebhookRegistrar() )->register();
+			( new ExpiredPaymentsCron() )->register();
+		}
 
 		add_action( 'init', array( $this, 'register_shared_assets' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'maybe_enqueue_for_return' ) );
 		add_action( 'forminator_custom_forms_enqueue_scripts', array( $this, 'maybe_enqueue_for_form' ) );
+	}
+
+	/**
+	 * The capability Forminator gates its admin screens with. I fall back to manage_options if its helper ever goes away.
+	 */
+	public static function admin_cap(): string {
+		return function_exists( 'forminator_get_admin_cap' ) ? (string) forminator_get_admin_cap() : 'manage_options';
+	}
+
+	/**
+	 * The ?ver= for one of our assets. While debugging I use its mtime, so edits show without a version bump.
+	 *
+	 * @param string $relative Path from the plugin root, e.g. `assets/js/admin.js`.
+	 */
+	public static function asset_version( string $relative ): string {
+		$debug = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) || ( defined( 'WP_DEBUG' ) && WP_DEBUG );
+		$path  = IFTP_FM_PATH . $relative;
+
+		return $debug && file_exists( $path ) ? (string) filemtime( $path ) : IFTP_FM_VERSION;
 	}
 
 	/**
@@ -93,7 +120,7 @@ class Plugin {
 	public function register_shared_assets(): void {
 		$logos_js = 'assets/js/method-logos.js';
 
-		wp_register_script( self::METHOD_LOGOS_HANDLE, IFTP_FM_URL . $logos_js, array(), (string) filemtime( IFTP_FM_PATH . $logos_js ), true );
+		wp_register_script( self::METHOD_LOGOS_HANDLE, IFTP_FM_URL . $logos_js, array(), self::asset_version( $logos_js ), true );
 	}
 
 	/**
@@ -138,12 +165,12 @@ class Plugin {
 			return;
 		}
 
-		wp_enqueue_style( 'iftp-fm-frontend', IFTP_FM_URL . 'assets/css/frontend.css', array(), IFTP_FM_VERSION );
-		wp_enqueue_script( 'iftp-fm-frontend', IFTP_FM_URL . 'assets/js/frontend.js', array( 'jquery', self::METHOD_LOGOS_HANDLE ), IFTP_FM_VERSION, true );
+		wp_enqueue_style( 'iftp-fm-frontend', IFTP_FM_URL . 'assets/css/frontend.css', array(), self::asset_version( 'assets/css/frontend.css' ) );
+		wp_enqueue_script( 'iftp-fm-frontend', IFTP_FM_URL . 'assets/js/frontend.js', array( 'jquery', self::METHOD_LOGOS_HANDLE ), self::asset_version( 'assets/js/frontend.js' ), true );
 
 		$settings = new SettingsRepository();
-		$context  = $this->resolve_return_context();
-		$record   = null !== $context ? ( new TransactionStore() )->get( $context['ref'] ) : null;
+		$record   = null;
+		$context  = $this->resolve_return_context( $record );
 
 		wp_localize_script(
 			'iftp-fm-frontend',
@@ -164,31 +191,36 @@ class Plugin {
 					'newTab'      => __( '(opens in a new tab)', 'ifthenpay-payments-for-forminator' ),
 				),
 				'titles'      => array(
-					'paid'      => $this->status_title( 'paid' ),
-					'pending'   => $this->status_title( 'pending' ),
-					'failed'    => $this->status_title( 'failed' ),
-					'cancelled' => $this->status_title( 'cancelled' ),
+					'paid'      => self::status_title( 'paid', $settings ),
+					'pending'   => self::status_title( 'pending', $settings ),
+					'failed'    => self::status_title( 'failed', $settings ),
+					'cancelled' => self::status_title( 'cancelled', $settings ),
 				),
 				'messages'    => array(
-					'paid'      => $this->status_message( 'paid' ),
-					'pending'   => $this->status_message( 'pending' ),
-					'failed'    => $this->status_message( 'failed' ),
-					'cancelled' => $this->status_message( 'cancelled' ),
+					'paid'      => self::status_message( 'paid', $settings ),
+					'pending'   => self::status_message( 'pending', $settings ),
+					'failed'    => self::status_message( 'failed', $settings ),
+					'cancelled' => self::status_message( 'cancelled', $settings ),
 				),
-				'paidFields'  => self::paid_fields( $record ),
+				'paidFields'  => self::paid_fields( $record, $settings ),
 			)
 		);
 	}
 
 	/**
 	 * Resolves ifthenpay's return redirect against the stored transaction, or null when this isn't one.
+	 * I hand the row back through $record too, so the caller doesn't read it a second time.
 	 *
+	 * @param Transaction|null $record Set to the transaction row when the redirect checks out.
+	 * @param-out Transaction|null $record
 	 * @return array{ref: string, status: string, transactionId: string}|null
 	 */
-	private function resolve_return_context(): ?array {
+	private function resolve_return_context( ?array &$record ): ?array {
+		$record = null;
+
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- ifthenpay's redirect can't carry a nonce; the signature below authenticates it instead.
 		$query_status = sanitize_text_field( wp_unslash( $_GET['iftp_fm_pay'] ?? '' ) );
-		$ref          = sanitize_text_field( wp_unslash( $_GET['ref'] ?? '' ) );
+		$ref          = sanitize_text_field( wp_unslash( $_GET[ PaymentController::RETURN_REF ] ?? '' ) );
 		$signature    = sanitize_text_field( wp_unslash( $_GET[ PaymentController::RETURN_SIG ] ?? '' ) );
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
@@ -221,17 +253,18 @@ class Plugin {
 			'ref'           => $ref,
 			'status'        => $status,
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- signed return URL, verified above.
-			'transactionId' => 'success' === $query_status ? sanitize_text_field( wp_unslash( $_GET['transaction_id'] ?? '' ) ) : '',
+			'transactionId' => 'success' === $query_status ? sanitize_text_field( wp_unslash( $_GET[ PaymentController::RETURN_TXN ] ?? '' ) ) : '',
 		);
 	}
 
 	/**
 	 * The confirmation message to show for a status: the admin-configured one if set, else the default.
 	 *
-	 * @param string $status One of TransactionStore's STATUS_* constants.
+	 * @param string                  $status   One of TransactionStore's STATUS_* constants.
+	 * @param SettingsRepository|null $settings Settings storage, when the caller already has one.
 	 */
-	public static function status_message( string $status ): string {
-		$configured = ( new SettingsRepository() )->get_confirmation_message( $status );
+	public static function status_message( string $status, ?SettingsRepository $settings = null ): string {
+		$configured = ( $settings ?? new SettingsRepository() )->get_confirmation_message( $status );
 
 		return '' !== $configured ? $configured : self::default_status_message( $status );
 	}
@@ -239,10 +272,11 @@ class Plugin {
 	/**
 	 * The confirmation title to show for a status: the admin-configured one if set, else the default.
 	 *
-	 * @param string $status One of TransactionStore's STATUS_* constants.
+	 * @param string                  $status   One of TransactionStore's STATUS_* constants.
+	 * @param SettingsRepository|null $settings Settings storage, when the caller already has one.
 	 */
-	public static function status_title( string $status ): string {
-		$configured = ( new SettingsRepository() )->get_confirmation_title( $status );
+	public static function status_title( string $status, ?SettingsRepository $settings = null ): string {
+		$configured = ( $settings ?? new SettingsRepository() )->get_confirmation_title( $status );
 
 		return '' !== $configured ? $configured : self::default_status_title( $status );
 	}
@@ -250,11 +284,12 @@ class Plugin {
 	/**
 	 * The submitted values for the paid popup, when that setting is on.
 	 *
-	 * @param Transaction|null $record The transaction row, when known.
+	 * @param Transaction|null   $record   The transaction row, when known.
+	 * @param SettingsRepository $settings Settings storage.
 	 * @return array<int, array{label: string, value: string}>
 	 */
-	private static function paid_fields( ?array $record ): array {
-		if ( null === $record || ! ( new SettingsRepository() )->get_show_entry_data() ) {
+	private static function paid_fields( ?array $record, SettingsRepository $settings ): array {
+		if ( null === $record || ! $settings->get_show_entry_data() ) {
 			return array();
 		}
 

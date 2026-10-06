@@ -11,6 +11,7 @@ namespace Ifthenpay\Forminator\Admin;
 
 use Ifthenpay\Forminator\Mail\PaymentEmailTemplate;
 use Ifthenpay\Forminator\Mail\PaymentRequestEmail;
+use Ifthenpay\Forminator\Plugin;
 use Ifthenpay\Forminator\Repository\SettingsRepository;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -267,7 +268,7 @@ final class PaymentEmailSettings {
 		wp_send_json_success(
 			array(
 				'subject' => $email['subject'],
-				'html'    => '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;">' . $email['body'] . '</body></html>',
+				'html'    => '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body marginwidth="0" marginheight="0">' . $email['body'] . '</body></html>',
 			)
 		);
 	}
@@ -330,12 +331,12 @@ final class PaymentEmailSettings {
 	}
 
 	/**
-	 * Same nonce and capability as the rest of Payment Entries.
+	 * Same nonce, capability and connection check as the rest of Payment Entries.
 	 */
 	private function guard(): void {
 		check_ajax_referer( PaymentEntriesPage::NONCE_ACTION, 'nonce' );
 
-		if ( ! current_user_can( forminator_get_admin_cap() ) ) {
+		if ( ! current_user_can( Plugin::admin_cap() ) || ! $this->settings->is_connected() ) {
 			wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'ifthenpay-payments-for-forminator' ) ), 403 );
 		}
 	}

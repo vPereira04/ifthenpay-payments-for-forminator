@@ -14,6 +14,7 @@ use Ifthenpay\Forminator\Forminator\TransactionStore;
 use Forminator_CForm_Front_Action;
 use Forminator_CForm_Front_Mail;
 use Forminator_Form_Entry_Model;
+use Forminator_Form_Model;
 use Forminator_Front_Action;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -205,7 +206,14 @@ class WebhookController {
 	 * @param int $entry_id The Forminator entry just created.
 	 */
 	private function send_notifications( int $entry_id ): void {
-		if ( ! class_exists( Forminator_CForm_Front_Mail::class ) || ! function_exists( 'recreate_prepared_data' ) ) {
+		if (
+			! class_exists( Forminator_CForm_Front_Mail::class )
+			|| ! class_exists( Forminator_Form_Entry_Model::class )
+			|| ! class_exists( Forminator_Form_Model::class )
+			|| ! class_exists( Forminator_Front_Action::class )
+			|| ! class_exists( Forminator_CForm_Front_Action::class )
+			|| ! function_exists( 'recreate_prepared_data' )
+		) {
 			return;
 		}
 

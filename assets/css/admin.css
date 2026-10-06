@@ -9,15 +9,20 @@
 	font-display: block;
 }
 
-.forminator-icon-ifthenpay::before {
+/* My own prefix, so Forminator's [class*=forminator-icon-] !important font catch-all never matches it.
+   I bring the glyph basics that catch-all used to give it. */
+.iftp-fm-icon::before {
+	display: inline-block;
+	font-family: ifthenpay-icons;
+	font-size: 1em;
+	font-style: normal;
+	font-weight: 100;
+	line-height: 1;
+	text-transform: none;
+	color: #888;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 	content: "\e002";
-}
-
-/* Forminator's and SUI's !important icon-font catch-alls also match this, both at (0,2,1).
-   Tripling the class beats either without chasing the version-scoped SUI wrapper. */
-.forminator-icon-ifthenpay.forminator-icon-ifthenpay.forminator-icon-ifthenpay::before {
-	font-family: ifthenpay-icons !important;
-	font-weight: 100 !important;
 }
 
 /* Hidden until SUI's dialog JS adds .sui-active. I don't lean on Forminator's .sui-<version> .sui-modal
@@ -321,7 +326,7 @@
 	color: #333;
 }
 
-#iftp-fm-field-modal-wrap .sui-box-title .forminator-icon-ifthenpay {
+#iftp-fm-field-modal-wrap .sui-box-title .iftp-fm-icon {
 	font-size: 16px;
 	color: #17a8e3;
 }

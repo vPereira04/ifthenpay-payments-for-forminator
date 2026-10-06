@@ -33,12 +33,16 @@ class PaymentController {
 	public const NONCE_ACTION = 'iftp_fm_payment';
 	public const RETURN_SIG   = 'iftp_fm_sig';
 
+	// Prefixed, since a bare `ref` is what affiliate plugins read. Not REF_VAR either: that one's a public query var.
+	public const RETURN_REF = 'iftp_fm_txn_ref';
+	public const RETURN_TXN = 'iftp_fm_txn_id';
+
 	/**
 	 * Args we or ifthenpay stamp on the return URL. I strip them from the
 	 * incoming one so a second payment doesn't stack them. Keep in sync with
 	 * STALE_RETURN_ARGS in frontend.js.
 	 */
-	private const STALE_RETURN_ARGS = array( 'iftp_fm_pay', 'ref', self::RETURN_SIG, 'transaction_id', 'id', 'amount', 'requestId', 'sk', 'brand', 'pan', 'error' );
+	private const STALE_RETURN_ARGS = array( 'iftp_fm_pay', self::RETURN_REF, self::RETURN_SIG, self::RETURN_TXN, 'id', 'amount', 'requestId', 'sk', 'brand', 'pan', 'error' );
 
 	/**
 	 * Caps on what an anonymous request can put into the snapshot.
@@ -321,12 +325,12 @@ class PaymentController {
 	private function build_return_url( string $status, string $ref, string $base_url ): string {
 		$args = array(
 			'iftp_fm_pay'    => $status,
-			'ref'            => $ref,
+			self::RETURN_REF => $ref,
 			self::RETURN_SIG => self::return_signature( $ref, $status ),
 		);
 
 		if ( 'success' === $status ) {
-			$args['transaction_id'] = '[TRANSACTIONID]';
+			$args[ self::RETURN_TXN ] = '[TRANSACTIONID]';
 		}
 
 		return add_query_arg( $args, $base_url );

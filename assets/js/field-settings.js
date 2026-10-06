@@ -41,7 +41,7 @@
 
 	// Forminator's builder takes field icons from its own client-side registry, so ours renders a bare <i>.
 	// I set the class myself and keep watching, because React re-renders both spots.
-	var FIELD_ICON_CLASS = 'sui-icon forminator-icon-ifthenpay';
+	var FIELD_ICON_CLASS = 'sui-icon iftp-fm-icon';
 
 	function applyFieldIcon() {
 		var canvasIcon = document.querySelector( '.fui-builder-field-block[data-field="ifthenpay"] .fui-field--icon i' );

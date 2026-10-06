@@ -9,7 +9,7 @@
 
 	// Must match PaymentController::STALE_RETURN_ARGS. I strip these on landing, so a payment started from this
 	// page doesn't send them back in its return_url, where they'd stack with ifthenpay's own copy.
-	var STALE_RETURN_ARGS = [ 'iftp_fm_pay', 'ref', 'iftp_fm_sig', 'transaction_id', 'id', 'amount', 'requestId', 'sk', 'brand', 'pan', 'error' ];
+	var STALE_RETURN_ARGS = [ 'iftp_fm_pay', 'iftp_fm_txn_ref', 'iftp_fm_sig', 'iftp_fm_txn_id', 'id', 'amount', 'requestId', 'sk', 'brand', 'pan', 'error' ];
 
 	( function cleanReturnUrl() {
 		if ( ! window.history || ! window.history.replaceState ) {

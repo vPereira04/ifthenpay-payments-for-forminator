@@ -64,7 +64,7 @@ class IfthenpayField extends Forminator_Field {
 	 *
 	 * @var string
 	 */
-	public $icon = 'sui-icon forminator-icon-ifthenpay';
+	public $icon = 'sui-icon iftp-fm-icon';
 
 	/**
 	 * Unused Forminator_Field contract property — connection status is read from SettingsRepository instead.
@@ -74,10 +74,26 @@ class IfthenpayField extends Forminator_Field {
 	public $is_connected = false;
 
 	/**
+	 * Our settings storage. Not `$settings`, which Forminator_Field already uses.
+	 *
+	 * @var SettingsRepository
+	 */
+	private SettingsRepository $repository;
+
+	/**
+	 * The methods with a logo to show, worked out once per request however many fields render.
+	 *
+	 * @var array<int, array{entity: string, alias: string, logo?: string, logo_dark?: string, enabled: bool, account: string, position: int, visible?: bool}>|null
+	 */
+	private ?array $logo_methods = null;
+
+	/**
 	 * Sets the builder-facing field label.
 	 */
 	public function __construct() {
 		parent::__construct();
+
+		$this->repository = new SettingsRepository();
 
 		$this->name = esc_html__( 'ifthenpay', 'ifthenpay-payments-for-forminator' );
 	}
@@ -111,8 +127,6 @@ class IfthenpayField extends Forminator_Field {
 	 * @param mixed                $views_obj Forminator_Render_Form object.
 	 */
 	public function markup( $field, $views_obj ): string {
-		$this->field = $field;
-
 		$element_name          = self::get_property( 'element_id', $field );
 		$amount_type           = self::get_property( 'amount_type', $field, 'fixed' );
 		$amount                = self::get_property( 'amount', $field, '0' );
@@ -163,13 +177,7 @@ class IfthenpayField extends Forminator_Field {
 	 * @param bool $hide_methods Whether to omit the payment method icons.
 	 */
 	private function methods_visual_markup( bool $hide_icon, bool $hide_methods ): string {
-		$settings = new SettingsRepository();
-		$methods  = array_filter(
-			$settings->get_methods(),
-			static function ( array $method ): bool {
-				return ! empty( $method['enabled'] ) && '' !== $method['account'] && '' !== ( $method['logo'] ?? '' );
-			}
-		);
+		$methods = $this->logo_methods();
 
 		$show_icon    = ! $hide_icon;
 		$show_methods = ! $hide_methods && array() !== $methods;
@@ -187,8 +195,8 @@ class IfthenpayField extends Forminator_Field {
 				$logo_dark     = (string) ( $method['logo_dark'] ?? '' );
 				$methods_html .= sprintf(
 					'<img class="iftp-fm-field-method-icon" src="%s" alt="%s"%s loading="lazy" />',
-					esc_url( $method['logo'] ),
-					esc_attr( $method['alias'] ?? '' ),
+					esc_url( $method['logo'] ?? '' ),
+					esc_attr( $method['alias'] ),
 					'' !== $logo_dark ? ' data-logo-dark="' . esc_url( $logo_dark ) . '"' : ''
 				);
 			}
@@ -197,7 +205,28 @@ class IfthenpayField extends Forminator_Field {
 		$divider_html = ( $show_icon && $show_methods ) ? '<span class="iftp-fm-field-divider" aria-hidden="true"></span>' : '';
 		$methods_span = $show_methods ? '<span class="iftp-fm-field-methods">' . $methods_html . '</span>' : '';
 
-		return '<div class="forminator-input iftp-fm-field-visual">' . $icon_html . $divider_html . $methods_span . '</div>';
+		// The flex row is its own element: Forminator's .forminator-input display rules go as high as an ID (Divi).
+		return '<div class="forminator-input iftp-fm-field-visual"><div class="iftp-fm-field-visual__row">' . $icon_html . $divider_html . $methods_span . '</div></div>';
+	}
+
+	/**
+	 * The enabled methods that have an account and a logo.
+	 *
+	 * @return array<int, array{entity: string, alias: string, logo?: string, logo_dark?: string, enabled: bool, account: string, position: int, visible?: bool}>
+	 */
+	private function logo_methods(): array {
+		if ( null === $this->logo_methods ) {
+			$this->logo_methods = array_values(
+				array_filter(
+					$this->repository->get_methods(),
+					static function ( array $method ): bool {
+						return ! empty( $method['enabled'] ) && '' !== $method['account'] && '' !== ( $method['logo'] ?? '' );
+					}
+				)
+			);
+		}
+
+		return $this->logo_methods;
 	}
 
 	/**
@@ -234,11 +263,9 @@ class IfthenpayField extends Forminator_Field {
 	 * @param array<string, mixed> $field Field.
 	 */
 	public function is_available( $field ): bool {
-		$settings = new SettingsRepository();
-
-		return $settings->is_connected()
-			&& '' !== $settings->get_gateway_key()
-			&& array() !== $settings->get_enabled_methods();
+		return $this->repository->is_connected()
+			&& '' !== $this->repository->get_gateway_key()
+			&& array() !== $this->repository->get_enabled_methods();
 	}
 
 	/**

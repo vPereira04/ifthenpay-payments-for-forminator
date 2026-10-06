@@ -6,6 +6,7 @@
  * Version: 1.0.0
  * Requires at least: 6.4
  * Requires PHP: 7.4
+ * Requires Plugins: forminator
  * Author: ifthenpay
  * Author URI: https://ifthenpay.com
  * License: GPLv2 or later
@@ -32,44 +33,52 @@ if ( file_exists( $iftp_fm_autoload ) ) {
 	require_once $iftp_fm_autoload;
 }
 
-add_action( 'plugins_loaded', 'iftp_fm_bootstrap' );
+// Boots once Forminator and our autoloader are both available. A closure, so I don't add a global function.
+add_action(
+	'plugins_loaded',
+	static function (): void {
+		if ( ! class_exists( 'Forminator' ) ) {
+			add_action(
+				'admin_notices',
+				static function (): void {
+					wp_admin_notice( esc_html__( 'ifthenpay | Payments for Forminator requires Forminator to be installed and active.', 'ifthenpay-payments-for-forminator' ), array( 'type' => 'warning' ) );
+				},
+				10,
+				0
+			);
 
-/**
- * Boots the plugin once Forminator and our autoloader are both available.
- */
-function iftp_fm_bootstrap(): void {
-	if ( ! class_exists( 'Forminator' ) ) {
-		add_action(
-			'admin_notices',
-			static function (): void {
-				wp_admin_notice( esc_html__( 'ifthenpay | Payments for Forminator requires Forminator to be installed and active.', 'ifthenpay-payments-for-forminator' ), array( 'type' => 'warning' ) );
-			},
-			10,
-			0
-		);
+			return;
+		}
 
-		return;
+		if ( ! class_exists( \Ifthenpay\Forminator\Plugin::class ) ) {
+			add_action(
+				'admin_notices',
+				static function (): void {
+					wp_admin_notice( esc_html__( 'ifthenpay | Payments for Forminator could not load its classes. Run "composer install" in the plugin folder.', 'ifthenpay-payments-for-forminator' ), array( 'type' => 'error' ) );
+				},
+				10,
+				0
+			);
+
+			return;
+		}
+
+		\Ifthenpay\Forminator\Plugin::instance()->boot();
 	}
-
-	if ( ! class_exists( \Ifthenpay\Forminator\Plugin::class ) ) {
-		add_action(
-			'admin_notices',
-			static function (): void {
-				wp_admin_notice( esc_html__( 'ifthenpay | Payments for Forminator could not load its classes. Run "composer install" in the plugin folder.', 'ifthenpay-payments-for-forminator' ), array( 'type' => 'error' ) );
-			},
-			10,
-			0
-		);
-
-		return;
-	}
-
-	\Ifthenpay\Forminator\Plugin::instance()->boot();
-}
+);
 
 register_activation_hook(
 	__FILE__,
 	static function (): void {
+		// WP 6.5+ already blocks this through "Requires Plugins"; 6.4 ignores that header, so I refuse here too.
+		if ( ! class_exists( 'Forminator' ) ) {
+			wp_die(
+				esc_html__( 'ifthenpay | Payments for Forminator requires Forminator. Install and activate Forminator first, then activate this plugin.', 'ifthenpay-payments-for-forminator' ),
+				esc_html__( 'Plugin dependency missing', 'ifthenpay-payments-for-forminator' ),
+				array( 'back_link' => true )
+			);
+		}
+
 		if ( ! class_exists( \Ifthenpay\Forminator\Plugin::class ) ) {
 			return;
 		}

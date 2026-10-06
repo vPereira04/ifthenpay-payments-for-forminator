@@ -27,9 +27,6 @@ class StatusController {
 
 	public const ACTION = 'iftp_fm_status';
 
-	// The popup polls every 3-10s; I ask ifthenpay at most once per window per transaction.
-	private const LIVE_CHECK_TTL = 30;
-
 	/**
 	 * Transactions storage.
 	 *
@@ -82,7 +79,7 @@ class StatusController {
 
 		// I keep it even if the payment never confirms: the webhook may resolve the
 		// row without ever seeing a transaction id, so this is the only chance to capture it.
-		if ( '' !== $transaction_id && '' === (string) ( $record['transaction_id'] ?? '' ) ) {
+		if ( '' !== $transaction_id && '' === $record['transaction_id'] ) {
 			$this->transactions->record_transaction_id( $ref, $transaction_id );
 			$record['transaction_id'] = $transaction_id;
 		}
@@ -106,23 +103,13 @@ class StatusController {
 	}
 
 	/**
-	 * The status ifthenpay reports for a transaction, lowercased, cached for LIVE_CHECK_TTL.
+	 * The status ifthenpay reports for a transaction, lowercased. The client throttles the call.
 	 *
 	 * @param string $transaction_id The ifthenpay transaction id.
 	 */
 	private function live_status( string $transaction_id ): string {
-		$cache_key = 'iftp_fm_live_' . md5( $transaction_id );
-		$cached    = get_transient( $cache_key );
+		$live = $this->client->get_transaction_status( $transaction_id );
 
-		if ( is_string( $cached ) ) {
-			return $cached;
-		}
-
-		$live   = $this->client->get_transaction_status( $transaction_id );
-		$status = strtolower( (string) ( $live['Status'] ?? '' ) );
-
-		set_transient( $cache_key, $status, self::LIVE_CHECK_TTL );
-
-		return $status;
+		return strtolower( (string) ( $live['Status'] ?? '' ) );
 	}
 }

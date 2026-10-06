@@ -211,13 +211,17 @@ class FieldSettingsStore {
 	/**
 	 * Drops conditions with no element_id or an unknown operator.
 	 *
-	 * @param array<int, array{element_id: string, rule: string, value: string}> $conditions Raw conditions from the request.
+	 * @param array<mixed> $conditions Raw conditions, from the request or the stored field.
 	 * @return array<int, array{element_id: string, rule: string, value: string}>
 	 */
 	private function valid_conditions( array $conditions ): array {
 		$valid = array();
 
 		foreach ( $conditions as $condition ) {
+			if ( ! is_array( $condition ) ) {
+				continue;
+			}
+
 			$element_id = (string) ( $condition['element_id'] ?? '' );
 			$rule       = (string) ( $condition['rule'] ?? '' );
 

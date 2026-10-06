@@ -35,6 +35,8 @@ class PaymentEntriesPage {
 	private const PER_PAGE_MAX     = 250;
 	public const NONCE_ACTION      = 'iftp_fm_entries';
 	private const EXPORT_ACTION    = 'iftp_fm_export';
+	private const EXPORT_CSV       = 'csv';
+	private const EXPORT_JSON      = 'json';
 	private const HIDDEN_COLS_META = 'iftp_fm_entries_hidden_cols';
 	private const COL_ORDER_META   = 'iftp_fm_entries_col_order';
 	private const PER_PAGE_META    = 'iftp_fm_entries_per_page';
@@ -153,12 +155,17 @@ class PaymentEntriesPage {
 	 * Registers a top-level menu page.
 	 *
 	 * Not under Forminator's menu: its `manage_forminator` cap handling doesn't fit a plain submenu entry.
+	 * Skipped until a Backoffice Key is connected, which also makes WP refuse the page URL.
 	 */
 	public function add_menu_page(): void {
+		if ( ! $this->settings->is_connected() ) {
+			return;
+		}
+
 		$hook = add_menu_page(
 			__( 'ifthenpay Entries', 'ifthenpay-payments-for-forminator' ),
 			__( 'ifthenpay Entries', 'ifthenpay-payments-for-forminator' ),
-			forminator_get_admin_cap(),
+			Plugin::admin_cap(),
 			self::PAGE_SLUG,
 			array( $this, 'render' ),
 			'dashicons-money-alt'
@@ -213,11 +220,11 @@ class PaymentEntriesPage {
 			$entries_deps[] = 'code-editor';
 		}
 
-		wp_enqueue_style( 'iftp-fm-entries', IFTP_FM_URL . $entries_css, array(), (string) filemtime( IFTP_FM_PATH . $entries_css ) );
-		wp_enqueue_script( 'iftp-fm-entries', IFTP_FM_URL . $entries_js, $entries_deps, (string) filemtime( IFTP_FM_PATH . $entries_js ), true );
+		wp_enqueue_style( 'iftp-fm-entries', IFTP_FM_URL . $entries_css, array(), Plugin::asset_version( $entries_css ) );
+		wp_enqueue_script( 'iftp-fm-entries', IFTP_FM_URL . $entries_js, $entries_deps, Plugin::asset_version( $entries_js ), true );
 
 		// Head, not footer — it may redirect to the saved view, and I don't want the default one flashing first.
-		wp_enqueue_script( 'iftp-fm-entries-restore', IFTP_FM_URL . $restore_js, array(), (string) filemtime( IFTP_FM_PATH . $restore_js ), false );
+		wp_enqueue_script( 'iftp-fm-entries-restore', IFTP_FM_URL . $restore_js, array(), Plugin::asset_version( $restore_js ), false );
 
 		global $wp_locale;
 
@@ -603,18 +610,21 @@ class PaymentEntriesPage {
 	}
 
 	/**
-	 * Admin-post: streams the current view (or just the selected refs) as a CSV download.
+	 * Admin-post: streams the current view (or just the selected refs) as a CSV or JSON download.
 	 */
 	public function handle_export(): void {
 		check_admin_referer( self::EXPORT_ACTION );
 
-		if ( ! current_user_can( forminator_get_admin_cap() ) ) {
+		if ( ! $this->can_access() ) {
 			wp_die( esc_html__( 'You are not allowed to do this.', 'ifthenpay-payments-for-forminator' ), '', array( 'response' => 403 ) );
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- check_admin_referer() verified the nonce; filters_from() sanitizes every key.
 		$view = $this->filters_from( $_REQUEST );
 		$refs = $this->refs_from_request();
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- check_admin_referer() verified the nonce.
+		$format = isset( $_REQUEST['format'] ) && self::EXPORT_JSON === sanitize_key( wp_unslash( $_REQUEST['format'] ) ) ? self::EXPORT_JSON : self::EXPORT_CSV;
 
 		$args = $this->store_filters( $view ) + array(
 			'status'  => $view['status'],
@@ -627,8 +637,8 @@ class PaymentEntriesPage {
 		}
 
 		nocache_headers();
-		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="ifthenpay-entries-' . wp_date( 'Y-m-d' ) . '.csv"' );
+		header( 'Content-Type: ' . ( self::EXPORT_JSON === $format ? 'application/json' : 'text/csv' ) . '; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="ifthenpay-entries-' . wp_date( 'Y-m-d' ) . '.' . $format . '"' );
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- streaming to the response body; WP_Filesystem has no stream API.
 		$out = fopen( 'php://output', 'w' );
@@ -637,8 +647,26 @@ class PaymentEntriesPage {
 			exit;
 		}
 
+		if ( self::EXPORT_JSON === $format ) {
+			$this->stream_json( $out, $args );
+		} else {
+			$this->stream_csv( $out, $args );
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- see fopen() above.
+		fclose( $out );
+		exit;
+	}
+
+	/**
+	 * Writes the matching rows as CSV, with a header row.
+	 *
+	 * @param resource             $out  The open php://output handle.
+	 * @param array<string, mixed> $args TransactionStore::iterate() filters.
+	 */
+	private function stream_csv( $out, array $args ): void {
 		// A BOM so Excel reads the file as UTF-8.
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- see fopen() above.
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- see handle_export()'s fopen().
 		fwrite( $out, "\xEF\xBB\xBF" );
 
 		$this->put_csv_row(
@@ -661,16 +689,15 @@ class PaymentEntriesPage {
 		);
 
 		foreach ( $this->transactions->iterate( $args ) as $record ) {
-			$form_id  = (int) $record['form_id'];
-			$entry_id = (int) ( $record['entry_id'] ?? 0 );
+			$entry_id = $record['entry_id'];
 
 			$this->put_csv_row(
 				$out,
 				array(
 					(string) $record['ref'],
-					0 === $form_id ? __( 'Ad Hoc', 'ifthenpay-payments-for-forminator' ) : html_entity_decode( wp_strip_all_tags( $this->form_title( $form_id ) ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
-					(string) ( $record['customer_name'] ?? '' ),
-					(string) ( $record['customer_email'] ?? '' ),
+					$this->export_form_label( (int) $record['form_id'] ),
+					$record['customer_name'],
+					$record['customer_email'],
 					(string) $record['pay_method'],
 					number_format( (float) $record['amount'], 2, '.', '' ),
 					$this->status_label( (string) $record['status'] ),
@@ -679,14 +706,73 @@ class PaymentEntriesPage {
 					(string) wp_date( 'Y-m-d H:i:s', (int) $record['updated_at'] ),
 					(string) $record['request_id'],
 					(string) $record['transaction_id'],
-					(string) ( $record['payment_url'] ?? '' ),
+					$record['payment_url'],
 				)
 			);
 		}
+	}
 
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- see fopen() above.
-		fclose( $out );
-		exit;
+	/**
+	 * Writes the matching rows as a JSON array, one object per line so big exports never sit in memory.
+	 *
+	 * @param resource             $out  The open php://output handle.
+	 * @param array<string, mixed> $args TransactionStore::iterate() filters.
+	 */
+	private function stream_json( $out, array $args ): void {
+		$first = true;
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- see handle_export()'s fopen().
+		fwrite( $out, '[' );
+
+		foreach ( $this->transactions->iterate( $args ) as $record ) {
+			$entry_id = $record['entry_id'];
+
+			// Stable English keys and raw values (status slug, ISO dates), since this is for machines.
+			$json = wp_json_encode(
+				array(
+					'reference'      => (string) $record['ref'],
+					'form_id'        => (int) $record['form_id'],
+					'form'           => $this->export_form_label( (int) $record['form_id'] ),
+					'customer_name'  => $record['customer_name'],
+					'customer_email' => $record['customer_email'],
+					'method'         => (string) $record['pay_method'],
+					'amount'         => round( (float) $record['amount'], 2 ),
+					'status'         => (string) $record['status'],
+					'status_label'   => $this->status_label( (string) $record['status'] ),
+					'entry_id'       => $entry_id > 0 ? $entry_id : null,
+					'created_at'     => (string) wp_date( 'c', (int) $record['created_at'] ),
+					'updated_at'     => (string) wp_date( 'c', (int) $record['updated_at'] ),
+					'request_id'     => (string) $record['request_id'],
+					'transaction_id' => (string) $record['transaction_id'],
+					'payment_url'    => $record['payment_url'],
+				),
+				JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+			);
+
+			if ( false === $json ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- see handle_export()'s fopen().
+			fwrite( $out, ( $first ? '' : ',' ) . "\n  " . $json );
+			$first = false;
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- see handle_export()'s fopen().
+		fwrite( $out, ( $first ? '' : "\n" ) . "]\n" );
+	}
+
+	/**
+	 * The plain-text form name for an export cell, or "Ad Hoc" for payments made outside a form.
+	 *
+	 * @param int $form_id The transaction's form ID (0 for ad hoc).
+	 */
+	private function export_form_label( int $form_id ): string {
+		if ( 0 === $form_id ) {
+			return __( 'Ad Hoc', 'ifthenpay-payments-for-forminator' );
+		}
+
+		return html_entity_decode( wp_strip_all_tags( $this->form_title( $form_id ) ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 	}
 
 	/**
@@ -709,14 +795,21 @@ class PaymentEntriesPage {
 	}
 
 	/**
-	 * Verifies the request nonce and the admin capability.
+	 * Verifies the request nonce, the admin capability and the connection.
 	 */
 	private function guard(): void {
 		check_ajax_referer( self::NONCE_ACTION, 'nonce' );
 
-		if ( ! current_user_can( forminator_get_admin_cap() ) ) {
+		if ( ! $this->can_access() ) {
 			wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'ifthenpay-payments-for-forminator' ) ), 403 );
 		}
+	}
+
+	/**
+	 * Whether the current user may use this screen: admin cap plus a connected Backoffice Key.
+	 */
+	private function can_access(): bool {
+		return current_user_can( Plugin::admin_cap() ) && $this->settings->is_connected();
 	}
 
 	/**
@@ -859,7 +952,7 @@ class PaymentEntriesPage {
 	 * Renders the full admin page.
 	 */
 	public function render(): void {
-		if ( ! current_user_can( forminator_get_admin_cap() ) ) {
+		if ( ! $this->can_access() ) {
 			return;
 		}
 
@@ -899,9 +992,8 @@ class PaymentEntriesPage {
 		$paged   = $result['paged'];
 		$summary = $this->transactions->status_summary( $shared_filters );
 
-		$export_url = $this->export_url( $filters );
 		?>
-		<div class="wrap iftp-fm-entries" data-iftp-hidden-cols="<?php echo esc_attr( implode( ' ', $hidden_cols ) ); ?>" data-iftp-col-order="<?php echo esc_attr( implode( ' ', $col_order ) ); ?>">
+		<div id="iftp-fm-entries" class="wrap iftp-fm-entries" data-iftp-hidden-cols="<?php echo esc_attr( implode( ' ', $hidden_cols ) ); ?>" data-iftp-col-order="<?php echo esc_attr( implode( ' ', $col_order ) ); ?>">
 			<header class="iftp-fm-entries__masthead">
 				<div class="iftp-fm-entries__masthead-brand">
 					<img class="iftp-fm-entries__logo" src="<?php echo esc_url( IFTP_FM_URL . 'assets/img/logo_ifthenpay_white.svg' ); ?>" alt="ifthenpay" width="94" height="24" />
@@ -979,7 +1071,8 @@ class PaymentEntriesPage {
 								<?php endforeach; ?>
 								<?php /* Shown by entries.js only while every selected entry is pending. */ ?>
 								<option value="email" data-iftp-bulk-email hidden disabled><?php esc_html_e( 'Send payment email', 'ifthenpay-payments-for-forminator' ); ?></option>
-								<option value="export"><?php esc_html_e( 'Export selected', 'ifthenpay-payments-for-forminator' ); ?></option>
+								<option value="export-csv"><?php esc_html_e( 'Export selected as CSV', 'ifthenpay-payments-for-forminator' ); ?></option>
+								<option value="export-json"><?php esc_html_e( 'Export selected as JSON', 'ifthenpay-payments-for-forminator' ); ?></option>
 								<?php /* Disabled by entries.js while every selected entry is paid. */ ?>
 								<option value="delete" data-iftp-bulk-delete><?php esc_html_e( 'Delete', 'ifthenpay-payments-for-forminator' ); ?></option>
 							</select>
@@ -1022,10 +1115,13 @@ class PaymentEntriesPage {
 								<p class="screen-reader-text" data-iftp-col-status role="status"></p>
 							</div>
 
-							<a class="iftp-fm-btn iftp-fm-btn--secondary iftp-fm-entries__tool iftp-fm-entries__export" href="<?php echo esc_url( $export_url ); ?>" title="<?php esc_attr_e( 'Export CSV', 'ifthenpay-payments-for-forminator' ); ?>">
-								<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 2.5v7.5M4.75 6.75 8 10l3.25-3.25M3 13.25h10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-								<span class="iftp-fm-entries__tool-label"><?php esc_html_e( 'Export CSV', 'ifthenpay-payments-for-forminator' ); ?></span>
-							</a>
+							<div class="iftp-fm-entries__export">
+								<button type="button" class="iftp-fm-btn iftp-fm-btn--secondary iftp-fm-entries__tool iftp-fm-entries__export-trigger" data-iftp-export-trigger aria-expanded="false" aria-controls="iftp-fm-export-menu" title="<?php esc_attr_e( 'Export', 'ifthenpay-payments-for-forminator' ); ?>">
+									<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 2.5v7.5M4.75 6.75 8 10l3.25-3.25M3 13.25h10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									<span class="iftp-fm-entries__tool-label"><?php esc_html_e( 'Export', 'ifthenpay-payments-for-forminator' ); ?></span>
+								</button>
+								<?php $this->render_export_menu( $filters ); ?>
+							</div>
 						</div>
 					</div>
 
@@ -1372,6 +1468,33 @@ class PaymentEntriesPage {
 	}
 
 	/**
+	 * The Export popover: one download link per format.
+	 *
+	 * @param array<string, mixed> $view See `current_filters()`.
+	 */
+	private function render_export_menu( array $view ): void {
+		$formats = array(
+			self::EXPORT_CSV  => array( __( 'CSV', 'ifthenpay-payments-for-forminator' ), __( 'For Excel or Google Sheets', 'ifthenpay-payments-for-forminator' ) ),
+			self::EXPORT_JSON => array( __( 'JSON', 'ifthenpay-payments-for-forminator' ), __( 'For developers and integrations', 'ifthenpay-payments-for-forminator' ) ),
+		);
+		?>
+		<div id="iftp-fm-export-menu" class="iftp-fm-export-menu" data-iftp-export-menu role="group" aria-labelledby="iftp-fm-export-menu-title" hidden>
+			<p id="iftp-fm-export-menu-title" class="iftp-fm-export-menu__title"><?php esc_html_e( 'Export this view as', 'ifthenpay-payments-for-forminator' ); ?></p>
+			<ul class="iftp-fm-export-menu__list">
+				<?php foreach ( $formats as $format => [ $label, $hint ] ) : ?>
+					<li>
+						<a class="iftp-fm-export-menu__option" href="<?php echo esc_url( $this->export_url( $view, $format ) ); ?>" data-iftp-export-option>
+							<span class="iftp-fm-export-menu__option-label"><?php echo esc_html( $label ); ?></span>
+							<span class="iftp-fm-export-menu__option-hint"><?php echo esc_html( $hint ); ?></span>
+						</a>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+		</div>
+		<?php
+	}
+
+	/**
 	 * The tbody contents for a page of entries, for the AJAX responses.
 	 *
 	 * @param array<int, array<string, mixed>> $slice The page of transaction rows to render.
@@ -1559,7 +1682,7 @@ class PaymentEntriesPage {
 				?>
 				<td data-col="customer" data-label="<?php echo esc_attr( $this->column_labels()['customer'] ); ?>">
 					<?php if ( '' === $customer_name && '' === $customer_email ) : ?>
-						&mdash;
+						<?php $this->print_empty_value( __( 'No customer', 'ifthenpay-payments-for-forminator' ) ); ?>
 					<?php else : ?>
 						<div class="iftp-fm-customer">
 							<?php if ( '' !== $customer_name ) : ?>
@@ -1637,7 +1760,7 @@ class PaymentEntriesPage {
 					<?php if ( '' !== $payment_url ) : ?>
 						<a href="<?php echo esc_url( $payment_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $payment_url ); ?></a>
 					<?php else : ?>
-						<span>&mdash;</span>
+						<span><?php $this->print_empty_value( __( 'No payment link', 'ifthenpay-payments-for-forminator' ) ); ?></span>
 					<?php endif; ?>
 				</div>
 				<div class="iftp-fm-detail-item">
@@ -1669,16 +1792,14 @@ class PaymentEntriesPage {
 				?>
 				<div class="iftp-fm-details-fields">
 					<span class="iftp-fm-detail-label"><?php echo esc_html( $text['submitted_fields'] ); ?></span>
-					<table class="iftp-fm-details-fields-table">
-						<tbody>
-							<?php foreach ( $fields as $pair ) : ?>
-								<tr>
-									<th><?php echo esc_html( $pair['label'] ); ?></th>
-									<td><?php echo esc_html( $pair['value'] ); ?></td>
-								</tr>
-							<?php endforeach; ?>
-						</tbody>
-					</table>
+					<dl class="iftp-fm-details-fields-list">
+						<?php foreach ( $fields as $pair ) : ?>
+							<div class="iftp-fm-details-fields-list__row">
+								<dt><?php echo esc_html( $pair['label'] ); ?></dt>
+								<dd><?php echo esc_html( $pair['value'] ); ?></dd>
+							</div>
+						<?php endforeach; ?>
+					</dl>
 				</div>
 				<?php
 			endif;
@@ -1714,7 +1835,7 @@ class PaymentEntriesPage {
 			$status = (string) $record['status'];
 
 			if ( TransactionStore::STATUS_PAID === $status ) {
-				echo '&mdash;';
+				$this->print_empty_value( __( 'No entry', 'ifthenpay-payments-for-forminator' ) );
 
 				return;
 			}
@@ -1765,7 +1886,7 @@ class PaymentEntriesPage {
 		}
 
 		if ( '' === $pay_method ) {
-			echo '&mdash;';
+			$this->print_empty_value( __( 'No payment method', 'ifthenpay-payments-for-forminator' ) );
 
 			return;
 		}
@@ -1822,7 +1943,7 @@ class PaymentEntriesPage {
 		$catalog = array();
 
 		foreach ( $this->settings->get_methods() as $method ) {
-			$entity = (string) ( $method['entity'] ?? '' );
+			$entity = $method['entity'];
 
 			if ( '' === $entity ) {
 				continue;
@@ -1835,7 +1956,7 @@ class PaymentEntriesPage {
 			);
 
 			$catalog[ self::method_key( $entity ) ] = $logos;
-			$catalog                               += array( self::method_key( (string) ( $method['alias'] ?? '' ) ) => $logos );
+			$catalog                               += array( self::method_key( $method['alias'] ) => $logos );
 		}
 
 		unset( $catalog[''] );
@@ -1886,7 +2007,16 @@ class PaymentEntriesPage {
 	 * @param string $status One of TransactionStore::ALL_STATUSES.
 	 */
 	private function print_status_badge( string $status ): void {
-		printf( '<span class="iftp-fm-badge iftp-fm-badge--%s">%s</span>', esc_attr( $status ), esc_html( $this->status_label( $status ) ) );
+		echo '<span class="iftp-fm-badge iftp-fm-badge--' . esc_attr( $status ) . '">' . esc_html( $this->status_label( $status ) ) . '</span>';
+	}
+
+	/**
+	 * Prints the dash for an empty cell, the way core list tables do: screen readers get the label, not "em dash".
+	 *
+	 * @param string $label What's missing, already translated.
+	 */
+	private function print_empty_value( string $label ): void {
+		echo '<span aria-hidden="true">&#8212;</span><span class="screen-reader-text">' . esc_html( $label ) . '</span>';
 	}
 
 	/**
@@ -2349,7 +2479,7 @@ class PaymentEntriesPage {
 				continue;
 			}
 
-			printf( '<input type="hidden" name="%s" value="%s" />', esc_attr( (string) $key ), esc_attr( (string) $value ) );
+			echo '<input type="hidden" name="' . esc_attr( (string) $key ) . '" value="' . esc_attr( (string) $value ) . '" />';
 		}
 	}
 
@@ -2490,11 +2620,12 @@ class PaymentEntriesPage {
 	}
 
 	/**
-	 * The "Export CSV" link for the given view, without pagination.
+	 * The export link for the given view and format, without pagination.
 	 *
-	 * @param array<string, mixed> $view See `current_filters()`.
+	 * @param array<string, mixed> $view   See `current_filters()`.
+	 * @param string               $format One of the EXPORT_* formats.
 	 */
-	private function export_url( array $view ): string {
+	private function export_url( array $view, string $format ): string {
 		$args = $this->url_args( $view );
 
 		unset( $args['per_page'], $args['paged'] );
@@ -2502,6 +2633,7 @@ class PaymentEntriesPage {
 		$args = array(
 			'action'   => self::EXPORT_ACTION,
 			'_wpnonce' => wp_create_nonce( self::EXPORT_ACTION ),
+			'format'   => $format,
 		) + $args;
 
 		return add_query_arg( $this->query_values( $args ), admin_url( 'admin-post.php' ) );

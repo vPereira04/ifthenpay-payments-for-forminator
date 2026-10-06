@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Ifthenpay\Forminator\Admin;
 
+use Ifthenpay\Forminator\Plugin;
 use Ifthenpay\Forminator\Repository\SettingsRepository;
 use Ifthenpay\Forminator\Sync\GatewaySync;
 
@@ -90,18 +91,19 @@ class GatewaySettingsPage {
 	 * Renders the Gateway Configuration screen.
 	 */
 	public function render(): void {
-		if ( ! current_user_can( forminator_get_admin_cap() ) || ! $this->settings->is_connected() ) {
+		if ( ! current_user_can( Plugin::admin_cap() ) || ! $this->settings->is_connected() ) {
 			return;
-		}
-
-		// The lock keeps a failing API from being called on every render until the backfill lands.
-		if ( $this->sync->needs_backfill() && false === get_transient( self::BACKFILL_LOCK ) ) {
-			set_transient( self::BACKFILL_LOCK, 1, 15 * MINUTE_IN_SECONDS );
-			$this->sync->sync();
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only display toggle from the URL, no state change.
 		$section = sanitize_text_field( wp_unslash( $_GET['section'] ?? 'dashboard' ) );
+
+		// Only when our tab is the one opened, not on every Forminator settings tab. The lock keeps a failing API
+		// from being called on every load until the backfill lands.
+		if ( self::SECTION_SLUG === $section && $this->sync->needs_backfill() && false === get_transient( self::BACKFILL_LOCK ) ) {
+			set_transient( self::BACKFILL_LOCK, 1, 15 * MINUTE_IN_SECONDS );
+			$this->sync->sync();
+		}
 		?>
 		<div class="sui-box" data-nav="<?php echo esc_attr( self::SECTION_SLUG ); ?>"<?php echo self::SECTION_SLUG !== $section ? ' hidden' : ''; ?>>
 			<div class="sui-box-header">

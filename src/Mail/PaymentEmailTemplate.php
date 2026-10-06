@@ -74,47 +74,71 @@ final class PaymentEmailTemplate {
 	 * kses re-serializes them, so saving the default untouched doesn't look like an edit.
 	 */
 	public static function default_body(): string {
-		$site_link = '<a href="{site_url}" style="color:#0073aa">{site_name}</a>';
-		$url_link  = '<a href="{site_url}" style="color:#0073aa">{site_url}</a>';
+		$site_link = '<a href="{site_url}" style="color:#0a0a0a;font-weight:600;text-decoration:underline">{site_name}</a>';
+		$pay_link  = '<a href="{payment_url}" style="color:#78716c;text-decoration:underline">' . esc_html__( 'Open the payment link', 'ifthenpay-payments-for-forminator' ) . '</a>';
+		$url_link  = '<a href="{site_url}" style="color:#78716c;text-decoration:underline">{site_url}</a>';
 
 		/* translators: %s: site name, linked to the site */
-		$intro = sprintf( esc_html__( 'You started a payment on %s that hasn\'t been completed yet. You can finish it securely with ifthenpay using the button below.', 'ifthenpay-payments-for-forminator' ), $site_link );
-		/* translators: %s: site URL, linked to the site */
-		$sent_from = sprintf( esc_html__( 'This message was sent from %s', 'ifthenpay-payments-for-forminator' ), $url_link );
+		$intro = sprintf( esc_html__( 'You started a payment on %s but didn\'t complete it. You can pick it back up in a few seconds.', 'ifthenpay-payments-for-forminator' ), $site_link );
 		/* translators: %s: formatted amount, e.g. "12,50 €" */
 		$pay_label = sprintf( esc_html__( 'Pay %s', 'ifthenpay-payments-for-forminator' ), '{amount}' );
+		/* translators: %s: "Open the payment link", linked to the payment page */
+		$fallback = sprintf( esc_html__( 'Button not working? %s', 'ifthenpay-payments-for-forminator' ), $pay_link );
+		/* translators: %s: site URL, linked to the site */
+		$sent_from = sprintf( esc_html__( 'Sent from %s', 'ifthenpay-payments-for-forminator' ), $url_link );
 
-		return '<div style="margin:0;padding:24px 12px;background-color:#f6f8fa;font-family:Arial, Helvetica, sans-serif;color:#1d2327">
-	<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e0e3e7;border-radius:8px;border-collapse:separate">
+		return '<div style="margin:0;padding:40px 12px;background-color:#f5f5f4;font-family:-apple-system,BlinkMacSystemFont,&apos;Segoe UI&apos;,Helvetica,Arial,sans-serif;color:#0a0a0a">
+	<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px;margin:0 auto;border-collapse:separate">
 		<tr>
-			<td style="padding:32px 32px 8px">
-				<p style="margin:0 0 16px;font-size:16px;line-height:1.5">{greeting}</p>
-				<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#3c434a">' . $intro . '</p>
-				<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 24px;background-color:#f6f8fa;border-radius:6px;border-collapse:separate">
-					<tr>
-						<td style="padding:16px 20px;font-size:13px;color:#646970">' . esc_html__( 'Amount', 'ifthenpay-payments-for-forminator' ) . '</td>
-						<td style="padding:16px 20px;font-size:18px;font-weight:bold;text-align:right;color:#1d2327">{amount}</td>
-					</tr>
-					<tr>
-						<td style="padding:0 20px 16px;font-size:13px;color:#646970">' . esc_html__( 'Reference', 'ifthenpay-payments-for-forminator' ) . '</td>
-						<td style="padding:0 20px 16px;font-size:13px;text-align:right;font-family:Consolas, Menlo, monospace;color:#1d2327">{reference}</td>
-					</tr>
-				</table>
-				<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 28px">
-					<tr>
-						<td style="border-radius:6px;background-color:#0073aa">
-							<a href="{payment_url}" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:6px">' . $pay_label . '</a>
-						</td>
-					</tr>
-				</table>
+			<td style="padding:0 4px 20px">
+				<img src="https://ifthenpay.com/docs/en/assets/images/ifthenpay.png" alt="ifthenpay" width="104" style="display:block;max-width:100%;height:auto;border:0;padding-left:40%">
 			</td>
 		</tr>
 		<tr>
-			<td style="padding:0 32px 24px">{form_fields}</td>
+			<td style="background-color:#ffffff;border:1px solid #e7e5e4;border-radius:16px;padding:36px 32px">
+				<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;border-collapse:separate">
+					<tr>
+						<td style="padding:6px 12px 6px 10px;border:1px solid #e7e5e4;border-radius:999px;font-size:12px;font-weight:600;color:#57534e;line-height:1">
+							<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background-color:#f59e0b;margin-right:7px;vertical-align:middle"></span>' . esc_html__( 'Payment pending', 'ifthenpay-payments-for-forminator' ) . '
+						</td>
+					</tr>
+				</table>
+				<h1 style="margin:0 0 12px;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-0.8px;color:#0a0a0a">' . esc_html__( 'Finish your payment', 'ifthenpay-payments-for-forminator' ) . '</h1>
+				<p style="margin:0 0 6px;font-size:15px;line-height:1.65;color:#0a0a0a">{greeting}</p>
+				<p style="margin:0 0 30px;font-size:15px;line-height:1.65;color:#57534e">' . $intro . '</p>
+				<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse">
+					<tr>
+						<td style="padding:22px 0 4px;border-top:1px solid #e7e5e4;font-size:13px;color:#78716c">' . esc_html__( 'Total', 'ifthenpay-payments-for-forminator' ) . '</td>
+					</tr>
+					<tr>
+						<td style="padding:0 0 22px;font-size:44px;line-height:1.1;font-weight:700;letter-spacing:-1.8px;color:#0a0a0a">{amount}</td>
+					</tr>
+					<tr>
+						<td style="padding:0">
+							<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse">
+								<tr>
+									<td style="padding:14px 0;border-top:1px solid #e7e5e4;border-bottom:1px solid #e7e5e4;font-size:13px;color:#78716c">' . esc_html__( 'Reference', 'ifthenpay-payments-for-forminator' ) . '</td>
+									<td align="right" style="padding:14px 0;border-top:1px solid #e7e5e4;border-bottom:1px solid #e7e5e4;font-family:&apos;SF Mono&apos;,Consolas,Menlo,monospace;font-size:13px;font-weight:600;color:#0a0a0a">{reference}</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+				</table>
+				<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:30px 0 0;border-collapse:separate">
+					<tr>
+						<td align="center" bgcolor="#0a0a0a" style="background-color:#0a0a0a;border-radius:10px">
+							<a href="{payment_url}" style="display:block;padding:16px 24px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px">' . $pay_label . ' &rarr;</a>
+						</td>
+					</tr>
+				</table>
+				<p style="margin:14px 0 0;font-size:12px;line-height:1.5;color:#78716c;text-align:center">' . esc_html__( 'Secured by ifthenpay', 'ifthenpay-payments-for-forminator' ) . '</p>
+				<div style="margin:28px 0 0;font-size:14px;line-height:1.7;color:#57534e">{form_fields}</div>
+			</td>
 		</tr>
 		<tr>
-			<td style="padding:20px 32px 28px;border-top:1px solid #eaedf0;font-size:13px;line-height:1.6;color:#646970;text-align:center">
-				' . esc_html__( 'If you\'ve already paid, you can ignore this email.', 'ifthenpay-payments-for-forminator' ) . '<br />
+			<td style="padding:24px 8px 0;font-size:12px;line-height:1.7;color:#78716c;text-align:center">
+				' . esc_html__( 'Already paid? You can ignore this email.', 'ifthenpay-payments-for-forminator' ) . '<br />
+				' . $fallback . '<br />
 				' . $sent_from . '
 			</td>
 		</tr>

@@ -45,6 +45,7 @@
 		bindCopyLink( wrap );
 		bindResendEmail( wrap );
 		bindColumnsMenu( wrap );
+		bindExportMenu( wrap );
 		bindFilterPanel( wrap );
 		bindPerPage( wrap );
 		// Last, so it sees defaultPrevented from every other click/submit handler on wrap.
@@ -828,13 +829,13 @@
 			var refs = Array.from( selectedRefsSet );
 
 			// I skip the confirm here: exporting changes nothing.
-			if ( 'export' === value ) {
+			if ( 'export-csv' === value || 'export-json' === value ) {
 				if ( 0 === refs.length ) {
 					showToast( iftpFmEntries.i18n.exportNothingSelected, true );
 					return;
 				}
 
-				exportEntries( refs );
+				exportEntries( refs, value.slice( 'export-'.length ) );
 				select.value = '';
 				return;
 			}
@@ -899,8 +900,8 @@
 		} );
 	}
 
-	// A throwaway form post, so the browser handles the CSV download itself.
-	function exportEntries( refs ) {
+	// A throwaway form post, so the browser handles the download itself.
+	function exportEntries( refs, format ) {
 		var url = new URL( iftpFmEntries.exportUrl, window.location.href );
 		var form = document.createElement( 'form' );
 		var f = iftpFmEntries.currentFilters;
@@ -919,6 +920,7 @@
 		}
 
 		addField( '_wpnonce', iftpFmEntries.exportNonce );
+		addField( 'format', format );
 		addField( 'orderby', f.orderby || '' );
 		addField( 'order', f.order || '' );
 		// One JSON field, not refs[] — PHP drops input vars past max_input_vars (1000 by default).
@@ -1897,6 +1899,63 @@
 		} );
 
 		// A null relatedTarget is a click on nothing focusable; the click handler covers that.
+		function onFocusOut( event ) {
+			if ( isOpen() && event.relatedTarget && ! isInside( event.relatedTarget ) ) {
+				setOpen( false );
+			}
+		}
+
+		trigger.addEventListener( 'focusout', onFocusOut );
+		panel.addEventListener( 'focusout', onFocusOut );
+	}
+
+	// Same popover rules as Columns: the trigger toggles, Escape / outside click / focus leaving closes.
+	function bindExportMenu( wrap ) {
+		var trigger = wrap.querySelector( '[data-iftp-export-trigger]' );
+		var panel = wrap.querySelector( '[data-iftp-export-menu]' );
+
+		if ( ! trigger || ! panel ) {
+			return;
+		}
+
+		function isOpen() {
+			return ! panel.hidden;
+		}
+
+		function setOpen( open ) {
+			panel.hidden = ! open;
+			trigger.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+		}
+
+		function isInside( node ) {
+			return !! node && ( trigger.contains( node ) || panel.contains( node ) );
+		}
+
+		trigger.addEventListener( 'click', function () {
+			setOpen( ! isOpen() );
+		} );
+
+		// The download doesn't leave the page, so I close the menu myself.
+		panel.addEventListener( 'click', function ( event ) {
+			if ( event.target.closest( '[data-iftp-export-option]' ) ) {
+				setOpen( false );
+				trigger.focus();
+			}
+		} );
+
+		document.addEventListener( 'keydown', function ( event ) {
+			if ( 'Escape' === event.key && isOpen() ) {
+				setOpen( false );
+				trigger.focus();
+			}
+		} );
+
+		document.addEventListener( 'click', function ( event ) {
+			if ( isOpen() && ! isInside( event.target ) ) {
+				setOpen( false );
+			}
+		} );
+
 		function onFocusOut( event ) {
 			if ( isOpen() && event.relatedTarget && ! isInside( event.relatedTarget ) ) {
 				setOpen( false );

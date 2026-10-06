@@ -9,10 +9,9 @@
 	font-display: block;
 }
 
-/* !important is load-bearing: every Forminator form style sets .forminator-input { display: block } at
-   (0,4,0), and without flex the divider loses its width/height and disappears. */
-.forminator-input.iftp-fm-field-visual {
-	display: flex !important;
+/* Forminator owns .forminator-input's display, so the flex lives on the inner row instead. */
+.iftp-fm-field-visual__row {
+	display: flex;
 	align-items: center;
 	gap: 12px;
 }
@@ -95,7 +94,7 @@
 }
 
 .iftp-fm-sr-only {
-	position: absolute !important;
+	position: absolute;
 	width: 1px;
 	height: 1px;
 	margin: -1px;

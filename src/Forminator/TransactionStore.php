@@ -46,10 +46,10 @@ class TransactionStore {
 	 */
 	public const SORTABLE_COLUMNS = array( 'ref', 'customer_name', 'amount', 'status', 'created_at' );
 
-	private const DB_VERSION_OPTION = 'iftp_fm_db_version';
-	private const DB_VERSION        = 3;
+	// The table's own schema revision, separate from the plugin version. 4 changes no columns; it just
+	// rewrites the option as autoloaded, since boot() reads it on every request.
+	private const SCHEMA_REVISION = 4;
 
-	private const BULK_WRITE_CHUNK    = 500;
 	private const CUSTOMER_MAX_LENGTH = 191;
 
 	// The list and CSV never show the submitted fields, so I leave the LONGTEXT snapshot out of their reads.
@@ -72,7 +72,7 @@ class TransactionStore {
 	 * Creates or upgrades the table; a no-op once the stored schema version is current.
 	 */
 	public static function maybe_create_table(): void {
-		if ( (int) get_option( self::DB_VERSION_OPTION, 0 ) === self::DB_VERSION ) {
+		if ( version_compare( (string) get_option( 'iftp_fm_db_version', '0' ), (string) self::SCHEMA_REVISION, '>=' ) ) {
 			return;
 		}
 
@@ -111,7 +111,7 @@ class TransactionStore {
         ) {$charset_collate};"
 		);
 
-		update_option( self::DB_VERSION_OPTION, self::DB_VERSION, false );
+		update_option( 'iftp_fm_db_version', self::SCHEMA_REVISION, true );
 	}
 
 	/**
@@ -344,7 +344,7 @@ class TransactionStore {
 	}
 
 	/**
-	 * Deletes the given rows, one DELETE per chunk of refs. Paid rows are payment history, so they stay.
+	 * Deletes the given rows in one DELETE. Paid rows are payment history, so they stay.
 	 *
 	 * @param array<int, string> $refs The transaction references.
 	 * @return int How many rows were deleted.
@@ -352,26 +352,22 @@ class TransactionStore {
 	public function delete_unpaid( array $refs ): int {
 		global $wpdb;
 
-		$deleted = 0;
+		$refs = self::clean_refs( $refs );
 
-		foreach ( array_chunk( self::clean_refs( $refs ), self::BULK_WRITE_CHUNK ) as $chunk ) {
-			$placeholders = implode( ', ', array_fill( 0, count( $chunk ), '%s' ) );
-
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- custom plugin table, cache invalidated below; $placeholders is one %s per ref, plus the paid guard.
-			$affected = $wpdb->query( $wpdb->prepare( "DELETE FROM %i WHERE ref IN ({$placeholders}) AND status <> %s", array_merge( array( self::table_name() ), $chunk, array( self::STATUS_PAID ) ) ) );
-
-			if ( is_int( $affected ) ) {
-				$deleted += $affected;
-			}
-
-			$this->forget( $chunk );
+		if ( array() === $refs ) {
+			return 0;
 		}
 
-		return $deleted;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, cache invalidated below; prepare_for_refs() prepares it.
+		$affected = $wpdb->query( self::prepare_for_refs( 'DELETE FROM %i WHERE ref IN ({refs}) AND status <> %s', $refs, array( self::table_name() ), array( self::STATUS_PAID ) ) );
+
+		$this->forget( $refs );
+
+		return is_int( $affected ) ? $affected : 0;
 	}
 
 	/**
-	 * Loads the given rows into the object cache, one SELECT per chunk, so a loop of get() calls doesn't query per ref.
+	 * Loads the given rows into the object cache in one SELECT, so a loop of get() calls doesn't query per ref.
 	 *
 	 * @param array<int, string> $refs The transaction references.
 	 */
@@ -382,22 +378,22 @@ class TransactionStore {
 		$cached = wp_cache_get_multiple( array_map( array( self::class, 'row_cache_key' ), $refs ), self::CACHE_GROUP );
 		$refs   = array_values( array_filter( $refs, static fn( string $ref ): bool => false === ( $cached[ self::row_cache_key( $ref ) ] ?? false ) ) );
 
-		foreach ( array_chunk( $refs, self::BULK_WRITE_CHUNK ) as $chunk ) {
-			$placeholders = implode( ', ', array_fill( 0, count( $chunk ), '%s' ) );
+		if ( array() === $refs ) {
+			return;
+		}
 
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- custom plugin table, cached right below; $placeholders is one %s per ref.
-			$rows  = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM %i WHERE ref IN ({$placeholders})", array_merge( array( self::table_name() ), $chunk ) ), ARRAY_A );
-			$found = array();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, cached right below; prepare_for_refs() prepares it.
+		$rows  = $wpdb->get_results( self::prepare_for_refs( 'SELECT * FROM %i WHERE ref IN ({refs})', $refs, array( self::table_name() ) ), ARRAY_A );
+		$found = array();
 
-			foreach ( is_array( $rows ) ? $rows : array() as $row ) {
-				$record                  = self::hydrate( $row );
-				$found[ $record['ref'] ] = $record;
-			}
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$record                  = self::hydrate( $row );
+			$found[ $record['ref'] ] = $record;
+		}
 
-			// Misses are cached too, same as get() does.
-			foreach ( $chunk as $ref ) {
-				wp_cache_set( self::row_cache_key( $ref ), $found[ $ref ] ?? null, self::CACHE_GROUP, self::ENTRY_CACHE_TTL );
-			}
+		// Misses are cached too, same as get() does.
+		foreach ( $refs as $ref ) {
+			wp_cache_set( self::row_cache_key( $ref ), $found[ $ref ] ?? null, self::CACHE_GROUP, self::ENTRY_CACHE_TTL );
 		}
 	}
 
@@ -427,23 +423,18 @@ class TransactionStore {
 	public function anonymize( array $refs ): int {
 		global $wpdb;
 
-		$changed = 0;
-		$now     = time();
+		$refs = self::clean_refs( $refs );
 
-		foreach ( array_chunk( self::clean_refs( $refs ), self::BULK_WRITE_CHUNK ) as $chunk ) {
-			$placeholders = implode( ', ', array_fill( 0, count( $chunk ), '%s' ) );
-
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- custom plugin table, cache invalidated below; $placeholders is one %s per ref.
-			$affected = $wpdb->query( $wpdb->prepare( "UPDATE %i SET customer_name = '', customer_email = '', field_snapshot = NULL, updated_at = %d WHERE ref IN ({$placeholders})", array_merge( array( self::table_name(), $now ), $chunk ) ) );
-
-			if ( is_int( $affected ) ) {
-				$changed += $affected;
-			}
-
-			$this->forget( $chunk );
+		if ( array() === $refs ) {
+			return 0;
 		}
 
-		return $changed;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, cache invalidated below; prepare_for_refs() prepares it.
+		$affected = $wpdb->query( self::prepare_for_refs( "UPDATE %i SET customer_name = '', customer_email = '', field_snapshot = NULL, updated_at = %d WHERE ref IN ({refs})", $refs, array( self::table_name(), time() ) ) );
+
+		$this->forget( $refs );
+
+		return is_int( $affected ) ? $affected : 0;
 	}
 
 	/**
@@ -759,7 +750,7 @@ class TransactionStore {
 	}
 
 	/**
-	 * Sets one status on many rows, one UPDATE per chunk of refs.
+	 * Sets one status on many rows in one UPDATE.
 	 *
 	 * @param array<int, string> $refs        The transaction references.
 	 * @param string             $status      The status to write.
@@ -769,25 +760,23 @@ class TransactionStore {
 	private function set_status_many( array $refs, string $status, string $only_status = '' ): int {
 		global $wpdb;
 
-		$changed = 0;
-		$now     = time();
-		$guard   = '' !== $only_status ? 'status = %s' : 'status <> %s';
-		$guarded = '' !== $only_status ? $only_status : $status;
+		$refs = self::clean_refs( $refs );
 
-		foreach ( array_chunk( self::clean_refs( $refs ), self::BULK_WRITE_CHUNK ) as $chunk ) {
-			$placeholders = implode( ', ', array_fill( 0, count( $chunk ), '%s' ) );
-
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- custom plugin table, cache invalidated below; $placeholders is one %s per ref and $guard is a fixed string.
-			$affected = $wpdb->query( $wpdb->prepare( "UPDATE %i SET status = %s, updated_at = %d WHERE ref IN ({$placeholders}) AND {$guard}", array_merge( array( self::table_name(), $status, $now ), $chunk, array( $guarded ) ) ) );
-
-			if ( is_int( $affected ) ) {
-				$changed += $affected;
-			}
-
-			$this->forget( $chunk );
+		if ( array() === $refs ) {
+			return 0;
 		}
 
-		return $changed;
+		$sql     = '' !== $only_status
+			? 'UPDATE %i SET status = %s, updated_at = %d WHERE ref IN ({refs}) AND status = %s'
+			: 'UPDATE %i SET status = %s, updated_at = %d WHERE ref IN ({refs}) AND status <> %s';
+		$guarded = '' !== $only_status ? $only_status : $status;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- custom plugin table, cache invalidated below; prepare_for_refs() prepares it.
+		$affected = $wpdb->query( self::prepare_for_refs( $sql, $refs, array( self::table_name(), $status, time() ), array( $guarded ) ) );
+
+		$this->forget( $refs );
+
+		return is_int( $affected ) ? $affected : 0;
 	}
 
 	/**
@@ -875,9 +864,7 @@ class TransactionStore {
 				// A selection with nothing valid in it must match nothing, not everything.
 				$conditions[] = '1 = 0';
 			} else {
-				$placeholders = implode( ', ', array_fill( 0, count( $refs ), '%s' ) );
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $placeholders is one %s per ref.
-				$conditions[] = $wpdb->prepare( "ref IN ({$placeholders})", $refs );
+				$conditions[] = self::prepare_for_refs( 'ref IN ({refs})', $refs );
 			}
 		}
 
@@ -985,6 +972,23 @@ class TransactionStore {
 		$value = is_array( $pair ) ? ( $pair['value'] ?? '' ) : $pair;
 
 		return is_scalar( $value ) ? trim( (string) $value ) : '';
+	}
+
+	/**
+	 * Prepares $sql with `{refs}` swapped for one %s per ref. The refs sit between $before and $after in the args.
+	 *
+	 * @param string             $sql    The query, with a `{refs}` token inside its `IN ( … )`.
+	 * @param array<int, string> $refs   The refs, already cleaned.
+	 * @param array<int, mixed>  $before Args for the placeholders before `{refs}`.
+	 * @param array<int, mixed>  $after  Args for the placeholders after it.
+	 */
+	private static function prepare_for_refs( string $sql, array $refs, array $before = array(), array $after = array() ): string {
+		global $wpdb;
+
+		$placeholders = implode( ', ', array_fill( 0, count( $refs ), '%s' ) );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- callers pass fixed SQL; {refs} becomes one %s per ref.
+		return (string) $wpdb->prepare( str_replace( '{refs}', $placeholders, $sql ), array_merge( $before, $refs, $after ) );
 	}
 
 	/**

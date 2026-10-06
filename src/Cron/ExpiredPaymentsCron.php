@@ -54,9 +54,9 @@ class ExpiredPaymentsCron {
 	public function register(): void {
 		add_action( self::HOOK, array( $this, 'run' ) );
 
-		// Activation schedules it too; this covers a site that was already active.
-		// Not earlier than init — reading cron schedules loads other plugins' translations.
-		add_action( 'init', array( self::class, 'schedule' ) );
+		// Activation schedules it too; this covers a site that was already active. Only in wp-admin, so the
+		// frontend doesn't pay for it, and not before init, since reading cron loads other plugins' translations.
+		add_action( 'admin_init', array( self::class, 'schedule' ) );
 	}
 
 	/**

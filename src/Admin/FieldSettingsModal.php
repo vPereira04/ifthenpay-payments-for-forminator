@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace Ifthenpay\Forminator\Admin;
 
+use Ifthenpay\Forminator\Plugin;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -47,7 +49,7 @@ class FieldSettingsModal {
 	 * @param string $hook The current admin page hook suffix.
 	 */
 	public function enqueue_assets( string $hook ): void {
-		$this->should_render = self::BUILDER_HOOK === $hook && current_user_can( forminator_get_admin_cap() );
+		$this->should_render = self::BUILDER_HOOK === $hook && current_user_can( Plugin::admin_cap() );
 
 		if ( ! $this->should_render ) {
 			return;
@@ -56,8 +58,8 @@ class FieldSettingsModal {
 		$admin_css = 'assets/css/admin.css';
 		$field_js  = 'assets/js/field-settings.js';
 
-		wp_enqueue_style( 'iftp-fm-admin', IFTP_FM_URL . $admin_css, array(), (string) filemtime( IFTP_FM_PATH . $admin_css ) );
-		wp_enqueue_script( 'iftp-fm-field-settings', IFTP_FM_URL . $field_js, array(), (string) filemtime( IFTP_FM_PATH . $field_js ), true );
+		wp_enqueue_style( 'iftp-fm-admin', IFTP_FM_URL . $admin_css, array(), Plugin::asset_version( $admin_css ) );
+		wp_enqueue_script( 'iftp-fm-field-settings', IFTP_FM_URL . $field_js, array(), Plugin::asset_version( $field_js ), true );
 
 		wp_localize_script(
 			'iftp-fm-field-settings',
@@ -105,7 +107,7 @@ class FieldSettingsModal {
 				<div class="sui-box">
 					<div class="sui-box-header sui-flatten">
 						<h3 id="iftp-fm-field-modal-title" class="sui-box-title">
-							<i class="sui-icon forminator-icon-ifthenpay" aria-hidden="true"></i>
+							<i class="sui-icon iftp-fm-icon" aria-hidden="true"></i>
 							<?php esc_html_e( 'Customize Ifthenpay Field', 'ifthenpay-payments-for-forminator' ); ?>
 							<span
 								id="iftp-fm-field-modal-tag"

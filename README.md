@@ -16,6 +16,8 @@ Adds ifthenpay payment methods to Forminator: cards, wallets, and local payment 
 - [External Services](#external-services)
 - [Screenshots](#screenshots)
 - [Support](#support)
+- [Security](#security)
+- [Changelog](#changelog)
 
 ### Description
 
@@ -23,7 +25,7 @@ This plugin integrates the ifthenpay payment gateway with Forminator to enable s
 
 **In plain terms you get:**
 
-- One-time payments directly from Forminator' Collect Payment action
+- One-time payments directly from your Forminator forms, via the ifthenpay field
 - Payment amount automatically follows your form's own total (e.g. Forminator Calculations)
 - Merchant backoffice (basic sales) on web + mobile
 - Secure automatic payment confirmations (no card numbers stored)
@@ -32,7 +34,7 @@ All settings are made in Forminator and in your ifthenpay Backoffice. The plugin
 
 ### Key Features
 
-1. Full integration with Forminator' Collect Payment action
+1. Full integration with Forminator through its own ifthenpay form field
 2. Secure transactions
 3. Automatic payment confirmation
 4. Support for multiple payment methods (Multibanco, MB WAY, Payshop, Pix, Credit Card and more — whatever's enabled on your Gateway Key)
@@ -56,7 +58,7 @@ All settings are made in Forminator and in your ifthenpay Backoffice. The plugin
 2. **Credentials:** Ensure your ifthenpay account has an active Forminator Gateway Key with the desired payment methods enabled.
 3. **Setup Part 1:** Go to `Forminator → Settings → Payments` and enter your Backoffice Key.
 4. **Setup Part 2:** Once the Backoffice Key is connected you'll see a button to go to the gateway key configuration — click it — select your Gateway Key of choice if you have more than one, enable your favorite methods, set a default payment method, a description for your payments, and an expiry (in days) for your pay-by-links. These settings apply globally, to every form.
-5. **Form config:** `Edit your form → add the ifthenpay field`. The payment methods, default method, description, and expiry were already configured in Step 4 — this step only wires this specific form's Payment action to ifthenpay.
+5. **Form config:** `Edit your form → add the ifthenpay field`. The payment methods, default method, description, and expiry were already configured in Step 4 — this step only adds the payment to this specific form.
 
 ### Frequently Asked Questions
 
@@ -162,4 +164,16 @@ Pre-checks:
 Commercial helpdesk available (no direct email required): [helpdesk.ifthenpay.com](https://helpdesk.ifthenpay.com/)
 
 - **ifthenpay support**: [suporte@ifthenpay.com](mailto:suporte@ifthenpay.com)
-- **Forminator docs**: [Forminator docs](https://Forminator.com/docs/)
+- **Forminator docs**: [Forminator docs](https://wpmudev.com/docs/wpmu-dev-plugins/forminator/)
+
+### Security
+
+Found a security issue? Please report it privately to [suporte@ifthenpay.com](mailto:suporte@ifthenpay.com) with "Security" in the subject, rather than in the public support forum. See [SECURITY.md](SECURITY.md) for the full policy.
+
+### Changelog
+
+Releases that fix a security issue say so in their entry, prefixed with **Security:**.
+
+#### 1.0.0
+
+- Initial public release: ifthenpay Pay by Link gateway for Forminator via the ifthenpay form field, webhook-confirmed payment status, ifthenpay Entries admin screen, configurable per-outcome confirmation behavior, and automatic expiry labeling of stale pending payments.

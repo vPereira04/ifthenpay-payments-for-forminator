@@ -32,25 +32,25 @@ final class IfthenpayEmailHelper {
 	 * @param array{gateway_key: string, entity: string, backoffice_key: string, customer_email: string, site_url: string, site_name: string, wp_version: string, forminator_version: string, plugin_version: string} $data The activation request context.
 	 */
 	public static function send_activation_email( array $data ): bool {
-		$entity    = strtoupper( sanitize_text_field( $data['entity'] ?? '' ) );
-		$site_url  = esc_url_raw( $data['site_url'] ?? home_url( '/' ) );
+		$entity    = strtoupper( sanitize_text_field( $data['entity'] ) );
+		$site_url  = esc_url_raw( $data['site_url'] );
 		$recipient = self::get_support_email( $data );
 
 		$subject = sprintf( '[dev_ifthenpay] [%s]: Ativacao de Servico', $entity );
 
 		// Raw values: the template escapes on output, so escaping here too would show "&amp;".
 		$items = array(
-			'Chave de acesso ao backoffice:' => (string) ( $data['backoffice_key'] ?? '' ),
-			'Gateway Key:'                   => (string) ( $data['gateway_key'] ?? '' ),
-			'Email Cliente:'                 => (string) ( $data['customer_email'] ?? '' ),
+			'Chave de acesso ao backoffice:' => $data['backoffice_key'],
+			'Gateway Key:'                   => $data['gateway_key'],
+			'Email Cliente:'                 => $data['customer_email'],
 			'Metodo a ativar:'               => $entity,
 			'Loja online:'                   => $site_url,
 			'Plataforma ecommerce:'          => sprintf(
 				'WordPress %s / Forminator v%s',
-				(string) ( $data['wp_version'] ?? '' ),
-				(string) ( $data['forminator_version'] ?? '' )
+				$data['wp_version'],
+				$data['forminator_version']
 			),
-			'Versao do Modulo ifthenpay:'    => (string) ( $data['plugin_version'] ?? '' ),
+			'Versao do Modulo ifthenpay:'    => $data['plugin_version'],
 			'Atualizar Conta Cliente:'       => 'Apos adicionar o metodo nao precisa tomar mais nenhuma acao, este metodo ficara disponivel para selecao na pagina de configuracao da extensao.',
 		);
 
@@ -68,7 +68,7 @@ final class IfthenpayEmailHelper {
 		">
 			<h2 style="margin-top: 0; font-size: 20px; line-height: 1.2;">
 				Ativar metodo de pagamento para a Gateway
-				<span style="color: #d32f2f;"><?php echo esc_html( $data['gateway_key'] ?? '' ); ?></span>
+				<span style="color: #d32f2f;"><?php echo esc_html( $data['gateway_key'] ); ?></span>
 			</h2>
 
 			<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse: collapse;">
@@ -95,7 +95,7 @@ final class IfthenpayEmailHelper {
 		$headers = array(
 			'Content-Type: text/html; charset=UTF-8',
 			// blogname is stored HTML-escaped; a mail header wants the plain text.
-			'From: ' . wp_specialchars_decode( (string) ( $data['site_name'] ?? '' ), ENT_QUOTES ) . ' <no-reply@' . $host . '>',
+			'From: ' . wp_specialchars_decode( $data['site_name'], ENT_QUOTES ) . ' <no-reply@' . $host . '>',
 		);
 
 		return wp_mail( $recipient, $subject, $body, $headers );

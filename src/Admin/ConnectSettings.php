@@ -61,8 +61,8 @@ class ConnectSettings {
 		$admin_css = 'assets/css/admin.css';
 		$admin_js  = 'assets/js/admin.js';
 
-		wp_enqueue_style( 'iftp-fm-admin', IFTP_FM_URL . $admin_css, array(), (string) filemtime( IFTP_FM_PATH . $admin_css ) );
-		wp_enqueue_script( 'iftp-fm-admin', IFTP_FM_URL . $admin_js, array( 'jquery', Plugin::METHOD_LOGOS_HANDLE ), (string) filemtime( IFTP_FM_PATH . $admin_js ), true );
+		wp_enqueue_style( 'iftp-fm-admin', IFTP_FM_URL . $admin_css, array(), Plugin::asset_version( $admin_css ) );
+		wp_enqueue_script( 'iftp-fm-admin', IFTP_FM_URL . $admin_js, array( 'jquery', Plugin::METHOD_LOGOS_HANDLE ), Plugin::asset_version( $admin_js ), true );
 
 		wp_localize_script(
 			'iftp-fm-admin',
@@ -96,7 +96,7 @@ class ConnectSettings {
 	 * Renders the connect box.
 	 */
 	public function render(): void {
-		if ( ! current_user_can( forminator_get_admin_cap() ) ) {
+		if ( ! current_user_can( Plugin::admin_cap() ) ) {
 			return;
 		}
 

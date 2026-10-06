@@ -158,7 +158,26 @@ class SettingsRepository {
 	public function get_methods(): array {
 		$methods = get_option( self::OPTION_METHODS, array() );
 
-		return is_array( $methods ) ? $methods : array();
+		if ( ! is_array( $methods ) ) {
+			return array();
+		}
+
+		$defaults = array(
+			'entity'   => '',
+			'alias'    => '',
+			'enabled'  => false,
+			'account'  => '',
+			'position' => 0,
+		);
+
+		/**
+		 * Rows saved by older builds can miss a key, so I fill them in and callers can trust the shape.
+		 *
+		 * @var array<int, array{entity: string, alias: string, logo?: string, logo_dark?: string, enabled: bool, account: string, position: int, visible?: bool}> $methods
+		 */
+		$methods = array_map( static fn ( $method ) => (array) $method + $defaults, $methods );
+
+		return $methods;
 	}
 
 	/**
@@ -179,7 +198,7 @@ class SettingsRepository {
 		$enabled = array();
 
 		foreach ( $this->get_methods() as $method ) {
-			if ( ! empty( $method['enabled'] ) && '' !== ( $method['account'] ?? '' ) ) {
+			if ( ! empty( $method['enabled'] ) && '' !== $method['account'] ) {
 				$enabled[] = array(
 					'entity'  => (string) $method['entity'],
 					'account' => (string) $method['account'],
@@ -282,16 +301,8 @@ class SettingsRepository {
 	 * @param string $body    The sanitized body.
 	 */
 	public function set_payment_email( string $subject, string $body ): void {
-		foreach ( array(
-			self::OPTION_PAYMENT_EMAIL_SUBJECT => $subject,
-			self::OPTION_PAYMENT_EMAIL_BODY    => $body,
-		) as $option => $value ) {
-			if ( '' === $value ) {
-				delete_option( $option );
-			} else {
-				update_option( $option, $value, false );
-			}
-		}
+		$this->store_or_delete( self::OPTION_PAYMENT_EMAIL_SUBJECT, $subject );
+		$this->store_or_delete( self::OPTION_PAYMENT_EMAIL_BODY, $body );
 	}
 
 	/**
@@ -473,5 +484,21 @@ class SettingsRepository {
 			delete_option( self::confirmation_option( $status, 'title' ) );
 			delete_option( self::confirmation_option( $status, 'message' ) );
 		}
+	}
+
+	/**
+	 * Stores a non-autoloaded option, or deletes it when the value is ''.
+	 *
+	 * @param string $option The option name.
+	 * @param string $value  The value to store.
+	 */
+	private function store_or_delete( string $option, string $value ): void {
+		if ( '' === $value ) {
+			delete_option( $option );
+
+			return;
+		}
+
+		update_option( $option, $value, false );
 	}
 }

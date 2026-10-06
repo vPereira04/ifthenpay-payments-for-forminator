@@ -14,6 +14,7 @@ use Ifthenpay\Forminator\Api\IfthenpayClient;
 use Ifthenpay\Forminator\Api\Webhook\WebhookRegistrar;
 use Ifthenpay\Forminator\Forminator\FieldSettingsStore;
 use Ifthenpay\Forminator\Mail\IfthenpayEmailHelper;
+use Ifthenpay\Forminator\Plugin;
 use Ifthenpay\Forminator\Repository\SettingsRepository;
 use Ifthenpay\Forminator\Sync\GatewaySync;
 
@@ -147,6 +148,7 @@ class Controller {
 		$this->guard();
 
 		$this->settings->delete_all();
+		delete_transient( IfthenpayClient::GATEWAY_ROWS_TRANSIENT );
 
 		wp_send_json_success();
 	}
@@ -383,7 +385,7 @@ class Controller {
 	private function guard(): void {
 		check_ajax_referer( self::NONCE_ACTION, 'nonce' );
 
-		if ( ! current_user_can( forminator_get_admin_cap() ) ) {
+		if ( ! current_user_can( Plugin::admin_cap() ) ) {
 			wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'ifthenpay-payments-for-forminator' ) ), 403 );
 		}
 	}
